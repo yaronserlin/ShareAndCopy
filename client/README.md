@@ -61,7 +61,13 @@ npm run preview
 ```
 
 ## Structure
+- `src/assets`: Static assets like images and styles.
 - `src/components`: Reusable UI components (Navbar, Footer, etc.).
+- `src/config.js`: App configuration.
+- `src/constants`: Application constants.
+- `src/context`: React Context Providers (AuthContext, etc.).
+- `src/features`: Feature-based modules (Auth, Room, etc.).
+- `src/hooks`: Custom React hooks.
 - `src/pages`: Main application views (Home, Room, etc.).
 - `src/services`: API handling and external service logic.
-- `src/utils`: Helper functions and configuration.
+- `src/utils`: Helper functions and validators.
