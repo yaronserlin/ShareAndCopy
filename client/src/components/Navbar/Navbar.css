@@ -1,0 +1,10 @@
+/* Navbar.css */
+
+.navbar-custom {
+    z-index: 1000;
+}
+
+.btn-gradient-primary {
+    background: linear-gradient(45deg, #6366f1, #8b5cf6);
+    border: none;
+}

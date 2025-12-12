@@ -1,0 +1,141 @@
+/* RoomView.css */
+
+.room-container {
+    padding-top: 80px;
+    max-width: 1400px;
+    min-height: 100dvh;
+    /* Dynamic viewport height */
+    /* Increased max-width for better use of space */
+}
+
+/* Header Styles in RoomView.jsx (if any wrapper needed) */
+.room-header-wrapper {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(108, 117, 125, 0.25);
+}
+
+.room-title-gradient {
+    background: linear-gradient(to right, #60a5fa, #c084fc);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 700;
+}
+
+/* File List Styles */
+.file-card {
+    transition: all 0.3s ease;
+}
+
+.file-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+.file-icon-bg {
+    background-color: rgba(13, 202, 240, 0.1);
+    color: #0dcaf0;
+}
+
+/* Upload Section */
+.upload-dropzone {
+    min-height: 200px;
+    /* Flexible height */
+    border: 2px dashed #6c757d;
+    background-color: rgba(248, 249, 250, 0.5);
+    /* bg-body-tertiary */
+    transition: all 0.2s ease;
+}
+
+.upload-dropzone:hover,
+.upload-dropzone.drag-active {
+    background-color: rgba(233, 236, 239, 0.8);
+    border-color: #4f46e5;
+}
+
+.upload-btn-primary {
+    background: #4f46e5;
+    border-color: #4f46e5;
+    font-weight: bold;
+}
+
+.upload-btn-primary:hover {
+    background: #4338ca;
+    border-color: #4338ca;
+}
+
+.upload-btn-primary:disabled {
+    background-color: #a5a6f6;
+    border-color: #a5a6f6;
+    opacity: 1;
+    /* Reset bootstrap opacity if needed so our color shows */
+    cursor: not-allowed;
+}
+
+/* QR Code in Header */
+.header-qr-code {
+    cursor: pointer;
+    transition: transform 0.2s;
+    background: white;
+    padding: 6px;
+    border-radius: 8px;
+    display: inline-block;
+}
+
+.header-qr-code:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(96, 165, 250, 0.5);
+}
+
+.storage-progress-bar {
+    height: 8px;
+    background-color: rgba(128, 128, 128, 0.2);
+}
+
+/* Modal Styles - NOTE: Most modal styles moved to Modal.css for Portal */
+/* Keeping button styles inside modal-content if needed */
+
+.qr-big-container {
+    transition: transform 0.2s;
+}
+
+.qr-big-container:hover {
+    transform: scale(1.02);
+}
+
+/* File Action Buttons */
+.file-action-btn {
+    transition: all 0.2s ease-in-out;
+    border: 1px solid transparent;
+}
+
+.file-action-btn:hover {
+    transform: translateY(-2px);
+    background-color: var(--bs-primary);
+    color: white !important;
+    border-color: var(--bs-primary);
+}
+
+.file-action-btn-danger:hover {
+    background-color: var(--bs-danger);
+    color: white !important;
+    border-color: var(--bs-danger);
+}
+
+.file-action-btn-secondary:hover {
+    background-color: var(--bs-secondary);
+    color: white !important;
+    border-color: var(--bs-secondary);
+}
+
+/* Custom Radio Styles for visibility */
+.form-check-input:checked {
+    background-color: #4f46e5;
+    border-color: #4f46e5;
+}
+
+.form-check-input {
+    border: 2px solid rgba(108, 117, 125, 0.5);
+    cursor: pointer;
+}

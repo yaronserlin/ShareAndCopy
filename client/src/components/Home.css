@@ -1,0 +1,12 @@
+/* Home.css */
+
+.home-title-gradient {
+    background: linear-gradient(to right, #60a5fa, #c084fc);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.home-lead-text {
+    max-width: 600px;
+}
