@@ -1,5 +1,5 @@
 export const APP_CONSTANTS = {
-    MAX_STORAGE_BYTES: 1024 * 1024 * 1024 * 100, // 1 GB
+    MAX_STORAGE_BYTES: 1024 * 1024 * 1024 * 10, // 10 GB
     FORBIDDEN_EXTENSIONS: ['.exe', '.sh', '.bat', '.cmd', '.msi', '.bin', '.vbs', '.js', '.jar'],
     REGEX: {
         // Simple email regex, can be improved if needed
