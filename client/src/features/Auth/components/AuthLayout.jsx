@@ -9,7 +9,7 @@ const AuthLayout = ({ children, title, subtitle, onSwitchMode, switchText }) => 
             <div className="auth-blob auth-blob-2"></div>
             <div className="auth-blob auth-blob-3"></div>
 
-            <div className="position-relative z-1 w-100 p-4 p-md-5 glass-panel rounded-4 m-3 auth-card">
+            <div className="position-relative z-1 w-100 p-4  glass-panel rounded-4 m-3 auth-card">
                 <div className="text-center mb-4">
                     <h2 className="display-6 fw-bold mb-2">
                         {title}

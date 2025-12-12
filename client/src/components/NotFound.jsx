@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import BackgroundDecorations from './common/BackgroundDecorations';
 
 const NotFound = ({ title: propTitle, message: propMessage }) => {
     const location = useLocation();
@@ -9,7 +10,8 @@ const NotFound = ({ title: propTitle, message: propMessage }) => {
     const displayMessage = propMessage || message || "Oops! The page you are looking for doesn't exist or has been moved.";
 
     return (
-        <div className="d-flex flex-column justify-content-center align-items-center vh-100 transition-colors duration-300 text-center p-4">
+        <div className="d-flex flex-column justify-content-center align-items-center flex-grow-1 transition-colors duration-300 text-center p-4">
+            <BackgroundDecorations />
             <h1 className="display-1 fw-bold text-primary mb-3" style={{ background: 'linear-gradient(to right, #6366f1, #ec4899)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                 404
             </h1>
