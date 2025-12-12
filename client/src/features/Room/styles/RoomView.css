@@ -3,7 +3,7 @@
 .room-container {
     padding-top: 80px;
     max-width: 1400px;
-    min-height: 100dvh;
+    /* min-height: 100dvh; Removed for sticky footer */
     /* Dynamic viewport height */
     /* Increased max-width for better use of space */
 }

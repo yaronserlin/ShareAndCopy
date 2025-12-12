@@ -74,7 +74,8 @@ const RoomView = () => {
     }
 
     return (
-        <div className="min-h-100 p-4 pb-5 position-relative overflow-hidden">
+
+        <div className="flex-grow-1 p-4 pb-5 position-relative overflow-hidden">
             <BackgroundDecorations />
 
             <div className="container position-relative z-1 room-container">

@@ -3,7 +3,7 @@ import '../styles/Auth.css';
 
 const AuthLayout = ({ children, title, subtitle, onSwitchMode, switchText }) => {
     return (
-        <div className="d-flex justify-content-center align-items-center vh-100 position-relative overflow-hidden">
+        <div className="d-flex justify-content-center align-items-center flex-grow-1 position-relative overflow-hidden">
             {/* Background Decorations */}
             <div className="auth-blob auth-blob-1"></div>
             <div className="auth-blob auth-blob-2"></div>

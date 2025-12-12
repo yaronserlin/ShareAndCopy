@@ -14,7 +14,7 @@ function App() {
     <div className="d-flex flex-column min-vh-100">
       <Toaster position="top-center" toastOptions={{ style: { background: '#333', color: '#fff' } }} containerStyle={{ zIndex: 99999 }} />
       <Navbar />
-      <div className="flex-grow-1">
+      <div className="flex-grow-1 d-flex flex-column">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Auth />} />
