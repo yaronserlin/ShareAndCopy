@@ -4,14 +4,13 @@ import GlassCard from '../../../components/common/GlassCard';
 
 const RoomSkeleton = () => {
     return (
-        <div className="min-h-100 p-4 pb-5 position-relative overflow-hidden">
+        <div className="flex-grow-1 p-4 pb-5 position-relative overflow-hidden">
 
             {/* Header Skeleton */}
             <div className="container position-relative z-1 room-container">
                 <div className="room-header-wrapper">
                     <div className="d-flex justify-content-between align-items-start flex-wrap gap-3">
                         <div>
-                            <Skeleton width="150px" height="24px" className="mb-2" />
                             <Skeleton width="300px" height="40px" />
                         </div>
                         <div className="d-flex gap-3">
@@ -32,7 +31,7 @@ const RoomSkeleton = () => {
 
                 {/* File List Grid Skeleton */}
                 <div className="row g-4">
-                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                    {[1, 2, 3, 4].map((i) => (
                         <div key={i} className="col-12 col-md-6 col-lg-4">
                             <GlassCard className="h-100">
                                 <div className="d-flex align-items-center gap-3 mb-3">
