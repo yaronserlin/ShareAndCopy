@@ -6,6 +6,7 @@ const UploadProgressWidget = ({ progress, isUploading }) => {
 
     useEffect(() => {
         if (isUploading) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setIsVisible(true);
         } else {
             // Delay hiding to show 100% completion briefly

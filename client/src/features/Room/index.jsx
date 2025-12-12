@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useParams } from 'react-router-dom';
 import NotFound from '../../components/NotFound';
 import BackgroundDecorations from '../../components/common/BackgroundDecorations';
 import RoomHeader from './components/RoomHeader';
@@ -15,13 +15,13 @@ import toast from 'react-hot-toast';
 
 import UploadProgressWidget from './components/UploadProgressWidget';
 
+import { APP_CONSTANTS } from '../../constants';
+
 const RoomView = () => {
-    const navigate = useNavigate();
     const { roomId } = useParams();
-    const location = useLocation();
     const [showUpload, setShowUpload] = useState(false);
 
-    const MAX_STORAGE = 1024 * 1024 * 1024 * 1024; // 1 TB
+    const { MAX_STORAGE_BYTES: MAX_STORAGE } = APP_CONSTANTS;
 
 
     const {

@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
-import API_BASE_URL from '../../../config';
+import api from '../../../utils/api';
 
 
 const useFileActions = (files, setFiles, setUsedStorage) => {
@@ -18,10 +17,8 @@ const useFileActions = (files, setFiles, setUsedStorage) => {
             formData.append('file', file);
             formData.append('isPublic', isPublic);
 
-            const token = localStorage.getItem('token');
-            const res = await axios.post(`${API_BASE_URL}/files/upload`, formData, {
+            const res = await api.post('/files/upload', formData, {
                 headers: {
-                    'x-auth-token': token,
                     'Content-Type': 'multipart/form-data'
                 },
                 onUploadProgress: (progressEvent) => {
@@ -47,9 +44,7 @@ const useFileActions = (files, setFiles, setUsedStorage) => {
 
     const handleDownload = async (fileId, filename) => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get(`${API_BASE_URL}/files/download/${fileId}`, {
-                headers: { 'x-auth-token': token },
+            const response = await api.get(`/files/download/${fileId}`, {
                 responseType: 'blob'
             });
 
@@ -81,14 +76,11 @@ const useFileActions = (files, setFiles, setUsedStorage) => {
     const handleRename = async (file, newName) => {
         if (!file || !newName) return;
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.put(`${API_BASE_URL}/files/${file._id}`, { filename: newName }, {
-                headers: { 'x-auth-token': token }
-            });
+            const res = await api.put(`/files/${file._id}`, { filename: newName });
 
             setFiles(files.map(f => f._id === file._id ? res.data : f));
             toast.success('File renamed');
-        } catch (err) {
+        } catch {
             toast.error('Rename failed');
         }
     };
@@ -96,10 +88,7 @@ const useFileActions = (files, setFiles, setUsedStorage) => {
     const handleDelete = async (fileId) => {
         if (!window.confirm('Are you sure you want to delete this file?')) return;
         try {
-            const token = localStorage.getItem('token');
-            await axios.delete(`${API_BASE_URL}/files/${fileId}`, {
-                headers: { 'x-auth-token': token }
-            });
+            await api.delete(`/files/${fileId}`);
             setFiles(files.filter(f => f._id !== fileId));
 
             const deletedFile = files.find(f => f._id === fileId);
@@ -108,7 +97,7 @@ const useFileActions = (files, setFiles, setUsedStorage) => {
             }
 
             toast.success('File deleted');
-        } catch (err) {
+        } catch {
             toast.error('Delete failed');
         }
     };
