@@ -10,3 +10,16 @@
 .home-lead-text {
     max-width: 600px;
 }
+
+.btn-hover-effect {
+    transition: all 0.3s ease;
+}
+
+.btn-hover-effect:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2) !important;
+}
+
+.btn-hover-effect:active {
+    transform: translateY(1px);
+}

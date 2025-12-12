@@ -8,7 +8,7 @@ const Home = () => {
     const { token, roomId } = useAuth();
 
     return (
-        <div className="h-100 position-relative overflow-hidden d-flex flex-column home-spacer">
+        <div className="flex-grow-1  position-relative overflow-hidden d-flex flex-column">
             <BackgroundDecorations />
 
             <main className="flex-grow-1 d-flex align-items-center justify-content-center text-center position-relative z-1">
@@ -28,7 +28,7 @@ const Home = () => {
                                             Go to My Room
                                         </GradientButton>
 
-                                        <Link to="/about" className="btn btn-lg btn-light border rounded-pill px-4 py-3 text-dark shadow-sm">
+                                        <Link to="/about" className="btn btn-lg btn-light border rounded-pill px-4 py-3 text-dark shadow-sm btn-hover-effect">
                                             About
                                         </Link>
                                     </div>
@@ -45,7 +45,7 @@ const Home = () => {
                                         <GradientButton to="/register">
                                             Create Your Room
                                         </GradientButton>
-                                        <Link to="/about" className="btn btn-lg btn-light border rounded-pill px-5 py-3 text-dark shadow-sm">
+                                        <Link to="/about" className="btn btn-lg btn-light border rounded-pill px-5 py-3 text-dark shadow-sm btn-hover-effect">
                                             About
                                         </Link>
                                     </div>
