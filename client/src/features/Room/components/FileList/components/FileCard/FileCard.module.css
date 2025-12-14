@@ -1,0 +1,56 @@
+.card {
+    transition: all 0.3s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+.iconBg {
+    background-color: rgba(13, 202, 240, 0.1);
+    color: #0dcaf0;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+}
+
+.actionBtn {
+    transition: all 0.2s ease-in-out;
+    border: 1px solid transparent;
+}
+
+.actionBtn:hover {
+    transform: translateY(-2px);
+    background-color: var(--bs-primary);
+    color: white !important;
+    border-color: var(--bs-primary);
+}
+
+.actionBtnDanger:hover {
+    background-color: var(--bs-danger);
+    color: white !important;
+    border-color: var(--bs-danger);
+}
+
+.actionBtnWarning:hover {
+    background-color: var(--bs-warning);
+    color: white !important;
+    border-color: var(--bs-warning);
+}
+
+.publicBadge {
+    font-size: 0.65rem;
+}
+
+.metaText {
+    font-size: 0.75rem;
+}
+
+.fileName {
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}

@@ -1,36 +1,32 @@
-.modal-overlay {
+.overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100dvh;
-    /* dvh for mobile address bar */
     background: rgba(0, 0, 0, 0.6);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 9999;
-    /* High z-index */
     backdrop-filter: blur(5px);
     animation: fadeIn 0.2s ease-out;
 }
 
-.modal-content-custom {
+.content {
     background: #fff;
     border-radius: 16px;
     width: 90%;
     max-width: 450px;
     max-height: 90dvh;
-    /* Limit height on mobile */
     overflow-y: auto;
-    /* Scrollable if too tall */
     position: relative;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     padding: 20px;
 }
 
-.btn-close-custom {
+.closeBtn {
     position: absolute;
     top: 10px;
     right: 15px;
@@ -66,17 +62,17 @@
 }
 
 /* Dark Mode Support */
-[data-bs-theme="dark"] .modal-content-custom {
+:global([data-bs-theme="dark"]) .content {
     background: #2b3035;
     color: #f8f9fa;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-[data-bs-theme="dark"] .btn-close-custom {
+:global([data-bs-theme="dark"]) .closeBtn {
     color: #ced4da;
 }
 
-[data-bs-theme="dark"] .btn-close-custom:hover {
+:global([data-bs-theme="dark"]) .closeBtn:hover {
     color: #fff;
 }

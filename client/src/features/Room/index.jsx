@@ -13,7 +13,7 @@ import RoomSkeleton from './components/RoomSkeleton';
 import './styles/RoomView.css';
 import toast from 'react-hot-toast';
 
-import UploadProgressWidget from './components/UploadProgressWidget';
+
 
 import { APP_CONSTANTS } from '../../constants';
 
@@ -44,7 +44,7 @@ const RoomView = () => {
         handleDownload,
         handleRename,
         handleDelete
-    } = useFileActions(files, setFiles, setUsedStorage);
+    } = useFileActions(roomId, files, setFiles, setUsedStorage);
 
     const allowUpload = (fileSize = 0) => {
         if (usedStorage > MAX_STORAGE) {
@@ -87,6 +87,10 @@ const RoomView = () => {
                     maxStorage={MAX_STORAGE}
                     ownerName={ownerName}
                     isOwner={isOwner}
+                    isUploading={isUploading}
+                    uploadProgress={uploadProgress}
+                    uploadSpeed={uploadSpeed}
+                    uploadETA={uploadETA}
                 />
 
                 {/* Toolbar / Actions */}
@@ -132,12 +136,7 @@ const RoomView = () => {
                     </Modal>
                 )}
 
-                <UploadProgressWidget
-                    progress={uploadProgress}
-                    isUploading={isUploading}
-                    uploadSpeed={uploadSpeed}
-                    uploadETA={uploadETA}
-                />
+
             </div>
         </div>
     );

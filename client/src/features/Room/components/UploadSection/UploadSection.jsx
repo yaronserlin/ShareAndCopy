@@ -1,53 +1,19 @@
-import React, { useState } from 'react';
-import GlassCard from '../../../components/common/GlassCard';
-import '../styles/RoomView.css';
+import React from 'react';
+import GlassCard from '../../../../components/common/GlassCard';
+import { useUploadSection } from './useUploadSection';
+import styles from './UploadSection.module.css';
 
 const UploadSection = ({ onUpload, isUploading, isLoading }) => {
-    const [selectedFile, setSelectedFile] = useState(null);
-    const [isPublic, setIsPublic] = useState(false);
-    const [dragActive, setDragActive] = useState(false);
-
-    const handleDrag = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.type === "dragenter" || e.type === "dragover") {
-            setDragActive(true);
-        } else if (e.type === "dragleave") {
-            setDragActive(false);
-        }
-    };
-
-    const handleDrop = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setDragActive(false);
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            setSelectedFile(e.dataTransfer.files[0]);
-        }
-    };
-
-    const handleChange = (e) => {
-        e.preventDefault();
-        if (e.target.files && e.target.files[0]) {
-            setSelectedFile(e.target.files[0]);
-        }
-    };
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (selectedFile) {
-            // Client-side Validation
-            const forbiddenExtensions = ['.exe', '.sh', '.bat', '.cmd', '.msi', '.bin', '.vbs', '.js', '.jar'];
-            const ext = "." + selectedFile.name.split('.').pop().toLowerCase();
-            if (forbiddenExtensions.includes(ext)) {
-                alert(`File type ${ext} is not allowed for security reasons.`);
-                return;
-            }
-
-            onUpload(selectedFile, isPublic);
-            setSelectedFile(null);
-        }
-    };
+    const {
+        selectedFile,
+        isPublic,
+        setIsPublic,
+        dragActive,
+        handleDrag,
+        handleDrop,
+        handleChange,
+        handleSubmit
+    } = useUploadSection(onUpload);
 
     return (
         <GlassCard>
@@ -57,7 +23,7 @@ const UploadSection = ({ onUpload, isUploading, isLoading }) => {
 
             <form onSubmit={handleSubmit} className="d-flex flex-column gap-3">
                 <label
-                    className={`upload-dropzone d-flex flex-column align-items-center justify-content-center w-100 rounded-3 cursor-pointer p-4 ${dragActive ? 'drag-active' : ''}`}
+                    className={`${styles.dropzone} rounded-3 ${dragActive ? styles.dragActive : ''}`}
                     onDragEnter={handleDrag}
                     onDragLeave={handleDrag}
                     onDragOver={handleDrag}
@@ -93,27 +59,27 @@ const UploadSection = ({ onUpload, isUploading, isLoading }) => {
                     <div className="d-flex gap-3">
                         <div className="form-check">
                             <input
-                                className="form-check-input cursor-pointer"
+                                className={`form-check-input ${styles.radioInput}`}
                                 type="radio"
                                 name="visibility"
                                 id="visibilityPrivate"
                                 checked={!isPublic}
                                 onChange={() => setIsPublic(false)}
                             />
-                            <label className="form-check-label small cursor-pointer" htmlFor="visibilityPrivate">
+                            <label className={`form-check-label small ${styles.cursorPointer}`} htmlFor="visibilityPrivate">
                                 Private <span className="text-secondary opacity-75">(Only You)</span>
                             </label>
                         </div>
                         <div className="form-check">
                             <input
-                                className="form-check-input cursor-pointer"
+                                className={`form-check-input ${styles.radioInput}`}
                                 type="radio"
                                 name="visibility"
                                 id="visibilityPublic"
                                 checked={isPublic}
                                 onChange={() => setIsPublic(true)}
                             />
-                            <label className="form-check-label small cursor-pointer" htmlFor="visibilityPublic">
+                            <label className={`form-check-label small ${styles.cursorPointer}`} htmlFor="visibilityPublic">
                                 Public <span className="text-secondary opacity-75">(Anyone with link)</span>
                             </label>
                         </div>
@@ -123,7 +89,7 @@ const UploadSection = ({ onUpload, isUploading, isLoading }) => {
                 <button
                     type="submit"
                     disabled={isLoading || isUploading || !selectedFile}
-                    className="btn upload-btn-primary w-100 py-3 text-white rounded-3 shadow-sm mt-2 fs-6 mb-2"
+                    className={`btn w-100 py-3 rounded-3 shadow-sm mt-2 fs-6 mb-2 ${styles.uploadBtn}`}
                 >
                     {isUploading ? (
                         <>

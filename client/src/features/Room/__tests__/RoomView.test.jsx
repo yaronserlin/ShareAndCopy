@@ -1,10 +1,21 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import RoomView from '../index';
-import axios from 'axios';
+import api from '../../../utils/api';
 
-// Mock axios
-vi.mock('axios');
+// Mock api
+vi.mock('../../../utils/api', () => ({
+    default: {
+        get: vi.fn(),
+        post: vi.fn(),
+        put: vi.fn(),
+        delete: vi.fn(),
+        interceptors: {
+            request: { use: vi.fn(), eject: vi.fn() },
+            response: { use: vi.fn(), eject: vi.fn() }
+        }
+    }
+}));
 
 // Mock react-hot-toast
 vi.mock('react-hot-toast', () => ({
@@ -19,6 +30,18 @@ vi.mock('react-qr-code', () => ({
     default: () => <div data-testid="qr-code">QR Code</div>
 }));
 
+vi.mock('../../../context/UploadContext', () => ({
+    useUpload: () => ({
+        isUploading: false,
+        uploadProgress: 0,
+        uploadSpeed: 0,
+        uploadETA: 0,
+        startUpload: vi.fn(),
+        activeRoomId: 'test-room',
+        lastUploadedFile: null
+    })
+}));
+
 const renderWithRouter = (ui, { route = '/room/123' } = {}) => {
     window.history.pushState({}, 'Test page', route);
     return render(
@@ -30,12 +53,12 @@ const renderWithRouter = (ui, { route = '/room/123' } = {}) => {
 
 test('renders loading skeleton initially', () => {
     // Mock pending response
-    axios.get.mockImplementation(() => new Promise(() => { }));
+    api.get.mockImplementation(() => new Promise(() => { }));
 
     renderWithRouter(<RoomView />);
     // Check for skeleton placeholder class or structure
     // Since skeleton doesn't have text, checking for container
-    const skeletons = document.getElementsByClassName('spinner-border'); // Updated to match actual loading state
+    const skeletons = document.getElementsByClassName('skeleton-loader'); // Updated to match Skeleton component
     expect(skeletons.length).toBeGreaterThan(0);
 });
 
@@ -44,12 +67,15 @@ test('renders room details after fetch', async () => {
         { _id: '1', filename: 'test.txt', size: 1024, createdAt: new Date().toISOString(), isPublic: true }
     ];
 
-    axios.get.mockResolvedValue({
+    api.get.mockResolvedValue({
         data: {
-            files: mockFiles,
-            isOwner: true,
-            usedStorage: 1024,
-            ownerName: { firstName: 'John', lastName: 'Doe' }
+            success: true,
+            data: {
+                files: mockFiles,
+                isOwner: true,
+                usedStorage: 1024,
+                ownerName: { firstName: 'John', lastName: 'Doe' }
+            }
         }
     });
 

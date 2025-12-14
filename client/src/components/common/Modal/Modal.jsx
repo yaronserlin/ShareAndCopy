@@ -1,13 +1,13 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import './Modal.css';
+import styles from './Modal.module.css';
 
 const Modal = ({ children, onClose }) => {
     return ReactDOM.createPortal(
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content-custom" onClick={e => e.stopPropagation()}>
+        <div className={styles.overlay} onClick={onClose}>
+            <div className={styles.content} onClick={e => e.stopPropagation()}>
                 <button
-                    className="btn-close-custom"
+                    className={styles.closeBtn}
                     onClick={onClose}
                     aria-label="Close"
                 >

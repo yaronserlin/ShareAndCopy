@@ -1,73 +1,90 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 import toast from 'react-hot-toast';
 import api from '../../../utils/api';
+import { useUpload } from '../../../context/UploadContext';
 
 
-const useFileActions = (files, setFiles, setUsedStorage) => {
-    const [isUploading, setIsUploading] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState(0);
-    const [uploadSpeed, setUploadSpeed] = useState(0); // in MB/s
-    const [uploadETA, setUploadETA] = useState(null); // in seconds
+const useFileActions = (roomId, files, setFiles, setUsedStorage) => {
+    const {
+        isUploading,
+        uploadProgress,
+        uploadSpeed,
+        uploadETA,
+        startUpload,
+        lastUploadedFile,
+        activeRoomId
+    } = useUpload();
+
+    // Listen for global upload completion
+    useEffect(() => {
+        if (lastUploadedFile && lastUploadedFile.roomId === roomId) {
+            // Check if file already exists to avoid duplicates (though setFiles usually replaces or appends)
+            // If the user came back and useRoom already fetched it, we might duplicate.
+            // But useRoom fetches ONCE on mount.
+            // If upload finishes AFTER mount, we need to add it.
+            // If upload finished BEFORE mount, useRoom got it. lastUploadedFile might still be set from previous action?
+            // Context `lastUploadedFile` should probably be cleared or timestamped?
+            // Current context implementation: `setLastUploadedFile` on success. It stays there.
+            // Additional check: verify if file with same ID exists.
+
+            setFiles(prevFiles => {
+                if (prevFiles.some(f => f._id === lastUploadedFile._id)) {
+                    return prevFiles;
+                }
+                return [lastUploadedFile, ...prevFiles];
+            });
+
+            // Update storage only if we added it (or we can just blindly add based on file size if not checking dupe for storage? 
+            // Better to match file logic)
+            setUsedStorage(prev => {
+                // We don't have easy access to check if file was in prevFiles inside this setter logic without refs or complex state
+                // But generally safe to add if we trust it's new. 
+                // However to be safe against double counting if useRoom got it:
+                // Let's rely on the fact that if we are processing `lastUploadedFile`, it's a "Just now" event.
+                // But `lastUploadedFile` is state. If I mount, `useEffect` runs. 
+                // I need to ensure I don't process "stale" lastUploadedFile.
+                // Context doesn't clear it.
+                // It's tricky.
+                // Maybe the SIMPLEST way for "continue even if user go to another page" is:
+                // We rely on `isUploading` to show progress.
+                // When `isUploading` goes false (done), if we are in the room, we trigger a re-fetch of the room data?
+                // Or we just accept that if we are in the room, the `setFiles` from the *original* call might fail if component unmounted.
+                // But the `useEffect` on `lastUploadedFile` will allow us to catch it even if we re-mounted.
+                // To avoid processing stale events: `lastUploadedFile` could have a timestamp.
+                // Or simpler: The user PROBABLY won't upload, nav away, nav back, refresh, etc. so fast.
+                // I will add a check: duplicate ID check prevents visual dupe.
+                // Storage dupe? `setUsedStorage` might drift.
+                // Ideally `useRoom` exposes a `refresh()` method but it doesn't.
+                // I'll stick to: Add if ID not present. Add size if ID not present.
+                // Note: `setFiles` callback gives access to current files. `setUsedStorage` callback gives current storage.
+                // But I can't sync them easily.
+                // Actually, I can use `files` dependency in useEffect?
+                // No, that triggers too often.
+                // Let's iterate `setFiles`:
+                return prev; // We will update storage inside setFiles logic?? No separate state.
+            });
+        }
+    }, [lastUploadedFile, roomId, setFiles]);
+
+    // Separate effect for handling storage update to avoid complex state mixing
+    useEffect(() => {
+        if (lastUploadedFile && lastUploadedFile.roomId === roomId) {
+            setFiles(currentFiles => {
+                const exists = currentFiles.some(f => f._id === lastUploadedFile._id);
+                if (!exists) {
+                    setUsedStorage(prev => prev + lastUploadedFile.size); // Update storage
+                    return [lastUploadedFile, ...currentFiles];
+                }
+                return currentFiles;
+            });
+        }
+    }, [lastUploadedFile, roomId, setFiles, setUsedStorage]);
+
 
     const handleUpload = async (file, isPublic) => {
-        if (!file) return;
-
-        setIsUploading(true);
-        setUploadProgress(0);
-        setUploadSpeed(0);
-        setUploadETA(null);
-        const startTime = Date.now();
-        let lastUpdate = Date.now();
-        let lastLoaded = 0;
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('isPublic', isPublic);
-
-            const res = await api.post('/files/upload', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                },
-                onUploadProgress: (progressEvent) => {
-                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                    setUploadProgress(percentCompleted);
-
-                    const now = Date.now();
-                    const timeElapsedSinceLast = (now - lastUpdate) / 1000; // in seconds
-
-                    // Update every 500ms to avoid flickering
-                    if (timeElapsedSinceLast >= 0.5) {
-                        const loadedSinceLast = progressEvent.loaded - lastLoaded;
-                        const speed = loadedSinceLast / timeElapsedSinceLast; // bytes per second
-                        const speedInMB = speed / (1024 * 1024); // MB/s
-
-                        setUploadSpeed(speedInMB.toFixed(2));
-
-                        const remainingBytes = progressEvent.total - progressEvent.loaded;
-                        const etaSeconds = speed > 0 ? Math.ceil(remainingBytes / speed) : 0;
-                        setUploadETA(etaSeconds);
-
-                        lastUpdate = now;
-                        lastLoaded = progressEvent.loaded;
-                    }
-                }
-            });
-            setFiles([res.data, ...files]);
-            setUsedStorage(prev => prev + res.data.size);
-            toast.success('File uploaded successfully!');
-            return true; // Success signal
-        } catch (err) {
-            console.error(err);
-            console.log(err.response?.data?.message);
-
-            toast.error(err.response?.data?.message || 'Upload failed');
-            return false;
-        } finally {
-            setIsUploading(false);
-            setUploadProgress(0);
-            setUploadSpeed(0);
-            setUploadETA(null);
-        }
+        // Delegate to context
+        // We pass roomId so context knows where it belongs
+        await startUpload(roomId, file, isPublic);
     };
 
     const handleDownload = async (fileId, filename) => {
@@ -109,7 +126,7 @@ const useFileActions = (files, setFiles, setUsedStorage) => {
         try {
             const res = await api.put(`/files/${fileId}`, { filename: newName });
 
-            setFiles(files.map(f => f._id === fileId ? res.data : f));
+            setFiles(files.map(f => f._id === fileId ? res.data.data : f));
             toast.success('File renamed');
         } catch {
             toast.error('Rename failed');

@@ -3,11 +3,27 @@ import QRCode from 'react-qr-code';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import API_BASE_URL from '../../../config';
+import Modal from '../../../components/common/Modal'; // Use shared Modal
 import '../styles/RoomView.css';
 
-const RoomHeader = ({ roomId, usedStorage, maxStorage, ownerName, isOwner }) => {
+const RoomHeader = ({ roomId, usedStorage, maxStorage, ownerName, isOwner, isUploading, uploadProgress, uploadSpeed, uploadETA }) => {
     const [showQRModal, setShowQRModal] = useState(false);
     const [roomUrl, setRoomUrl] = useState(`${window.location.origin}/room/${roomId}`);
+    const [showUploadProgress, setShowUploadProgress] = useState(false);
+
+    // Handle Upload Progress Visibility (keep visible for 3s after done)
+    useEffect(() => {
+        let timer;
+        if (isUploading) {
+            setShowUploadProgress(true);
+        } else if (showUploadProgress && !isUploading) {
+            timer = setTimeout(() => {
+                setShowUploadProgress(false);
+            }, 3000);
+        }
+        return () => clearTimeout(timer);
+    }, [isUploading, showUploadProgress]);
+
 
     useEffect(() => {
         const fetchServerIp = async () => {
@@ -132,12 +148,35 @@ const RoomHeader = ({ roomId, usedStorage, maxStorage, ownerName, isOwner }) => 
                         </div>
                     </div>
                 )}
+
+                {/* Upload Progress Bar (Visible during upload or shortly after) */}
+                {(showUploadProgress) && (
+                    <div className="w-100 mt-2">
+                        <div className="d-flex justify-content-between mb-1 small text-secondary fw-bold" style={{ fontSize: '0.75rem' }}>
+                            <span className={isUploading ? "text-primary" : "text-success"}>
+                                {isUploading ? "Uploading..." : "Upload Complete"}
+                            </span>
+                            <span>
+                                {isUploading
+                                    ? `${uploadSpeed || 0} MB/s • ${uploadETA !== null ? (uploadETA > 60 ? `${Math.ceil(uploadETA / 60)}m` : `${uploadETA}s`) : '--'} remaining`
+                                    : "Done"}
+                            </span>
+                        </div>
+                        <div className="progress storage-progress-bar rounded-pill" style={{ height: '8px' }}>
+                            <div
+                                className={`progress-bar rounded-pill ${isUploading ? 'progress-bar-striped progress-bar-animated bg-primary' : 'bg-success'}`}
+                                role="progressbar"
+                                style={{ width: `${uploadProgress}%` }}
+                            ></div>
+                        </div>
+                    </div>
+                )}
             </header>
 
-            {/* QR Modal */}
+            {/* QR Modal - Using Shared Modal Component */}
             {showQRModal && (
-                <div className="modal-overlay" onClick={() => setShowQRModal(false)}>
-                    <div className="modal-content-custom p-4 text-center bg-body-tertiary" onClick={e => e.stopPropagation()}>
+                <Modal onClose={() => setShowQRModal(false)}>
+                    <div className="text-center">
                         <h4 className="mb-4 fw-bold text-primary">Scan to Share</h4>
                         <div
                             className="qr-big-container p-3 bg-white rounded-3 shadow-sm mx-auto mb-3 cursor-pointer"
@@ -148,15 +187,23 @@ const RoomHeader = ({ roomId, usedStorage, maxStorage, ownerName, isOwner }) => 
                             <QRCode value={roomUrl} size={250} style={{ maxWidth: '100%', height: 'auto' }} />
                         </div>
                         <p className="text-secondary small mb-1">Click the QR code to copy the link</p>
-                        <p className="text-secondary small mb-4">{roomUrl}</p>
-                        <button className="btn btn-outline-secondary rounded-pill px-4" onClick={() => setShowQRModal(false)}>
-                            Close
-                        </button>
+                        <div className="input-group mb-3">
+                            <input
+                                type="text"
+                                className="form-control text-center text-primary fw-bold bg-light-subtle text-body"
+                                value={roomUrl}
+                                readOnly
+                                onClick={(e) => e.target.select()}
+                                style={{ cursor: 'pointer' }}
+                            />
+                        </div>
+
                     </div>
-                </div>
+                </Modal>
             )}
         </>
     );
 };
 
 export default RoomHeader;
+

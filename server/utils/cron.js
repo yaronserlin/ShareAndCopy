@@ -4,10 +4,12 @@ const path = require('path');
 const mongoose = require('mongoose');
 const File = require('../models/File');
 
+const logger = require('./logger');
+
 const start = () => {
     // Run every hour
     cron.schedule('0 * * * *', async () => {
-        console.log('Running auto-delete cron job...');
+        logger.info('Running auto-delete cron job...');
         const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
         try {
@@ -24,17 +26,17 @@ const start = () => {
                 // Delete from GridFS
                 try {
                     await gfsBucket.delete(file.gridFsId);
-                    console.log(`Deleted file from GridFS: ${file.filename}`);
+                    logger.info(`Deleted file from GridFS: ${file.filename}`);
                 } catch (e) {
-                    console.error(`Error deleting ${file.filename} from GridFS:`, e.message);
+                    logger.error(`Error deleting ${file.filename} from GridFS: ${e.message}`);
                 }
 
                 // Delete from DB
                 await File.findByIdAndDelete(file._id);
-                console.log(`Deleted record from DB: ${file.filename}`);
+                logger.info(`Deleted record from DB: ${file.filename}`);
             }
         } catch (err) {
-            console.error('Error in cron job:', err);
+            logger.error(`Error in cron job: ${err.message}`);
         }
     });
 };

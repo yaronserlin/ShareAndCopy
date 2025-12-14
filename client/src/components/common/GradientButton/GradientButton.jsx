@@ -1,9 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import './GradientButton.css';
+import styles from './GradientButton.module.css';
 
 const GradientButton = ({ to, onClick, children, className = '', type = 'button', disabled = false }) => {
-    const baseClasses = "btn btn-lg btn-gradient rounded-pill px-5 py-3 fw-bold shadow-lg";
+    // Note: retaining bootstrap classes for layout/typography
+    const baseClasses = `btn btn-lg rounded-pill px-5 py-3 fw-bold shadow-lg ${styles.btnGradient}`;
     const combinedClasses = `${baseClasses} ${className}`;
 
     if (to) {

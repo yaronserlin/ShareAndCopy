@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import API_BASE_URL from '../config';
+import api from '../utils/api';
 
 const AuthContext = createContext(null);
 
@@ -35,14 +34,15 @@ export const AuthProvider = ({ children }) => {
 
             if (storedToken) {
                 try {
-                    const res = await fetch(`${API_BASE_URL}/auth/verify`, {
-                        headers: { 'x-auth-token': storedToken }
-                    });
+                    const res = await api.get('/auth/verify');
 
-                    if (res.ok) {
+
+                    // axios response.status is checked, but api.get throws on 4xx usually unless we catch it.
+                    // However, we are in a try block. If api.get succeeds, it means 2xx.
+                    if (res.status === 200 && res.data.success) {
                         setToken(storedToken);
                         setRoomId(storedRoomId);
-                        setUser({ isAuthenticated: true });
+                        setUser(res.data.data.user || { isAuthenticated: true });
                     } else {
                         logout();
                     }
@@ -56,9 +56,9 @@ export const AuthProvider = ({ children }) => {
         verifyToken();
     }, [logout]);
 
-    // Global Axios Interceptor for 401 Unauthorized
+    // Interceptor for 401 Unauthorized on the API instance
     useEffect(() => {
-        const interceptor = axios.interceptors.response.use(
+        const interceptor = api.interceptors.response.use(
             (response) => response,
             (error) => {
                 if (error.response && error.response.status === 401) {
@@ -69,7 +69,7 @@ export const AuthProvider = ({ children }) => {
         );
 
         return () => {
-            axios.interceptors.response.eject(interceptor);
+            api.interceptors.response.eject(interceptor);
         };
     }, [logout]);
 

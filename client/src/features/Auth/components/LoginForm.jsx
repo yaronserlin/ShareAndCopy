@@ -29,9 +29,9 @@ const LoginForm = () => {
         setIsLoading(true);
         try {
             const res = await api.post('/auth/login', formData);
-            login(res.data.token, res.data.roomId);
+            login(res.data.data.token, res.data.data.roomId);
             toast.success('Logged in successfully!');
-            navigate(`/room/${res.data.roomId}`);
+            navigate(`/room/${res.data.data.roomId}`);
         } catch (err) {
             console.error("Login Error:", err);
             toast.error(err.response?.data?.message || 'Login failed');

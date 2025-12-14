@@ -110,7 +110,7 @@ class FileService {
         });
     }
 
-    async getRoomFiles(roomId, requestUserId) {
+    async getRoomFiles(roomId, requestUserId, page = 1, limit = 20) {
         const roomOwner = await User.findOne({ roomId });
         if (!roomOwner) throw new Error('Room not found');
 
@@ -121,10 +121,21 @@ class FileService {
             query.isPublic = true;
         }
 
-        const files = await File.find(query).sort({ createdAt: -1 });
+        const skip = (page - 1) * limit;
+
+        const [files, total] = await Promise.all([
+            File.find(query)
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            File.countDocuments(query)
+        ]);
 
         return {
             files,
+            total,
+            page,
+            totalPages: Math.ceil(total / limit),
             isOwner,
             usedStorage: isOwner ? roomOwner.usedStorage : 0,
             ownerName: {

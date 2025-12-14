@@ -1,4 +1,4 @@
-.btn-gradient {
+.btnGradient {
     background: linear-gradient(45deg, #6366f1, #ec4899);
     border: none;
     color: white !important;
@@ -6,12 +6,12 @@
     background-size: 200% auto;
 }
 
-.btn-gradient:hover {
+.btnGradient:hover {
     background-position: right center;
     transform: translateY(-2px);
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
 }
 
-.btn-gradient:active {
+.btnGradient:active {
     transform: translateY(1px);
 }

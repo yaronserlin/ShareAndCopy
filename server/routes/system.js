@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const os = require('os');
+const logger = require('../utils/logger');
+const responseHandler = require('../utils/responseHandler');
 
 // @route   GET api/system/ip
 // @desc    Get server's local network IP
@@ -23,13 +25,13 @@ router.get('/ip', (req, res) => {
         }
 
         if (serverIp) {
-            res.json({ ip: serverIp });
+            responseHandler.success(res, { ip: serverIp }, 'Local IP found');
         } else {
-            res.status(404).json({ msg: 'Local IP not found' });
+            responseHandler.error(res, 'Local IP not found', null, 404);
         }
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+        logger.error(`System IP Error: ${err.message}`);
+        responseHandler.error(res, 'Server Error', err);
     }
 });
 

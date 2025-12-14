@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../../utils/api';
 import toast from 'react-hot-toast';
-import API_BASE_URL from '../../../config';
 
 const useRoom = (roomId) => {
     const [files, setFiles] = useState([]);
@@ -14,17 +13,15 @@ const useRoom = (roomId) => {
     useEffect(() => {
         const fetchFiles = async () => {
             try {
-                const token = localStorage.getItem('token');
-                const config = token ? { headers: { 'x-auth-token': token } } : {};
-
-                const res = await axios.get(`${API_BASE_URL}/files/room/${roomId}`, config);
-                setFiles(res.data.files);
-                setIsOwner(res.data.isOwner);
-                if (res.data.ownerName) {
-                    setOwnerName(res.data.ownerName);
+                const res = await api.get(`/files/room/${roomId}`);
+                const data = res.data.data;
+                setFiles(data.files || []);
+                setIsOwner(data.isOwner);
+                if (data.ownerName) {
+                    setOwnerName(data.ownerName);
                 }
-                if (res.data.usedStorage !== undefined) {
-                    setUsedStorage(res.data.usedStorage);
+                if (data.usedStorage !== undefined) {
+                    setUsedStorage(data.usedStorage);
                 }
             } catch (err) {
                 if (err.response?.status === 404) {

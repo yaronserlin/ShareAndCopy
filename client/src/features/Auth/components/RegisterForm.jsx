@@ -40,9 +40,9 @@ const RegisterForm = () => {
             delete payload.confirmPassword;
 
             const res = await api.post('/auth/register', payload);
-            login(res.data.token, res.data.roomId);
+            login(res.data.data.token, res.data.data.roomId);
             toast.success('Account created!');
-            navigate(`/room/${res.data.roomId}`);
+            navigate(`/room/${res.data.data.roomId}`);
         } catch (err) {
             console.error("Register Error:", err);
             toast.error(err.response?.data?.message || 'Registration failed');

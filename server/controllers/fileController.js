@@ -3,6 +3,7 @@ const File = require('../models/File');
 const logger = require('../utils/logger');
 const fileService = require('../services/fileService');
 const mongoose = require('mongoose');
+const responseHandler = require('../utils/responseHandler');
 
 // Helper to get auth user (optional)
 const getAuthUser = (req) => {
@@ -18,32 +19,35 @@ const getAuthUser = (req) => {
 
 exports.uploadFile = async (req, res) => {
     const userId = getAuthUser(req);
-    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+    if (!userId) return responseHandler.error(res, 'Unauthorized', null, 401);
 
     try {
         const newFile = await fileService.handleUpload(req, res, userId);
-        res.status(201).json(newFile);
+        responseHandler.success(res, newFile, 'File uploaded successfully', 201);
     } catch (err) {
         logger.error(`Upload error: ${err.message}`);
         // Handle specific error messages
         if (err.message === 'Storage limit exceeded' || err.message === 'No file uploaded') {
-            return res.status(400).json({ message: err.message });
+            return responseHandler.error(res, err.message, null, 400);
         }
-        res.status(500).json({ error: err.message });
+        responseHandler.error(res, 'Upload failed', err);
     }
 };
 
 exports.getRoomFiles = async (req, res) => {
     try {
         const requestUserId = getAuthUser(req);
-        const data = await fileService.getRoomFiles(req.params.roomId, requestUserId);
-        res.json(data);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+
+        const data = await fileService.getRoomFiles(req.params.roomId, requestUserId, page, limit);
+        responseHandler.success(res, data, 'Files retrieved successfully');
     } catch (err) {
         logger.error(`Get room files error: ${err.message}`);
         if (err.message === 'Room not found') {
-            return res.status(404).json({ message: err.message });
+            return responseHandler.error(res, err.message, null, 404);
         }
-        res.status(500).json({ error: err.message });
+        responseHandler.error(res, 'Failed to get room files', err);
     }
 };
 
@@ -56,7 +60,7 @@ exports.downloadFile = async (req, res) => {
             const requestUserId = getAuthUser(req);
             if (!requestUserId || requestUserId !== file.owner.toString()) {
                 logger.warn(`Unauthorized download attempt for file ${file._id}`);
-                return res.status(403).json({ message: 'Unauthorized' });
+                return responseHandler.error(res, 'Unauthorized', null, 403);
             }
         }
 
@@ -104,32 +108,32 @@ exports.downloadFile = async (req, res) => {
 exports.renameFile = async (req, res) => {
     try {
         const requestUserId = getAuthUser(req);
-        if (!requestUserId) return res.status(401).json({ message: 'Unauthorized' });
+        if (!requestUserId) return responseHandler.error(res, 'Unauthorized', null, 401);
 
         const updatedFile = await fileService.renameFile(req.params.id, req.body.filename, requestUserId);
-        res.json(updatedFile);
+        responseHandler.success(res, updatedFile, 'File renamed successfully');
     } catch (err) {
         logger.error(`Rename error: ${err.message}`);
-        if (err.message === 'Unauthorized') return res.status(403).json({ message: err.message });
-        if (err.message === 'File not found') return res.status(404).json({ message: err.message });
-        if (err.message === 'File extension change is not allowed') return res.status(400).json({ message: err.message });
-        res.status(500).json({ error: err.message });
+        if (err.message === 'Unauthorized') return responseHandler.error(res, err.message, null, 403);
+        if (err.message === 'File not found') return responseHandler.error(res, err.message, null, 404);
+        if (err.message === 'File extension change is not allowed') return responseHandler.error(res, err.message, null, 400);
+        responseHandler.error(res, 'Rename failed', err);
     }
 };
 
 exports.deleteFile = async (req, res) => {
     try {
         const requestUserId = getAuthUser(req);
-        if (!requestUserId) return res.status(401).json({ message: 'Unauthorized' });
+        if (!requestUserId) return responseHandler.error(res, 'Unauthorized', null, 401);
 
         const gfsBucket = req.app.locals.gfsBucket;
         const result = await fileService.deleteFile(req.params.id, requestUserId, gfsBucket);
-        res.json(result);
+        responseHandler.success(res, result, 'File deleted successfully');
     } catch (err) {
         logger.error(`Delete error: ${err.message}`);
-        if (err.message === 'Unauthorized') return res.status(403).json({ message: err.message });
-        if (err.message === 'File not found') return res.status(404).json({ message: err.message });
-        res.status(500).json({ error: err.message });
+        if (err.message === 'Unauthorized') return responseHandler.error(res, err.message, null, 403);
+        if (err.message === 'File not found') return responseHandler.error(res, err.message, null, 404);
+        responseHandler.error(res, 'Delete failed', err);
     }
 };
 

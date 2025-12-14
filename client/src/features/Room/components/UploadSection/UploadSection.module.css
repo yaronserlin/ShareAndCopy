@@ -1,0 +1,52 @@
+.dropzone {
+    min-height: 200px;
+    border: 2px dashed #6c757d;
+    background-color: rgba(248, 249, 250, 0.5);
+    transition: all 0.2s ease;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 1.5rem;
+}
+
+.dropzone:hover,
+.dragActive {
+    background-color: rgba(233, 236, 239, 0.8);
+    border-color: #4f46e5;
+}
+
+.uploadBtn {
+    background: #4f46e5;
+    border-color: #4f46e5;
+    font-weight: bold;
+    color: white;
+}
+
+.uploadBtn:hover {
+    background: #4338ca;
+    border-color: #4338ca;
+}
+
+.uploadBtn:disabled {
+    background-color: #a5a6f6;
+    border-color: #a5a6f6;
+    opacity: 1;
+    cursor: not-allowed;
+}
+
+.radioInput {
+    border: 2px solid rgba(108, 117, 125, 0.5);
+    cursor: pointer;
+}
+
+.radioInput:checked {
+    background-color: #4f46e5;
+    border-color: #4f46e5;
+}
+
+.cursorPointer {
+    cursor: pointer;
+}
