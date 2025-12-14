@@ -38,6 +38,8 @@ const RoomView = () => {
     const {
         isUploading,
         uploadProgress,
+        uploadSpeed,
+        uploadETA,
         handleUpload: uploadFile,
         handleDownload,
         handleRename,
@@ -133,6 +135,8 @@ const RoomView = () => {
                 <UploadProgressWidget
                     progress={uploadProgress}
                     isUploading={isUploading}
+                    uploadSpeed={uploadSpeed}
+                    uploadETA={uploadETA}
                 />
             </div>
         </div>

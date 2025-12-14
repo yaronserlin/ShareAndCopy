@@ -166,7 +166,21 @@ class FileService {
             throw new Error('Unauthorized');
         }
 
-        if (newName) file.filename = newName;
+        if (newName) {
+            const originalExt = file.filename.slice(((file.filename.lastIndexOf(".") - 1) >>> 0) + 2).toLowerCase();
+            const newExt = newName.slice(((newName.lastIndexOf(".") - 1) >>> 0) + 2).toLowerCase();
+
+            if (originalExt !== newExt) {
+                // Option: Reject change
+                throw new Error('File extension change is not allowed');
+
+                // Option: Enforce original extension (commented out as user requested security checks)
+                // const namePart = newName.substring(0, newName.lastIndexOf('.'));
+                // file.filename = `${namePart}.${originalExt}`;
+            } else {
+                file.filename = newName;
+            }
+        }
         await file.save();
         return file;
     }

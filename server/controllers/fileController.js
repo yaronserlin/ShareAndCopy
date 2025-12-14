@@ -112,6 +112,7 @@ exports.renameFile = async (req, res) => {
         logger.error(`Rename error: ${err.message}`);
         if (err.message === 'Unauthorized') return res.status(403).json({ message: err.message });
         if (err.message === 'File not found') return res.status(404).json({ message: err.message });
+        if (err.message === 'File extension change is not allowed') return res.status(400).json({ message: err.message });
         res.status(500).json({ error: err.message });
     }
 };
