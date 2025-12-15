@@ -10,8 +10,22 @@ import { Routes, Route } from 'react-router-dom';
 
 
 import { UploadProvider } from './context/UploadContext';
+import RateLimitError from './components/RateLimitError';
+import { useState, useEffect } from 'react';
 
 function App() {
+  const [isRateLimited, setIsRateLimited] = useState(false);
+
+  useEffect(() => {
+    const handleRateLimit = () => setIsRateLimited(true);
+    window.addEventListener('rate-limit-exceeded', handleRateLimit);
+    return () => window.removeEventListener('rate-limit-exceeded', handleRateLimit);
+  }, []);
+
+  if (isRateLimited) {
+    return <RateLimitError />;
+  }
+
   return (
     <div className="d-flex flex-column min-vh-100">
       <Toaster position="top-center" toastOptions={{ style: { background: '#333', color: '#fff' } }} containerStyle={{ zIndex: 99999 }} />

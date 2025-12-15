@@ -19,13 +19,22 @@ app.use((req, res, next) => {
 app.use(helmet()); // Secure HTTP headers
 app.use(compression()); // Compress responses
 
-// Rate Limiting (DDoS Protection)
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
-    message: 'Too many requests from this IP, please try again later.'
+const apiLimiter = rateLimit({
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || (15 * 60 * 1000)), // 15 minutes or configurable via env
+    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || 100), // 100 requests per windowMs or configurable via env
+    message: 'Too many requests from this IP, please try again later.',
+    handler: (req, res) => {
+        logger.warn(`Rate limit exceeded for IP: ${req.ip} on route: ${req.originalUrl}`);
+        res.status(429).json({
+            message: 'Too many requests from this IP, please try again later.',
+            retryAfter: req.rateLimit.resetTime ? Math.ceil((req.rateLimit.resetTime.getTime() - Date.now()) / 1000) : null
+        });
+    },
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    store: undefined // Use default MemoryStore, consider Redis or other for production
 });
-app.use('/api', limiter); // Apply to API routes
+app.use('/api', apiLimiter); // Apply to API routes
 
 // Middleware 
 app.use(cors({
@@ -36,12 +45,9 @@ app.use(cors({
         // Allowed origins regex
         const allowedOrigins = [
             /^http:\/\/localhost:\d+$/,
+            /^https:\/\/localhost:\d+$/,
             /^http:\/\/127\.0\.0\.1:\d+$/,
-            /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}:\d+$/,
-            /^http:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d+$/,
-            /^http:\/\/172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}:\d+$/,
-            /^http:\/\/169\.254\.171\.173:\d+$/,
-            /^https:\/\/troubleshooting-lcd-convinced-just\.trycloudflare\.com(:.*)?$/
+            /^https:\/\/127\.0\.0\.1:\d+$/
         ];
 
         // Add dynamic PUBLIC_URL if it exists (from startup.sh)

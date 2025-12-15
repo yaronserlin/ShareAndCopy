@@ -1,1 +1,1 @@
-window.SERVER_URL = "https://termination-installed-implementing-orlando.trycloudflare.com";
+window.SERVER_URL = "https://edited-frequencies-causes-biotechnology.trycloudflare.com";

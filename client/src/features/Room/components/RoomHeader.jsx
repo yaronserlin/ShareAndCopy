@@ -154,11 +154,11 @@ const RoomHeader = ({ roomId, usedStorage, maxStorage, ownerName, isOwner, isUpl
                     <div className="w-100 mt-2">
                         <div className="d-flex justify-content-between mb-1 small text-secondary fw-bold" style={{ fontSize: '0.75rem' }}>
                             <span className={isUploading ? "text-primary" : "text-success"}>
-                                {isUploading ? "Uploading..." : "Upload Complete"}
+                                {isUploading && uploadProgress === 100 ? "Processing..." : (isUploading ? "Uploading..." : "Upload Complete")}
                             </span>
                             <span>
                                 {isUploading
-                                    ? `${uploadSpeed || 0} MB/s • ${uploadETA !== null ? (uploadETA > 60 ? `${Math.ceil(uploadETA / 60)}m` : `${uploadETA}s`) : '--'} remaining`
+                                    ? (uploadProgress === 100 ? "Finalizing..." : `${uploadSpeed || 0} MB/s • ${uploadETA !== null ? (uploadETA > 60 ? `${Math.ceil(uploadETA / 60)}m` : `${uploadETA}s`) : '--'} remaining`)
                                     : "Done"}
                             </span>
                         </div>

@@ -23,6 +23,11 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use((response) => {
     return response;
 }, (error) => {
+    // Handle Rate Limiting (429)
+    if (error.response && error.response.status === 429) {
+        window.dispatchEvent(new Event('rate-limit-exceeded'));
+    }
+
     // We can handle 401s here specifically if needed (e.g. redirect to login)
     return Promise.reject(error);
 });

@@ -118,7 +118,8 @@ echo ""
 
 # --- Start Backend ---
 log_info "Starting Backend Server (logging to $SERVER_LOG)..."
-(cd server && PUBLIC_URL="$URL" npm run dev > "../$SERVER_LOG" 2>&1) &
+(cd server && PUBLIC_URL="$URL" npm run dev >> "../$SERVER_LOG" 2>&1) &
+# (cd server && PUBLIC_URL="$URL" npm run dev ) &
 SERVER_PID=$!
 log_success "Backend server started."
 echo ""

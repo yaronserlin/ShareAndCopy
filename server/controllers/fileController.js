@@ -19,16 +19,22 @@ const getAuthUser = (req) => {
 };
 
 exports.uploadFile = async (req, res) => {
+    logger.debug('Upload file request received');
     const userId = getAuthUser(req);
-    if (!userId) return responseHandler.error(res, 'Unauthorized', null, 401);
+    if (!userId) {
+        logger.warn('Upload failed: Unauthorized access attempt');
+        return responseHandler.error(res, 'Unauthorized', null, 401);
+    }
 
     try {
         const newFile = await fileService.handleUpload(req, res, userId);
+        logger.info(`File uploaded successfully: ${newFile.filename} (ID: ${newFile._id}) by user ${userId}`);
         responseHandler.success(res, newFile, 'File uploaded successfully', 201);
     } catch (err) {
         logger.error(`Upload error: ${err.message}`);
         // Handle specific error messages
         if (err.message === 'Storage limit exceeded' || err.message === 'No file uploaded') {
+            logger.warn(`Upload rejected: ${err.message} for user ${userId}`);
             return responseHandler.error(res, err.message, null, 400);
         }
         responseHandler.error(res, 'Upload failed', err);
@@ -36,16 +42,19 @@ exports.uploadFile = async (req, res) => {
 };
 
 exports.getRoomFiles = async (req, res) => {
+    logger.debug(`Get room files request for room: ${req.params.roomId}`);
     try {
         const requestUserId = getAuthUser(req);
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
 
         const data = await fileService.getRoomFiles(req.params.roomId, requestUserId, page, limit);
+        logger.info(`Retrieved ${data.files.length} files for room ${req.params.roomId} (Page: ${page})`);
         responseHandler.success(res, data, 'Files retrieved successfully');
     } catch (err) {
         logger.error(`Get room files error: ${err.message}`);
         if (err.message === 'Room not found') {
+            logger.warn(`Get room files failed: Room not found - ${req.params.roomId}`);
             return responseHandler.error(res, err.message, null, 404);
         }
         responseHandler.error(res, 'Failed to get room files', err);
@@ -53,15 +62,20 @@ exports.getRoomFiles = async (req, res) => {
 };
 
 exports.generateDownloadToken = async (req, res) => {
+    logger.debug(`Generate download token request for file: ${req.params.fileId}`);
     try {
         const file = await File.findById(req.params.fileId);
-        if (!file) return responseHandler.error(res, 'File not found', null, 404);
+        if (!file) {
+            logger.warn(`Download token generation failed: File not found - ${req.params.fileId}`);
+            return responseHandler.error(res, 'File not found', null, 404);
+        }
 
         const requestUserId = getAuthUser(req);
 
         // Check permissions (same logic as download)
         if (!file.isPublic) {
             if (!requestUserId || requestUserId !== file.owner.toString()) {
+                logger.warn(`Download token denied: Unauthorized access for file ${file._id} by user ${requestUserId}`);
                 return responseHandler.error(res, 'Unauthorized', null, 403);
             }
         }
@@ -81,8 +95,9 @@ exports.generateDownloadToken = async (req, res) => {
 };
 
 exports.downloadFile = async (req, res) => {
+    const fileId = req.params.fileId;
+    logger.debug(`Download request for file: ${fileId}`);
     try {
-        const fileId = req.params.fileId;
         const token = req.query.token;
 
         // Verify Token if present (Priority)
@@ -90,16 +105,21 @@ exports.downloadFile = async (req, res) => {
             try {
                 const decoded = jwt.verify(token, process.env.JWT_SECRET);
                 if (decoded.fileId !== fileId) {
+                    logger.warn(`Download failed: Token mismatch for file ${fileId}`);
                     return res.status(403).json({ message: 'Invalid download token for this file' });
                 }
                 // Token is valid, proceed to download
             } catch (err) {
+                logger.warn(`Download failed: Invalid/Expired token for file ${fileId}`);
                 return res.status(403).json({ message: 'Invalid or expired download token' });
             }
         } else {
             // Fallback to Header-based Auth (Legacy/Direct)
             const file = await File.findById(fileId);
-            if (!file) return res.status(404).json({ message: 'File not found' });
+            if (!file) {
+                logger.warn(`Download failed: File not found ${fileId}`);
+                return res.status(404).json({ message: 'File not found' });
+            }
 
             if (!file.isPublic) {
                 const requestUserId = getAuthUser(req);
@@ -182,6 +202,7 @@ exports.generateDownloadAllToken = async (req, res) => {
 };
 
 exports.downloadAllFiles = async (req, res) => {
+    logger.debug(`Download ALL files request for room: ${req.params.roomId}`);
     try {
         const { roomId } = req.params;
         let requestUserId;
@@ -190,10 +211,12 @@ exports.downloadAllFiles = async (req, res) => {
             try {
                 const decoded = jwt.verify(req.query.token, process.env.JWT_SECRET);
                 if (decoded.roomId !== roomId || decoded.type !== 'zip-download') {
+                    logger.warn(`Download All failed: Invalid token for room ${roomId}`);
                     return res.status(403).json({ message: 'Invalid download token' });
                 }
                 requestUserId = decoded.userId;
             } catch (err) {
+                logger.warn(`Download All failed: Token expired/invalid for room ${roomId}`);
                 return res.status(403).json({ message: 'Invalid or expired download token' });
             }
         } else {
@@ -203,6 +226,7 @@ exports.downloadAllFiles = async (req, res) => {
         const files = await fileService.getAllRoomFiles(roomId, requestUserId);
 
         if (!files || files.length === 0) {
+            logger.info(`Download All: No files found for room ${roomId}`);
             return res.status(404).json({ message: 'No files to download' });
         }
 
@@ -276,28 +300,41 @@ exports.downloadAllFiles = async (req, res) => {
 
 
 exports.renameFile = async (req, res) => {
+    logger.debug(`Rename file request for file: ${req.params.id}`);
     try {
         const requestUserId = getAuthUser(req);
-        if (!requestUserId) return responseHandler.error(res, 'Unauthorized', null, 401);
+        if (!requestUserId) {
+            logger.warn('Rename failed: Unauthorized access');
+            return responseHandler.error(res, 'Unauthorized', null, 401);
+        }
 
         const updatedFile = await fileService.renameFile(req.params.id, req.body.filename, requestUserId);
+        logger.info(`File renamed: ${updatedFile._id} to ${updatedFile.filename}`);
         responseHandler.success(res, updatedFile, 'File renamed successfully');
     } catch (err) {
         logger.error(`Rename error: ${err.message}`);
         if (err.message === 'Unauthorized') return responseHandler.error(res, err.message, null, 403);
         if (err.message === 'File not found') return responseHandler.error(res, err.message, null, 404);
-        if (err.message === 'File extension change is not allowed') return responseHandler.error(res, err.message, null, 400);
+        if (err.message === 'File extension change is not allowed') {
+            logger.warn(`Rename blocked: Extension change attempt for file ${req.params.id}`);
+            return responseHandler.error(res, err.message, null, 400);
+        }
         responseHandler.error(res, 'Rename failed', err);
     }
 };
 
 exports.deleteFile = async (req, res) => {
+    logger.debug(`Delete file request for file: ${req.params.id}`);
     try {
         const requestUserId = getAuthUser(req);
-        if (!requestUserId) return responseHandler.error(res, 'Unauthorized', null, 401);
+        if (!requestUserId) {
+            logger.warn('Delete failed: Unauthorized access');
+            return responseHandler.error(res, 'Unauthorized', null, 401);
+        }
 
         const gfsBucket = req.app.locals.gfsBucket;
         const result = await fileService.deleteFile(req.params.id, requestUserId, gfsBucket);
+        logger.info(`File deleted: ${req.params.id}`);
         responseHandler.success(res, result, 'File deleted successfully');
     } catch (err) {
         logger.error(`Delete error: ${err.message}`);

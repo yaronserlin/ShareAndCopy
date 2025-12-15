@@ -8,6 +8,7 @@ const responseHandler = require('../utils/responseHandler');
 // @desc    Get server's local network IP
 // @access  Public
 router.get('/ip', (req, res) => {
+    logger.debug('System IP request received');
     try {
         const interfaces = os.networkInterfaces();
         let serverIp = null;
@@ -25,8 +26,10 @@ router.get('/ip', (req, res) => {
         }
 
         if (serverIp) {
+            logger.info(`System IP found: ${serverIp}`);
             responseHandler.success(res, { ip: serverIp }, 'Local IP found');
         } else {
+            logger.warn('System IP request failed: Local IP not found');
             responseHandler.error(res, 'Local IP not found', null, 404);
         }
     } catch (err) {
