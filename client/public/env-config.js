@@ -1,1 +1,1 @@
-window.SERVER_URL = "https://get-ago-schools-managed.trycloudflare.com";
+window.SERVER_URL = "https://investigator-baker-warcraft-checklist.trycloudflare.com";

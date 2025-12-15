@@ -90,36 +90,62 @@ const useFileActions = (roomId, files, setFiles, setUsedStorage) => {
     const handleDownload = async (fileId, filename) => {
         const toastId = toast.loading('Preparing download...');
         try {
-            const response = await api.get(`/files/download/${fileId}`, {
-                responseType: 'blob'
-            });
+            // Step 1: Request Download Token
+            const res = await api.get(`/files/${fileId}/download-token`);
+            const { token } = res.data.data;
 
-            // Download
-            const isJson = response.data.type === 'application/json';
-            if (isJson) {
-                const text = await response.data.text();
-                const json = JSON.parse(text);
-                throw new Error(json.message || "Download failed");
-            }
+            // Step 2: Construct URL with Token
+            const downloadUrl = `${api.defaults.baseURL}/files/download/${fileId}?token=${token}`;
 
-            const url = window.URL.createObjectURL(response.data);
-
+            // Step 3: Trigger Native Browser Download
+            // This bypasses client-side buffering (blob) and handles large files efficiently
             const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', filename);
+            link.href = downloadUrl;
+            link.setAttribute('download', filename); // Helper, though server Content-Disposition rules
             document.body.appendChild(link);
             link.click();
             link.remove();
-            window.URL.revokeObjectURL(url);
 
             toast.dismiss(toastId);
-            toast.success('Download ready');
+            toast.success('Download started');
         } catch (err) {
             console.error('Download failed', err);
             toast.dismiss(toastId);
-            toast.error(err.message || 'Download failed');
+            toast.error(err.response?.data?.message || 'Download failed');
         }
     };
+
+    const handleDownloadAll = async () => {
+        const toastId = toast.loading('Preparing zip archive...');
+        try {
+            // Step 1: Request Download Token
+            const res = await api.get(`/files/download-all-token/${roomId}`);
+            const { token } = res.data.data;
+
+            // Step 2: Construct URL with Token
+            const downloadUrl = `${api.defaults.baseURL}/files/download-all/${roomId}?token=${token}`;
+
+            // Step 3: Trigger Native Browser Download
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            // link.setAttribute('download', ...); // Allow server Content-Disposition to name the file
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            toast.dismiss(toastId);
+            toast.success('Download started');
+        } catch (err) {
+            console.error('Download all failed', err);
+            toast.dismiss(toastId);
+            // Check if 404 (no files) or other error
+            const msg = err.response?.status === 404
+                ? "No files to download"
+                : (err.response?.data?.message || 'Download all failed');
+            toast.error(msg);
+        }
+    };
+
 
     const handleRename = async (fileId, newName) => {
         if (!fileId || !newName) return;
@@ -157,6 +183,7 @@ const useFileActions = (roomId, files, setFiles, setUsedStorage) => {
         uploadETA,
         handleUpload,
         handleDownload,
+        handleDownloadAll,
         handleRename,
         handleDelete
     };

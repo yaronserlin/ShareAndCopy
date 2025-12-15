@@ -42,9 +42,11 @@ const RoomView = () => {
         uploadETA,
         handleUpload: uploadFile,
         handleDownload,
+        handleDownloadAll,
         handleRename,
         handleDelete
     } = useFileActions(roomId, files, setFiles, setUsedStorage);
+
 
     const allowUpload = (fileSize = 0) => {
         if (usedStorage > MAX_STORAGE) {
@@ -95,10 +97,21 @@ const RoomView = () => {
 
                 {/* Toolbar / Actions */}
                 <div className="d-flex align-items-center justify-content-between mb-4">
-                    <h2 className="h5 fw-bold mb-0 d-flex align-items-center gap-2">
-                        <span className="badge bg-secondary rounded-circle d-flex align-items-center justify-content-center" style={{ width: '30px', height: '30px' }}>{files.length}</span>
-                        Files Available
-                    </h2>
+                    <div className="d-flex align-items-center gap-3">
+                        <h2 className="h5 fw-bold mb-0 d-flex align-items-center gap-2">
+                            <span className="badge bg-secondary rounded-circle d-flex align-items-center justify-content-center" style={{ width: '30px', height: '30px' }}>{files.length}</span>
+                            Files Available
+                        </h2>
+                        {files.length > 0 && (
+                            <button
+                                className="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-sm fw-bold d-flex align-items-center gap-2"
+                                onClick={handleDownloadAll}
+                            >
+                                <i className="bi bi-download"></i>
+                                <span className="d-none d-sm-inline">Download All</span>
+                            </button>
+                        )}
+                    </div>
 
                     {isOwner && (
                         <div>
@@ -114,6 +127,7 @@ const RoomView = () => {
                         </div>
                     )}
                 </div>
+
 
                 {/* File List (Full Width) */}
                 <FileList

@@ -145,6 +145,23 @@ class FileService {
         };
     }
 
+    async getAllRoomFiles(roomId, requestUserId) {
+        const roomOwner = await User.findOne({ roomId });
+        if (!roomOwner) throw new Error('Room not found');
+
+        const isOwner = requestUserId === roomOwner._id.toString();
+        let query = { owner: roomOwner._id };
+
+        if (!isOwner) {
+            query.isPublic = true;
+        }
+
+        // Return cursor or array. Array is fine for metadata, streams are for content.
+        // We need the file documents to get gridFsId and filename.
+        return File.find(query).sort({ createdAt: -1 });
+    }
+
+
     async deleteFile(fileId, requestUserId, gfsBucket) {
         const file = await File.findById(fileId);
         if (!file) throw new Error('File not found');
