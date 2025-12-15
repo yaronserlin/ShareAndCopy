@@ -1,1 +1,1 @@
-window.SERVER_URL = "https://investigator-baker-warcraft-checklist.trycloudflare.com";
+window.SERVER_URL = "https://termination-installed-implementing-orlando.trycloudflare.com";
