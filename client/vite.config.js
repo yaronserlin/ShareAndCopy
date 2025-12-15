@@ -5,7 +5,15 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: true // מאפשר גישה מכתובות IP חיצוניות
+    host: false, // מאפשר גישה מכתובות IP חיצוניות
+    allowedHosts: true, // Allow all hosts (required for dynamic Cloudflare tunnels)
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5001',
+        changeOrigin: true,
+        secure: false
+      }
+    }
   },
   test: {
     padding: 'none',

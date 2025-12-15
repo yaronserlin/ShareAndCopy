@@ -5,6 +5,10 @@
 const SERVER_PORT = 5001;
 
 // If VITE_API_URL is set in .env, use it. Otherwise, construct it dynamically.
-const API_BASE_URL = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:${SERVER_PORT}/api`;
+// If VITE_API_URL is set in .env, use it. Otherwise, use relative path to allow proxying.
+// Priority: 1. Injected Runtime Config (from Cloudflare Tunnel) 2. Build-time Env Var 3. Default Relative Path
+const API_BASE_URL = (typeof window !== 'undefined' && window.SERVER_URL)
+    ? `${window.SERVER_URL}/api`
+    : (import.meta.env.VITE_API_URL || '/api');
 
 export default API_BASE_URL;

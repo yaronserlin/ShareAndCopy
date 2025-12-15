@@ -40,8 +40,16 @@ app.use(cors({
             /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}:\d+$/,
             /^http:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d+$/,
             /^http:\/\/172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}:\d+$/,
-            /^http:\/\/169\.254\.171\.173:\d+$/
+            /^http:\/\/169\.254\.171\.173:\d+$/,
+            /^https:\/\/troubleshooting-lcd-convinced-just\.trycloudflare\.com(:.*)?$/
         ];
+
+        // Add dynamic PUBLIC_URL if it exists (from startup.sh)
+        if (process.env.PUBLIC_URL) {
+            // Convert string URL to regex (escape special chars)
+            const safeUrl = process.env.PUBLIC_URL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            allowedOrigins.push(new RegExp(`^${safeUrl}(:.*)?$`));
+        }
 
         const isAllowed = allowedOrigins.some(regex => regex.test(origin));
 
