@@ -1,0 +1,31 @@
+.adminCard {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.adminCard:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Light Mode Card */
+:global([data-bs-theme="light"]) .adminCard {
+    background: rgba(255, 255, 255, 0.65);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+.cardTitle {
+    letter-spacing: 1px;
+}
+
+:global([data-bs-theme="light"]) .cardTitle {
+    color: #6c757d;
+}
+
+/* Dark Mode Card */
+:global([data-bs-theme="dark"]) .adminCard {
+    background: rgba(30, 30, 30, 0.6);
+    border-color: rgba(255, 255, 255, 0.1);
+}

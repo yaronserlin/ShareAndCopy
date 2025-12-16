@@ -20,7 +20,7 @@ app.use(helmet()); // Secure HTTP headers
 app.use(compression()); // Compress responses
 
 const apiLimiter = rateLimit({
-    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || (15 * 60 * 1000)), // 15 minutes or configurable via env
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || (1 * 60 * 1000)), // 1 minutes or configurable via env
     max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || 100), // 100 requests per windowMs or configurable via env
     message: 'Too many requests from this IP, please try again later.',
     handler: (req, res) => {

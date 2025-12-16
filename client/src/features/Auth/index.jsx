@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import AuthLayout from './components/AuthLayout';
-import LoginForm from './components/LoginForm';
-import RegisterForm from './components/RegisterForm';
+import AuthLayout from './components/AuthLayout/AuthLayout';
+import LoginForm from './components/LoginForm/LoginForm';
+import RegisterForm from './components/RegisterForm/RegisterForm';
 import BackgroundDecorations from '../../components/common/BackgroundDecorations';
 
 const Auth = () => {

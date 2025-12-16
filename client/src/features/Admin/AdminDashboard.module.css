@@ -1,0 +1,18 @@
+.adminDashboardContainer {
+    padding-bottom: 5rem;
+    min-height: 100vh;
+}
+
+.gradientTextAdmin {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+:global([data-bs-theme="dark"]) .gradientTextAdmin {
+    background: linear-gradient(135deg, #a3bded 0%, #6991c7 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}

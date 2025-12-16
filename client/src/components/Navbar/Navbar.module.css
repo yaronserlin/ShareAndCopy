@@ -1,0 +1,8 @@
+.navbarCustom {
+    z-index: 1000;
+}
+
+.btnGradientPrimary {
+    background: linear-gradient(45deg, #6366f1, #8b5cf6);
+    border: none;
+}

@@ -1,0 +1,32 @@
+/* Shared Auth Styles */
+
+.authCard {
+    max-width: 450px;
+    width: 100%;
+}
+
+.authInput {
+    opacity: 0.8;
+}
+
+.authBtnGradient {
+    background: linear-gradient(to right, #4f46e5, #9333ea);
+    border: none;
+}
+
+/* Auth Transitions */
+.authFormContainer {
+    animation: fadeInSlide 0.4s ease-out;
+}
+
+@keyframes fadeInSlide {
+    from {
+        opacity: 0;
+        transform: translateX(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}

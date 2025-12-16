@@ -1,0 +1,23 @@
+.homeTitleGradient {
+    background: linear-gradient(to right, #60a5fa, #c084fc);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.homeLeadText {
+    max-width: 600px;
+}
+
+.btnHoverEffect {
+    transition: all 0.3s ease;
+}
+
+.btnHoverEffect:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2) !important;
+}
+
+.btnHoverEffect:active {
+    transform: translateY(1px);
+}

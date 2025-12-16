@@ -1,0 +1,17 @@
+.copyContainer {
+    cursor: pointer;
+}
+
+.headerQrCode {
+    cursor: pointer;
+    transition: transform 0.2s;
+    background: white;
+    padding: 6px;
+    border-radius: 8px;
+    display: inline-block;
+}
+
+.headerQrCode:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(96, 165, 250, 0.5);
+}

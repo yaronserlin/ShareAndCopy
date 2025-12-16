@@ -1,0 +1,57 @@
+import { useState } from 'react';
+import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
+import api from '../../../utils/api';
+import { useAuth } from '../../../context/AuthContext';
+import { useAuthForm } from '../../../hooks/useAuthForm';
+
+/**
+ * Custom hook for Login Form logic
+ * @returns {Object} Login form handlers and state
+ */
+export const useLoginForm = () => {
+    const navigate = useNavigate();
+    const { login } = useAuth();
+    const [isLoading, setIsLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+
+    const {
+        formData,
+        errors,
+        touched,
+        handleChange,
+        handleBlur,
+        validateAll
+    } = useAuthForm({ email: '', password: '' });
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        if (!validateAll()) return;
+
+        setIsLoading(true);
+        try {
+            const res = await api.post('/auth/login', formData);
+            login(res.data.data.token, res.data.data.roomId, res.data.data.isAdmin);
+            toast.success('Logged in successfully!');
+            navigate(`/room/${res.data.data.roomId}`);
+        } catch (err) {
+            console.error("Login Error:", err);
+            toast.error(err.response?.data?.message || 'Login failed');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return {
+        formData,
+        errors,
+        touched,
+        isLoading,
+        showPassword,
+        setShowPassword,
+        handleChange,
+        handleBlur,
+        handleSubmit
+    };
+};

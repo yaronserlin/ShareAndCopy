@@ -1,0 +1,63 @@
+.tableGlass {
+    border-radius: 12px;
+    overflow: hidden;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+/* Light Mode Table */
+:global([data-bs-theme="light"]) .tableGlass {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+:global([data-bs-theme="light"]) .tableGlass th {
+    background: rgba(0, 0, 0, 0.03);
+    color: #495057;
+}
+
+:global([data-bs-theme="light"]) .tableGlass td {
+    color: #212529;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Dark Mode Table */
+:global([data-bs-theme="dark"]) .tableGlass {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+:global([data-bs-theme="dark"]) .tableGlass th {
+    background: rgba(255, 255, 255, 0.05);
+    color: #e9ecef;
+}
+
+:global([data-bs-theme="dark"]) .tableGlass td {
+    color: #dee2e6;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.storageBadge {
+    font-size: 0.9em;
+    padding: 0.4em 0.8em;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.cursorPointer {
+    cursor: pointer;
+}
+
+.tableGlass tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+:global([data-bs-theme="light"]) .tableGlass tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.08);
+    transform: scale(1.002);
+}
+
+:global([data-bs-theme="dark"]) .tableGlass tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    transform: scale(1.002);
+}

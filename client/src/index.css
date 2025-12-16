@@ -1,14 +1,15 @@
+@import './variables.css';
+
 body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: var(--font-primary);
     transition: background-color 0.3s, color 0.3s;
-    background-color: #f8f9fa;
-    /* Light grey for better glass contrast in light mode */
-    color: #212529;
+    background-color: var(--color-light);
+    color: var(--color-text-light);
 }
 
 [data-bs-theme="dark"] body {
-    background-color: #212529;
-    color: #f8f9fa;
+    background-color: var(--color-dark);
+    color: var(--color-text-dark);
 }
 
 [data-bs-theme="dark"] .text-secondary {
@@ -27,18 +28,17 @@ body {
 }
 
 .glass-panel {
-    background: rgba(255, 255, 255, 0.7);
-    /* Light mode default */
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    background: var(--glass-bg-light);
+    border: 1px solid var(--glass-border-light);
+    box-shadow: var(--glass-shadow-light);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
 }
 
 [data-bs-theme="dark"] .glass-panel {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    background: var(--glass-bg-dark);
+    border: 1px solid var(--glass-border-dark);
+    box-shadow: var(--glass-shadow-dark);
 }
 
 .home-spacer {
