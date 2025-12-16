@@ -5,35 +5,22 @@ TUNNEL_LOG="cloudflared.log"
 SERVER_LOG="server.log"
 CLIENT_LOG="client.log"
 ENV_CONFIG_FILE="client/public/env-config.js"
-MAX_RETRIES=30 # Increased retries for tunnel URL
-RETRY_INTERVAL=2 # seconds
+MAX_RETRIES=30
+RETRY_INTERVAL=2
 
-# Colors for better UI
+# Colors
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Helper functions for colored output
-log_info() {
-    echo "$1"
-}
-
-log_success() {
-    echo -e "${GREEN}$1${NC}"
-}
-
-log_error() {
-    echo -e "${RED}$1${NC}" >&2
-}
-
-log_warn() {
-    echo -e "${YELLOW}$1${NC}"
-}
-log_link() {
-    echo -e "${BLUE}$1${NC}"
-}
+# Helpers
+log_info() { echo "$1"; }
+log_success() { echo -e "${GREEN}$1${NC}"; }
+log_error() { echo -e "${RED}$1${NC}" >&2; }
+log_warn() { echo -e "${YELLOW}$1${NC}"; }
+log_link() { echo -e "${BLUE}$1${NC}"; }
 
 # Cleanup function
 cleanup() {
@@ -49,13 +36,31 @@ cleanup() {
 # Trap SIGINT (Ctrl+C)
 trap cleanup SIGINT
 
-# --- Script Start ---
+# Default Mode and Parsing
+MODE="net" # Defaulting to net to match existing behavior unless specific args used
+
+if [[ "$1" == "--local" ]]; then
+    MODE="local"
+elif [[ "$1" == "--localnet" ]]; then
+    MODE="localnet"
+elif [[ "$1" == "--net" ]]; then
+    MODE="net"
+elif [[ -z "$1" ]]; then
+    # Warning for default
+    log_warn "No mode specified, defaulting to --net"
+    MODE="net"
+else
+    log_error "Invalid argument: $1"
+    echo "Usage: ./startup.sh [--local | --localnet | --net]"
+    exit 1
+fi
+
 log_info "----------------------------------------"
-log_info "      Starting Local Development Setup  "
+log_info "      Starting Share & Copy ($MODE)     "
 log_info "----------------------------------------"
 echo ""
 
-# --- Dependency Checks ---
+# Dependency Check
 check_dependency() {
     if ! command -v "$1" &> /dev/null; then
         log_error "$1 could not be found. Please install it."
@@ -64,83 +69,119 @@ check_dependency() {
 }
 
 log_info "Checking dependencies..."
-check_dependency "cloudflared"
 check_dependency "npm"
+if [[ "$MODE" == "net" ]]; then
+    check_dependency "cloudflared"
+fi
 log_success "Dependencies checked."
 echo ""
 
-# --- Start Cloudflare Tunnel ---
-log_info "Starting Cloudflare Tunnel (logging to $TUNNEL_LOG)..."
-cloudflared tunnel --url http://localhost:5173 > "$TUNNEL_LOG" 2>&1 &
-TUNNEL_PID=$!
+SERVER_PORT=5001 # Defined in server/.env
 
-# Check if cloudflared started successfully
-sleep 1 # Give it a moment to start and potentially fail
-if ! ps -p $TUNNEL_PID > /dev/null; then
-    log_error "Cloudflare Tunnel failed to start. Check $TUNNEL_LOG for details."
-    cleanup
-fi
-echo ""
-
-# --- Wait for Tunnel URL ---
-log_info "Waiting for Tunnel URL to become available..."
-COUNT=0
-URL=""
-
-while [ $COUNT -lt $MAX_RETRIES ]; do
-    if [ -f "$TUNNEL_LOG" ]; then
-        URL=$(grep -o 'https://.*\.trycloudflare\.com' "$TUNNEL_LOG" | head -n 1)
-        if [ ! -z "$URL" ]; then
-            break
-        fi
+if [[ "$MODE" == "net" ]]; then
+    log_info "Starting Cloudflare Tunnel (logging to $TUNNEL_LOG)..."
+    cloudflared tunnel --url http://localhost:5173 > "$TUNNEL_LOG" 2>&1 &
+    TUNNEL_PID=$!
+    
+    sleep 1
+    if ! ps -p $TUNNEL_PID > /dev/null; then
+        log_error "Cloudflare Tunnel failed to start. Check $TUNNEL_LOG."
+        cleanup
     fi
-    printf "${YELLOW}Waiting for Tunnel URL... (attempt %s/%s)${NC}\r" $((COUNT+1)) $MAX_RETRIES
-    sleep $RETRY_INTERVAL
-    COUNT=$((COUNT+1))
-done
 
-# Clear the progress line
-printf "%s\r" "$(tput el)"
+    log_info "Waiting for Tunnel URL..."
+    COUNT=0
+    URL=""
+    while [ $COUNT -lt $MAX_RETRIES ]; do
+        if [ -f "$TUNNEL_LOG" ]; then
+            URL=$(grep -o 'https://.*\.trycloudflare\.com' "$TUNNEL_LOG" | head -n 1)
+            if [ ! -z "$URL" ]; then break; fi
+        fi
+        printf "${YELLOW}Waiting... (%s/%s)${NC}\r" $((COUNT+1)) $MAX_RETRIES
+        sleep $RETRY_INTERVAL
+        COUNT=$((COUNT+1))
+    done
+    printf "%s\r" "$(tput el)" # Clear line
 
-if [ -z "$URL" ]; then
-    log_error "Failed to extract Cloudflare URL after multiple retries. Check $TUNNEL_LOG."
-    cleanup
+    if [ -z "$URL" ]; then
+        log_error "Failed to get Tunnel URL."
+        cleanup
+    fi
+
+    log_success "Tunnel established at: $URL"
+    echo ""
+    
+    # Config: Point to Tunnel URL. 
+    log_info "Updating Frontend configuration..."
+    echo "window.SERVER_URL = \"$URL\";" > "$ENV_CONFIG_FILE"
+    
+    # Start Backend
+    log_info "Starting Backend Server (logging to $SERVER_LOG)..."
+    (cd server && PUBLIC_URL="$URL" npm run dev >> "../$SERVER_LOG" 2>&1) &
+    
+    # Start Frontend
+    log_info "Starting Frontend Client (logging to $CLIENT_LOG)..."
+    (cd client && npm run dev >> "../$CLIENT_LOG" 2>&1) &
+    
+    echo ""
+    log_success "Application is now running!"
+    log_link "$URL"
+
+elif [[ "$MODE" == "localnet" ]]; then
+    # Detect IP
+    IP=""
+    # Priority list for mac interfaces
+    for iface in en0 en1 en2 wlan0 eth0; do
+        TEMP_IP=$(ipconfig getifaddr $iface 2>/dev/null)
+        if [[ ! -z "$TEMP_IP" ]]; then IP=$TEMP_IP; break; fi
+    done
+    
+    # Fallback
+    if [[ -z "$IP" ]]; then
+        IP=$(ifconfig | grep "inet " | grep -v 127.0.0.1 | awk '{print $2}' | head -n 1)
+    fi
+
+    if [[ -z "$IP" ]]; then
+        log_error "Could not detect local IP."
+        cleanup
+    fi
+    
+    SERVER_URL="http://${IP}:${SERVER_PORT}"
+    CLIENT_URL="http://${IP}:5173"
+    
+    log_info "Local IP detected: $IP"
+    log_info "Updating Frontend configuration..."
+    echo "window.SERVER_URL = \"$SERVER_URL\";" > "$ENV_CONFIG_FILE"
+    
+    log_info "Starting Backend Server (logging to $SERVER_LOG)..."
+    # Allow CORS from Client URL
+    (cd server && PUBLIC_URL="$CLIENT_URL" npm run dev >> "../$SERVER_LOG" 2>&1) &
+    
+    log_info "Starting Frontend Client (exposed on network) (logging to $CLIENT_LOG)..."
+    (cd client && npm run dev -- --host >> "../$CLIENT_LOG" 2>&1) &
+    
+    echo ""
+    log_success "Application is now running!"
+    log_link "Local: http://localhost:5173"
+    log_link "Network: $CLIENT_URL"
+
+elif [[ "$MODE" == "local" ]]; then
+    SERVER_URL="http://localhost:${SERVER_PORT}"
+    
+    log_info "Updating Frontend configuration..."
+    echo "window.SERVER_URL = \"$SERVER_URL\";" > "$ENV_CONFIG_FILE"
+    
+    log_info "Starting Backend Server (logging to $SERVER_LOG)..."
+    (cd server && npm run dev >> "../$SERVER_LOG" 2>&1) &
+    
+    log_info "Starting Frontend Client (logging to $CLIENT_LOG)..."
+    (cd client && npm run dev >> "../$CLIENT_LOG" 2>&1) &
+    
+    echo ""
+    log_success "Application is now running!"
+    log_link "http://localhost:5173"
 fi
 
-log_success "Tunnel established at: $URL"
-echo ""
-
-# --- Generate env-config.js for Frontend ---
-log_info "Updating Frontend configuration file: $ENV_CONFIG_FILE..."
-echo "window.SERVER_URL = \"$URL\";" > "$ENV_CONFIG_FILE"
-log_success "Frontend config updated."
-echo ""
-
-# --- Start Backend ---
-log_info "Starting Backend Server (logging to $SERVER_LOG)..."
-(cd server && PUBLIC_URL="$URL" npm run dev >> "../$SERVER_LOG" 2>&1) &
-# (cd server && PUBLIC_URL="$URL" npm run dev ) &
-SERVER_PID=$!
-log_success "Backend server started."
-echo ""
-
-# --- Start Frontend ---
-log_info "Starting Frontend Client (logging to $CLIENT_LOG)..."
-(cd client && npm run dev > "../$CLIENT_LOG" 2>&1) &
-CLIENT_PID=$!
-log_success "Frontend client started."
-echo ""
-
-log_info "----------------------------------------"
-log_success "Application is now running!"
-echo ""
-log_link "http://localhost:5173"
-echo ""
-log_link "$URL"
-echo ""
-log_info "----------------------------------------"
 echo ""
 log_info "Press Ctrl+C to stop all services."
-
-# Wait for all background processes (cloudflared, server, client)
 wait

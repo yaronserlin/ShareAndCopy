@@ -80,9 +80,9 @@ exports.login = async (req, res) => {
             return responseHandler.error(res, 'Invalid credentials', null, 400);
         }
 
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign({ id: user._id, isAdmin: user.isAdmin }, process.env.JWT_SECRET, { expiresIn: '1h' });
         logger.info(`User logged in: ${email}`);
-        responseHandler.success(res, { token, roomId: user.roomId }, 'Login successful');
+        responseHandler.success(res, { token, roomId: user.roomId, isAdmin: user.isAdmin }, 'Login successful');
     } catch (err) {
         logger.error(`Login error for ${email}: ${err.message}`);
         responseHandler.error(res, 'Login failed', err);
@@ -106,7 +106,7 @@ exports.verify = async (req, res) => {
         }
 
         logger.debug(`Token verified for user: ${user.email}`);
-        responseHandler.success(res, { valid: true, user: { id: user._id, email: user.email } });
+        responseHandler.success(res, { valid: true, user: { id: user._id, email: user.email, isAdmin: user.isAdmin } });
     } catch (err) {
         logger.warn(`Token verification failed: ${err.message}`);
         responseHandler.error(res, 'Token is not valid', null, 401);

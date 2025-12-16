@@ -5,6 +5,8 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import NotFound from './components/NotFound';
 import About from './components/About';
+import AdminRoute from './components/AdminRoute';
+import AdminDashboard from './features/Admin/AdminDashboard';
 import { Toaster } from 'react-hot-toast';
 import { Routes, Route } from 'react-router-dom';
 
@@ -38,6 +40,9 @@ function App() {
             <Route path="/register" element={<Auth />} />
             <Route path="/room/:roomId" element={<RoomView />} />
             <Route path="/about" element={<About />} />
+            <Route element={<AdminRoute />}>
+              <Route path="/admin" element={<AdminDashboard />} />
+            </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
         </div>

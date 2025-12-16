@@ -6,7 +6,8 @@ const UserSchema = new mongoose.Schema({
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
     roomId: { type: String, required: true, unique: true },
-    usedStorage: { type: Number, default: 0 }
+    usedStorage: { type: Number, default: 0 },
+    isAdmin: { type: Boolean, default: false }
 });
 
 module.exports = mongoose.model('User', UserSchema);

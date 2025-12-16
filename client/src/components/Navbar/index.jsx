@@ -6,7 +6,7 @@ import './Navbar.css';
 
 const Navbar = () => {
     const navigate = useNavigate();
-    const { token, roomId, logout } = useAuth();
+    const { user, token, roomId, logout } = useAuth();
 
     const handleLogout = () => {
         logout();
@@ -35,6 +35,11 @@ const Navbar = () => {
                                 <span className="d-none d-sm-inline">Logout</span>
                                 <i className="bi bi-box-arrow-right d-sm-none"></i>
                             </button>
+                            {user?.isAdmin && (
+                                <Link to="/admin" className="btn btn-sm btn-outline-warning rounded-pill px-3 d-none d-sm-inline">
+                                    Admin
+                                </Link>
+                            )}
                         </>
                     ) : (
                         <>

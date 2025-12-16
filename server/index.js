@@ -91,6 +91,7 @@ mongoose.connect(process.env.MONGO_URI)
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/files', require('./routes/files'));
 app.use('/api/system', require('./routes/system'));
+app.use('/api/admin', require('./routes/admin'));
 
 // Start Cron Job
 cronJob.start();

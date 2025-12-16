@@ -19,12 +19,12 @@ export const AuthProvider = ({ children }) => {
         navigate('/', { replace: true });
     }, [navigate]);
 
-    const login = (newToken, newRoomId) => {
+    const login = (newToken, newRoomId, isAdmin) => {
         localStorage.setItem('token', newToken);
         localStorage.setItem('roomId', newRoomId);
         setToken(newToken);
         setRoomId(newRoomId);
-        setUser({ isAuthenticated: true });
+        setUser({ isAuthenticated: true, isAdmin: isAdmin });
     };
 
     useEffect(() => {
@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }) => {
                     if (res.status === 200 && res.data.success) {
                         setToken(storedToken);
                         setRoomId(storedRoomId);
-                        setUser(res.data.data.user || { isAuthenticated: true });
+                        setUser(res.data.data.user || { isAuthenticated: true, isAdmin: res.data.data.user?.isAdmin });
                     } else {
                         logout();
                     }

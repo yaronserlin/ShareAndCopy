@@ -1,0 +1,112 @@
+/* Admin Dashboard CSS */
+
+.admin-dashboard-container {
+    padding-bottom: 5rem;
+    min-height: 100vh;
+}
+
+.gradient-text-admin {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+[data-bs-theme="dark"] .gradient-text-admin {
+    background: linear-gradient(135deg, #a3bded 0%, #6991c7 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.admin-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.admin-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Light Mode Card */
+[data-bs-theme="light"] .admin-card {
+    background: rgba(255, 255, 255, 0.65);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-bs-theme="light"] .admin-card-title {
+    color: #6c757d;
+}
+
+/* Dark Mode Card */
+[data-bs-theme="dark"] .admin-card {
+    background: rgba(30, 30, 30, 0.6);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.table-glass {
+    border-radius: 12px;
+    overflow: hidden;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+/* Light Mode Table */
+[data-bs-theme="light"] .table-glass {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+[data-bs-theme="light"] .table-glass th {
+    background: rgba(0, 0, 0, 0.03);
+    color: #495057;
+}
+
+[data-bs-theme="light"] .table-glass td {
+    color: #212529;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Dark Mode Table */
+[data-bs-theme="dark"] .table-glass {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-bs-theme="dark"] .table-glass th {
+    background: rgba(255, 255, 255, 0.05);
+    color: #e9ecef;
+}
+
+[data-bs-theme="dark"] .table-glass td {
+    color: #dee2e6;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.storage-badge {
+    font-size: 0.9em;
+    padding: 0.4em 0.8em;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.table-glass tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+[data-bs-theme="light"] .table-glass tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.08);
+    transform: scale(1.002);
+}
+
+[data-bs-theme="dark"] .table-glass tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    transform: scale(1.002);
+}

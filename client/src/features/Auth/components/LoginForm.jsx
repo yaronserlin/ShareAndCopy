@@ -29,7 +29,7 @@ const LoginForm = () => {
         setIsLoading(true);
         try {
             const res = await api.post('/auth/login', formData);
-            login(res.data.data.token, res.data.data.roomId);
+            login(res.data.data.token, res.data.data.roomId, res.data.data.isAdmin);
             toast.success('Logged in successfully!');
             navigate(`/room/${res.data.data.roomId}`);
         } catch (err) {
