@@ -25,3 +25,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment
+.env
+env-config.js
+public/env-config.js
+server/.env
+client/public/env-config.js
