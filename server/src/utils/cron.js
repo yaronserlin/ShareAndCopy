@@ -9,60 +9,72 @@ const logger = require('./logger');
  * Scheduled jobs:
  * 1. Auto-deletion of files older than 24 hours (runs hourly).
  */
-const start = () => {
-    // Schedule task to run at the start of every hour
-    cron.schedule('0 * * * *', async () => {
-        logger.info('Running auto-delete cron job...');
+const runAutoDelete = async () => {
+    logger.info('Running auto-delete cron job...');
 
-        // Calculate the cutoff time (24 hours ago)
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    // Calculate the cutoff time (24 hours ago)
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-        try {
-            // Find files older than 24 hours
-            // Optimization: Only select necessary fields (_id, gridFsId, filename) to reduce memory usage
-            const filesToDelete = await File.find({
-                createdAt: { $lt: twentyFourHoursAgo }
-            }).select('_id gridFsId filename');
+    try {
+        // Find files older than 24 hours
+        // Optimization: Only select necessary fields (_id, gridFsId, filename, size, owner)
+        const filesToDelete = await File.find({
+            createdAt: { $lt: twentyFourHoursAgo }
+        }).select('_id gridFsId filename size owner');
 
-            if (filesToDelete.length === 0) {
-                logger.info('No files to delete.');
-                return;
-            }
-
-            // Ensure mongoose is connected before attempting GridFS operations
-            if (mongoose.connection.readyState !== 1) {
-                logger.warn('Mongoose not connected, skipping cron execution.');
-                return;
-            }
-
-            // Create a GridFS bucket instance for file operations
-            const gfsBucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
-                bucketName: 'uploads'
-            });
-
-            // Process deletions in parallel with Promise.allSettled to ensure one failure doesn't stop others
-            const deletionPromises = filesToDelete.map(async (file) => {
-                try {
-                    // 1. Delete the actual file chunks from GridFS
-                    await gfsBucket.delete(file.gridFsId);
-                    logger.info(`Deleted file from GridFS: ${file.filename}`);
-
-                    // 2. Delete the metadata record from our File collection
-                    await File.findByIdAndDelete(file._id);
-                    logger.info(`Deleted record from DB: ${file.filename}`);
-                } catch (e) {
-                    // Log specific error but allow other files to be processed
-                    logger.error(`Error deleting ${file.filename}: ${e.message}`);
-                }
-            });
-
-            await Promise.allSettled(deletionPromises);
-            logger.info(`Auto-delete job completed. Processed ${filesToDelete.length} files.`);
-
-        } catch (err) {
-            logger.error(`Critical error in auto-delete cron job: ${err.message}`);
+        if (filesToDelete.length === 0) {
+            logger.info('No files to delete.');
+            return;
         }
-    });
+
+        // Ensure mongoose is connected before attempting GridFS operations
+        if (mongoose.connection.readyState !== 1) {
+            logger.warn('Mongoose not connected, skipping cron execution.');
+            return;
+        }
+
+        // Create a GridFS bucket instance for file operations
+        const gfsBucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+            bucketName: 'uploads'
+        });
+
+        // Process deletions in parallel with Promise.allSettled to ensure one failure doesn't stop others
+        const deletionPromises = filesToDelete.map(async (file) => {
+            try {
+                // 1. Delete the actual file chunks from GridFS
+                await gfsBucket.delete(file.gridFsId);
+                logger.info(`Deleted file from GridFS: ${file.filename}`);
+
+                // 2. Delete the metadata record from our File collection
+                await File.findByIdAndDelete(file._id);
+                logger.info(`Deleted record from DB: ${file.filename}`);
+
+                // 3. Update User's usedStorage
+                if (file.owner) {
+                    const User = require('../models/User'); // Lazy load to avoid circular dependency issues if any
+                    await User.findByIdAndUpdate(file.owner, {
+                        $inc: { usedStorage: -file.size }
+                    });
+                    logger.info(`Updated storage for user ${file.owner}: -${file.size} bytes`);
+                }
+
+            } catch (e) {
+                // Log specific error but allow other files to be processed
+                logger.error(`Error deleting ${file.filename}: ${e.message}`);
+            }
+        });
+
+        await Promise.allSettled(deletionPromises);
+        logger.info(`Auto-delete job completed. Processed ${filesToDelete.length} files.`);
+
+    } catch (err) {
+        logger.error(`Critical error in auto-delete cron job: ${err.message}`);
+    }
 };
 
-module.exports = { start };
+const start = () => {
+    // Schedule task to run at the start of every hour
+    cron.schedule('0 * * * *', runAutoDelete);
+};
+
+module.exports = { start, runAutoDelete };
