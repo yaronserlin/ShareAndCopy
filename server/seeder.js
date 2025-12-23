@@ -9,8 +9,8 @@ const path = require('path');
 dotenv.config({ path: path.join(__dirname, '.env') });
 
 // Import Models
-const User = require('./models/User');
-const FileModel = require('./models/File');
+const User = require('./src/models/User');
+const FileModel = require('./src/models/File');
 
 // Connection
 const connectDB = async () => {
@@ -53,7 +53,7 @@ const seedData = async () => {
         const userConfigs = [
             { email: 'user1@example.com', name: 'User', last: 'One' },
             { email: 'user2@example.com', name: 'User', last: 'Two' },
-            { email: 'admin@example.com', name: 'Admin', last: 'User' }
+            { email: 'user3@example.com', name: 'User', last: 'Three' }
         ];
 
         for (const config of userConfigs) {

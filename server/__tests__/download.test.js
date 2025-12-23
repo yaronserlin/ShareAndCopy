@@ -1,14 +1,14 @@
-const fileController = require('../controllers/fileController');
-const fileService = require('../services/fileService');
+const fileController = require('../src/controllers/fileController');
+const fileService = require('../src/services/fileService');
 const mongoose = require('mongoose');
 const archiver = require('archiver');
 const jwt = require('jsonwebtoken');
 
 // Mock dependencies
-jest.mock('../services/fileService');
+jest.mock('../src/services/fileService');
 jest.mock('archiver');
 jest.mock('jsonwebtoken');
-jest.mock('../utils/constants', () => ({
+jest.mock('../src/utils/constants', () => ({
     MAX_STORAGE_BYTES: 1024 * 1024 * 1024,
     FORBIDDEN_EXTENSIONS: []
 }));
@@ -29,7 +29,8 @@ describe('FileController - downloadAllFiles', () => {
                 locals: {
                     gfsBucket: mockGfs
                 }
-            }
+            },
+            query: {}
         };
 
         res = {
@@ -53,46 +54,29 @@ describe('FileController - downloadAllFiles', () => {
     });
 
     it('should return 404 if no files found', async () => {
-        fileService.getAllRoomFiles.mockResolvedValue([]);
+        fileService.getZipStream.mockRejectedValue(new Error('No files to download'));
         await fileController.downloadAllFiles(req, res);
         expect(res.status).toHaveBeenCalledWith(404);
         expect(res.json).toHaveBeenCalledWith({ message: 'No files to download' });
     });
 
     it('should stream zip if files exist', async () => {
-        const mockFiles = [
-            { _id: 'f1', filename: 'test.txt', gridFsId: new mongoose.Types.ObjectId() },
-            { _id: 'f2', filename: 'image.png', gridFsId: new mongoose.Types.ObjectId() }
-        ];
-        fileService.getAllRoomFiles.mockResolvedValue(mockFiles);
-
-        // Mock GFS finding files
-        const mockCursor = {
-            hasNext: jest.fn().mockResolvedValue(true)
-        };
-        mockGfs.find.mockReturnValue(mockCursor);
-        mockGfs.openDownloadStream.mockReturnValue('stream-data');
+        fileService.getZipStream.mockResolvedValue({
+            stream: mockArchive,
+            filename: 'files.zip'
+        });
 
         await fileController.downloadAllFiles(req, res);
 
         expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/zip');
+        expect(res.setHeader).toHaveBeenCalledWith('Content-Disposition', expect.stringContaining('attachment; filename="files.zip"'));
         expect(mockArchive.pipe).toHaveBeenCalledWith(res);
-        expect(mockArchive.append).toHaveBeenCalledTimes(2);
-        expect(mockArchive.finalize).toHaveBeenCalled();
     });
 
-    it('should handle archive errors', async () => {
-        const mockFiles = [{ _id: 'f1', filename: 'test.txt', gridFsId: new mongoose.Types.ObjectId() }];
-        fileService.getAllRoomFiles.mockResolvedValue(mockFiles);
-        mockGfs.find.mockReturnValue({ hasNext: jest.fn().mockResolvedValue(true) });
-
+    it('should handle service errors', async () => {
+        fileService.getZipStream.mockRejectedValue(new Error('Service failed'));
         await fileController.downloadAllFiles(req, res);
-
-        // Trigger error handler
-        const errorCallback = mockArchive.on.mock.calls.find(call => call[0] === 'error')[1];
-        errorCallback(new Error('Archive failed'));
-
         expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.end).toHaveBeenCalled();
+        expect(res.json).toHaveBeenCalledWith({ message: 'Download all failed' });
     });
 });

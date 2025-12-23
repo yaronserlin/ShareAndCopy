@@ -1,17 +1,29 @@
 const busboy = require('busboy');
 const mongoose = require('mongoose');
+const archiver = require('archiver');
+const jwt = require('jsonwebtoken'); // Added for token generation
 const File = require('../models/File');
 const User = require('../models/User');
+const env = require('../config/env');
 const logger = require('../utils/logger');
 const { MAX_STORAGE_BYTES, FORBIDDEN_EXTENSIONS } = require('../utils/constants');
 
+/**
+ * Service for handling File operations
+ */
 class FileService {
     constructor() { }
 
-    async handleUpload(req, res, userId) {
+    /**
+     * Handle file upload
+     * @param {Object} req - Request object
+     * @param {string} userId - User ID
+     * @param {Object} gfsBucket - GridFSBucket instance
+     * @returns {Promise<Object>} Created file object
+     */
+    async handleUpload(req, userId, gfsBucket) {
         return new Promise((resolve, reject) => {
             const bb = busboy({ headers: req.headers, defParamCharset: 'utf8' });
-            const gfsBucket = req.app.locals.gfsBucket;
 
             let uploadStream;
             let gridFsId;
@@ -83,7 +95,7 @@ class FileService {
                     const newFile = new File({
                         filename: fileMetrics.filename,
                         gridFsId: gridFsId,
-                        checksum: 'PENDING',
+                        checksum: 'PENDING', // Could be implemented with crypto stream
                         size: fileMetrics.size,
                         isPublic: fields.isPublic === 'true',
                         owner: userId
@@ -110,6 +122,52 @@ class FileService {
         });
     }
 
+    /**
+     * Get file download stream
+     * @param {string} fileId - File ID
+     * @param {string} userId - Requesting User ID (nullable)
+     * @param {Object} gfsBucket - GridFSBucket instance
+     * @param {string} token - Download token (optional)
+     * @returns {Promise<Object>} { stream, filename, mimeType }
+     */
+    async getDownloadStream(fileId, userId, gfsBucket, token = null) {
+        const file = await File.findById(fileId);
+        if (!file) throw new Error('File not found');
+
+        let authorized = false;
+
+        if (token) {
+            // Token verified in controller/middleware, mostly for correct file association
+            authorized = true;
+        } else {
+            if (file.isPublic) {
+                authorized = true;
+            } else if (userId && file.owner.toString() === userId) {
+                authorized = true;
+            }
+        }
+
+        if (!authorized) throw new Error('Unauthorized');
+
+        const gridFsId = new mongoose.Types.ObjectId(file.gridFsId);
+        const filesCursor = gfsBucket.find({ _id: gridFsId });
+        const files = await filesCursor.toArray();
+        if (!files || files.length === 0) {
+            throw new Error('File content not found on server');
+        }
+
+        const stream = gfsBucket.openDownloadStream(gridFsId);
+        return { stream, filename: file.filename };
+    }
+
+    /**
+     * Get files for a room with pagination
+     * @param {string} roomId 
+     * @param {string} requestUserId 
+     * @param {number} page 
+     * @param {number} limit 
+     * @returns {Promise<Object>}
+     */
     async getRoomFiles(roomId, requestUserId, page = 1, limit = 20) {
         const roomOwner = await User.findOne({ roomId });
         if (!roomOwner) throw new Error('Room not found');
@@ -145,6 +203,12 @@ class FileService {
         };
     }
 
+    /**
+     * Get all files in a room (internal helper)
+     * @param {string} roomId 
+     * @param {string} requestUserId 
+     * @returns {Promise<Array>}
+     */
     async getAllRoomFiles(roomId, requestUserId) {
         const roomOwner = await User.findOne({ roomId });
         if (!roomOwner) throw new Error('Room not found');
@@ -156,12 +220,119 @@ class FileService {
             query.isPublic = true;
         }
 
-        // Return cursor or array. Array is fine for metadata, streams are for content.
-        // We need the file documents to get gridFsId and filename.
         return File.find(query).sort({ createdAt: -1 });
     }
 
+    /**
+     * Generate a download token for a single file
+     * @param {string} fileId 
+     * @param {string} userId 
+     * @returns {Promise<string>} JWT Token
+     */
+    async generateDownloadToken(fileId, userId) {
+        const file = await File.findById(fileId);
+        if (!file) throw new Error('File not found');
 
+        if (!file.isPublic) {
+            if (!userId || userId !== file.owner.toString()) {
+                throw new Error('Unauthorized');
+            }
+        }
+
+        return jwt.sign(
+            { fileId: file._id, userId },
+            env.JWT_SECRET,
+            { expiresIn: '1m' }
+        );
+    }
+
+    /**
+     * Generate a download token for ALL files in a room
+     * @param {string} roomId 
+     * @param {string} userId 
+     * @returns {Promise<string>} JWT Token
+     */
+    async generateDownloadAllToken(roomId, userId) {
+        // Token grants permission to download room's files
+        // We might want to verify room exists here too, but simple signing is okay
+        // Logic check: does user have permission?
+        // Ideally we check if room exists
+        const roomOwner = await User.findOne({ roomId });
+        if (!roomOwner) throw new Error('Room not found');
+
+        // If room is public (implicit? no room concept of public, only files)
+        // Actually, anyone can download public files.
+        // But for ZIP, we are downloading what the user can see.
+        // We will sign the token with userId. 
+        // Logic later checks if files are accessible to this userId.
+
+        return jwt.sign(
+            { roomId, userId, type: 'zip-download' },
+            env.JWT_SECRET,
+            { expiresIn: '1m' }
+        );
+    }
+
+    /**
+     * Get zip stream for all files in a room
+     * @param {string} roomId 
+     * @param {string} requestUserId 
+     * @param {Object} gfsBucket 
+     * @returns {Promise<Object>} { archive, filename }
+     */
+    async getZipStream(roomId, requestUserId, gfsBucket) {
+        const roomOwner = await User.findOne({ roomId });
+        if (!roomOwner) throw new Error('Room not found');
+
+        // Note: Logic to check if user authorized to download files is same as getAllRoomFiles
+        const files = await this.getAllRoomFiles(roomId, requestUserId);
+
+        if (!files || files.length === 0) {
+            throw new Error('No files to download');
+        }
+
+        const archive = archiver('zip', {
+            zlib: { level: 9 }
+        });
+
+        const ownerName = `${roomOwner.firstName} ${roomOwner.lastName}`;
+        const safeOwnerName = ownerName.replace(/[^a-zA-Z0-9-_ ]/g, '').trim();
+        const zipFilename = `${safeOwnerName}'s files.zip`;
+
+        this._fillArchive(archive, files, gfsBucket).catch(err => {
+            logger.error(`Error filling archive: ${err}`);
+            archive.emit('error', err); // Propagate error to archive stream
+        });
+
+        return { stream: archive, filename: zipFilename };
+    }
+
+    /**
+     * Internal helper to fill archive
+     * @private
+     */
+    async _fillArchive(archive, files, gfsBucket) {
+        for (const file of files) {
+            const gridFsId = new mongoose.Types.ObjectId(file.gridFsId);
+            const cursor = gfsBucket.find({ _id: gridFsId });
+            const hasFile = await cursor.hasNext();
+
+            if (hasFile) {
+                const downloadStream = gfsBucket.openDownloadStream(gridFsId);
+                const safeFilename = file.filename.replace(/[/\\?%*:|"<>]/g, '_');
+                archive.append(downloadStream, { name: safeFilename });
+            }
+        }
+        await archive.finalize();
+    }
+
+    /**
+     * Delete a file
+     * @param {string} fileId 
+     * @param {string} requestUserId 
+     * @param {Object} gfsBucket 
+     * @returns {Promise<Object>}
+     */
     async deleteFile(fileId, requestUserId, gfsBucket) {
         const file = await File.findById(fileId);
         if (!file) throw new Error('File not found');
@@ -186,6 +357,13 @@ class FileService {
         return { message: 'File deleted' };
     }
 
+    /**
+     * Rename a file
+     * @param {string} fileId 
+     * @param {string} newName 
+     * @param {string} requestUserId 
+     * @returns {Promise<Object>} Updated file
+     */
     async renameFile(fileId, newName, requestUserId) {
         const file = await File.findById(fileId);
         if (!file) throw new Error('File not found');
@@ -199,12 +377,7 @@ class FileService {
             const newExt = newName.slice(((newName.lastIndexOf(".") - 1) >>> 0) + 2).toLowerCase();
 
             if (originalExt !== newExt) {
-                // Option: Reject change
                 throw new Error('File extension change is not allowed');
-
-                // Option: Enforce original extension (commented out as user requested security checks)
-                // const namePart = newName.substring(0, newName.lastIndexOf('.'));
-                // file.filename = `${namePart}.${originalExt}`;
             } else {
                 file.filename = newName;
             }

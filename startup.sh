@@ -4,7 +4,8 @@
 TUNNEL_LOG="cloudflared.log"
 SERVER_LOG="server.log"
 CLIENT_LOG="client.log"
-ENV_CONFIG_FILE="client/public/env-config.js"
+ENV_CONFIG_FILE_CLIENT="client/public/env-config.js"
+ENV_CONFIG_FILE_SERVER="server/.env"
 MAX_RETRIES=30
 RETRY_INTERVAL=2
 
@@ -26,6 +27,20 @@ log_link() { echo -e "${BLUE}$1${NC}"; }
 cleanup() {
     echo ""
     log_info "Shutting down services..."
+    
+    # Remove PUBLIC_URL from server/.env
+    if [ -f "$ENV_CONFIG_FILE_SERVER" ]; then
+        # Remove line starting with PUBLIC_URL=
+        grep -v "^PUBLIC_URL=" "$ENV_CONFIG_FILE_SERVER" > "${ENV_CONFIG_FILE_SERVER}.tmp" && mv "${ENV_CONFIG_FILE_SERVER}.tmp" "$ENV_CONFIG_FILE_SERVER"
+        log_info "Removed PUBLIC_URL from $ENV_CONFIG_FILE_SERVER"
+    fi
+
+    # Clear/Reset client config
+    if [ -f "$ENV_CONFIG_FILE_CLIENT" ]; then
+        echo "" > "$ENV_CONFIG_FILE_CLIENT"
+        log_info "Cleared $ENV_CONFIG_FILE_CLIENT"
+    fi
+
     # Kill all child processes of the current script
     pkill -P $$ 2>/dev/null
     rm -f "$TUNNEL_LOG" "$SERVER_LOG" "$CLIENT_LOG"
@@ -113,7 +128,21 @@ if [[ "$MODE" == "net" ]]; then
     
     # Config: Point to Tunnel URL. 
     log_info "Updating Frontend configuration..."
-    echo "window.SERVER_URL = \"$URL\";" > "$ENV_CONFIG_FILE"
+    # Client: Overwrite file
+    echo "window.SERVER_URL = \"$URL\";" > "$ENV_CONFIG_FILE_CLIENT"
+    log_info "Updated $ENV_CONFIG_FILE_CLIENT with new URL"
+
+    log_info "Updating Backend configuration..."
+    # Server: Remove old PUBLIC_URL and append new one safely
+    if [ -f "$ENV_CONFIG_FILE_SERVER" ]; then
+        grep -v "^PUBLIC_URL=" "$ENV_CONFIG_FILE_SERVER" > "${ENV_CONFIG_FILE_SERVER}.tmp" && mv "${ENV_CONFIG_FILE_SERVER}.tmp" "$ENV_CONFIG_FILE_SERVER"
+        # Ensure newline at EOF before appending
+        [[ -n "$(tail -c1 "$ENV_CONFIG_FILE_SERVER")" ]] && echo "" >> "$ENV_CONFIG_FILE_SERVER"
+        echo "PUBLIC_URL=\"$URL\"" >> "$ENV_CONFIG_FILE_SERVER"
+        log_info "Added PUBLIC_URL to $ENV_CONFIG_FILE_SERVER"
+    else
+        echo "PUBLIC_URL=\"$URL\"" > "$ENV_CONFIG_FILE_SERVER"
+    fi
     
     # Start Backend
     log_info "Starting Backend Server (logging to $SERVER_LOG)..."

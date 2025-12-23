@@ -1,76 +1,56 @@
-# ShareAndCopy - Server
+# ShareAndCopy Server
 
-The backend service for ShareAndCopy, a secure file sharing application. Built with Express.js and MongoDB.
+This is the backend server for the ShareAndCopy application, built with Node.js, Express, and MongoDB.
 
-## Features
-- **Secure File Upload**: Files are encrypted (client-side) and stored using MongoDB GridFS.
-- **Auto-Cleanup**: Automated cron jobs delete expired files.
-- **Security**: Implements Helmet, Rate Limiting, and CORS protection.
-- **Authentication**: JWT-based authentication for user sessions.
+## Architecture
 
-## Tech Stack
-- **Runtime**: Node.js
-- **Framework**: Express.js
-- **Database**: MongoDB (Mongoose, GridFS)
-- **Logging**: Winston
+- **Models**: Mongoose schemas only.
+- **Routes**: Clean route definitions with middleware.
+- **Middleware**: Validation, Auth, Error Handling.
 
-## Prerequisites
-- Node.js (v18+ recommended)
-- MongoDB instance (Local or Atlas)
+## Setup
 
-## Installation
-
-1. Navigate to the server directory:
-   ```bash
-   cd server
-   ```
-
-2. Install dependencies:
+1. **Install Dependencies**
    ```bash
    npm install
    ```
 
-## Configuration
+2. **Environment Variables**
+   Create a `.env` file in the `server` directory (or ensure it exists) with:
+   ```env
+   PORT=5000
+   MONGO_URI=mongodb://localhost:27017/shareandcopy
+   JWT_SECRET=your_jwt_secret_key_here
+   RATE_LIMIT_WINDOW_MS=60000
+   RATE_LIMIT_MAX_REQUESTS=100
+   NODE_ENV=development
+   PUBLIC_URL=http://localhost:3000
+   ```
 
-Create a `.env` file in the `server` root directory:
+3. **Run Server**
+   - **Development**: `npm run dev`
+   - **Production**: `npm start`
 
-```env
-# Server Configuration
-PORT=5001
-NODE_ENV=development
+## API Documentation
 
-# Database
-MONGO_URI=mongodb://localhost:27017/shareandcopy
+### Auth
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login
+- `GET /api/auth/verify` - Verify token
 
-# Security
-JWT_SECRET=your_super_secret_jwt_key
-```
+### Files
+- `POST /api/files/upload` - Upload file (Multipart)
+- `GET /api/files/room/:roomId` - List files
+- `GET /api/files/download/:fileId` - Download file
+- `GET /api/files/room/:roomId/download-all` - Download all as ZIP
+- `PUT /api/files/:id/rename` - Rename file
+- `DELETE /api/files/:id` - Delete file
 
-## Usage
+### Admin
+- `GET /api/admin/stats` - Dashboard statistics
 
-### Development Mode
-Runs the server with `nodemon` for hot-reloading:
-```bash
-npm run dev
-```
-
-### Production Mode
-Starts the server with standard node execution:
-```bash
-npm start
-```
-
-## API Routes
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/register` | Register a new user |
-| POST | `/api/auth/login` | Login user |
-| GET | `/api/files/:roomId` | List files in a room |
-| POST | `/api/files/upload` | Upload a file |
-| GET | `/api/files/download/:fileId` | Download a file |
-| DELETE | `/api/files/:id` | Delete a file |
-
-## Scripts
-- `npm test`: Run tests using Jest.
-- `npm run dev`: Start development server.
+## Security Features
+- **Rate Limiting**: Protects against brute-force.
+- **Helmet**: Secure HTTP headers.
+- **Data Sanitization**: Prevents NoSQL injection (implemented in middleware).
+- **Validation**: Strict Joi validation for inputs.

@@ -62,7 +62,12 @@ export const AuthProvider = ({ children }) => {
             (response) => response,
             (error) => {
                 if (error.response && error.response.status === 401) {
-                    logout();
+                    // Don't logout if the 401 is from the login endpoint
+                    // This allows the login form to handle the error (show "Wrong password")
+                    // without redirecting the user.
+                    if (!error.config.url.includes('/auth/login')) {
+                        logout();
+                    }
                 }
                 return Promise.reject(error);
             }
