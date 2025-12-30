@@ -4,10 +4,8 @@ const app = require('../src/index');
 const testDb = require('./testDb');
 const User = require('../src/models/User');
 
-// Mock cron
-jest.mock('../src/utils/cron', () => ({
-    start: jest.fn()
-}));
+// Mock cron - REMOVED
+
 
 beforeAll(async () => {
     await testDb.connect();
@@ -71,9 +69,8 @@ describe('Admin Routes', () => {
                 .set('x-auth-token', adminToken);
 
             expect(res.statusCode).toBe(200);
+            expect(res.body.data).toHaveProperty('devices');
             expect(res.body.data).toHaveProperty('users');
-            expect(res.body.data).toHaveProperty('files');
-            expect(res.body.data).toHaveProperty('storage');
         });
 
         it('should deny access for regular user', async () => {

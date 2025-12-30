@@ -1,5 +1,4 @@
 const User = require('../models/User');
-const File = require('../models/File');
 
 /**
  * Service for Admin operations
@@ -13,37 +12,32 @@ const File = require('../models/File');
  */
 exports.getDashboardStats = async () => {
     const userCount = await User.countDocuments();
-    const fileCount = await File.countDocuments();
 
-    // Aggregate total storage used across all files
-    const storageStats = await File.aggregate([
-        {
-            $group: {
-                _id: null,
-                totalSize: { $sum: "$size" }
-            }
-        }
+    // Aggregation to count total authorized devices across all users
+    const [deviceAgg] = await User.aggregate([
+        { $project: { deviceCount: { $size: "$authorizedDevices" } } },
+        { $group: { _id: null, totalDevices: { $sum: "$deviceCount" } } }
     ]);
 
-    const totalStorage = storageStats.length > 0 ? storageStats[0].totalSize : 0;
+    const deviceCount = deviceAgg ? deviceAgg.totalDevices : 0;
 
-    // Get top 10 users by storage usage
-    const topUsersDocs = await User.find({})
-        .sort({ usedStorage: -1 })
-        .limit(10)
-        .select('firstName lastName email usedStorage roomId')
-        .lean();
-
-    // Populate file count for top users
-    const topUsers = await Promise.all(topUsersDocs.map(async (user) => {
-        const count = await File.countDocuments({ owner: user._id });
-        return { ...user, fileCount: count };
-    }));
+    // Get top 10 users by number of devices
+    const topUsersDocs = await User.aggregate([
+        {
+            $project: {
+                firstName: 1,
+                lastName: 1,
+                email: 1,
+                deviceCount: { $size: "$authorizedDevices" }
+            }
+        },
+        { $sort: { deviceCount: -1 } },
+        { $limit: 10 }
+    ]);
 
     return {
         users: userCount,
-        files: fileCount,
-        storage: totalStorage,
-        topUsers
+        devices: deviceCount,
+        topUsers: topUsersDocs
     };
 };

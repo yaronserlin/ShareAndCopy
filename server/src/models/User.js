@@ -12,6 +12,20 @@ const mongoose = require('mongoose');
  * @property {boolean} isAdmin - Admin status
  */
 const UserSchema = new mongoose.Schema({
+    authorizedDevices: [{
+        deviceId: {
+            type: String,
+            required: true
+        },
+        deviceName: {
+            type: String,
+            default: 'Unknown Device'
+        },
+        lastActive: {
+            type: Date,
+            default: Date.now
+        }
+    }],
     email: {
         type: String,
         required: [true, 'Email is required'],

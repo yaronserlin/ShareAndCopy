@@ -28,11 +28,11 @@ const Navbar = () => {
                 <div className="d-flex gap-2 align-items-center">
                     {token ? (
                         <>
-                            {roomId && (
-                                <Link to={`/room/${roomId}`} className="btn btn-sm btn-outline-primary rounded-pill px-3 d-none d-sm-inline">
-                                    My Room
-                                </Link>
-                            )}
+
+                            <Link to="/dashboard" className="btn btn-sm btn-outline-primary rounded-pill px-3 d-none d-sm-inline">
+                                Dashboard
+                            </Link>
+
                             <button
                                 onClick={handleLogout}
                                 className="btn btn-outline-danger rounded-pill px-3 btn-sm"

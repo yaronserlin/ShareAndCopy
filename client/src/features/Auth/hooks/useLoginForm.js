@@ -34,7 +34,7 @@ export const useLoginForm = () => {
             const res = await api.post('/auth/login', formData);
             login(res.data.data.token, res.data.data.roomId, res.data.data.isAdmin);
             toast.success('Logged in successfully!');
-            navigate(`/room/${res.data.data.roomId}`);
+            navigate('/dashboard');
         } catch (err) {
             console.error("Login Error:", err);
             toast.error(err.response?.data?.message || 'Login failed');

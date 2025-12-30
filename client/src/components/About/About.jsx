@@ -1,7 +1,6 @@
 import React from 'react';
 import GlassCard from '../common/GlassCard';
 import GradientButton from '../common/GradientButton';
-import BackgroundDecorations from '../common/BackgroundDecorations';
 import styles from './About.module.css';
 
 /**
@@ -11,8 +10,8 @@ import styles from './About.module.css';
  */
 const About = () => {
     return (
-        <div className={`container pb-5 d-flex flex-column flex-grow-1 ${styles.aboutContainer}`}>
-            <BackgroundDecorations />
+        <div className={`container pb-5 pt-5 mt-5 d-flex flex-column flex-grow-1 ${styles.aboutContainer}`}>
+
             <div className="row justify-content-center">
                 <div className="col-lg-8">
                     <div className="text-center mb-5">

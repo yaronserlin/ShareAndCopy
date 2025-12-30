@@ -1,0 +1,144 @@
+import { renderHook, act } from '@testing-library/react';
+import { useP2P } from '../useP2P';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import * as SocketContext from '../../context/SocketContext';
+
+// Mock Socket
+const mockSocket = {
+    on: vi.fn(),
+    off: vi.fn(),
+    emit: vi.fn(),
+    id: 'socket-123'
+};
+
+// Mock RTCPeerConnection
+const mockPeerConnection = {
+    createDataChannel: vi.fn(() => ({
+        onopen: null,
+        onmessage: null,
+        send: vi.fn(),
+        bufferedAmount: 0,
+        readyState: 'open', // defaulted to open for easier testing
+        close: vi.fn(),
+    })),
+    createOffer: vi.fn(() => Promise.resolve({ type: 'offer', sdp: 'offer-sdp' })),
+    createAnswer: vi.fn(() => Promise.resolve({ type: 'answer', sdp: 'answer-sdp' })),
+    setLocalDescription: vi.fn(() => Promise.resolve()),
+    setRemoteDescription: vi.fn(() => Promise.resolve()),
+    addIceCandidate: vi.fn(() => Promise.resolve()),
+    close: vi.fn(),
+    signalingState: 'stable',
+    connectionState: 'new',
+    iceConnectionState: 'new',
+    onicecandidate: null,
+    ondatachannel: null,
+    onnegotiationneeded: null,
+    oniceconnectionstatechange: null,
+    onconnectionstatechange: null
+};
+
+// Properly mock the constructor
+global.RTCPeerConnection = vi.fn(function () {
+    return mockPeerConnection;
+});
+global.RTCSessionDescription = vi.fn(function (desc) { return desc; });
+global.RTCIceCandidate = vi.fn(function (cand) { return cand; });
+global.Blob = vi.fn((content) => ({ content, size: content.length }));
+global.URL = { createObjectURL: vi.fn(), revokeObjectURL: vi.fn() };
+
+describe('useP2P Hook', () => {
+    beforeEach(() => {
+        vi.spyOn(SocketContext, 'useSocket').mockReturnValue(mockSocket);
+    });
+
+    afterEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('should initialize and listen to socket events', () => {
+        renderHook(() => useP2P());
+        expect(mockSocket.on).toHaveBeenCalledWith('initial-device-list', expect.any(Function));
+        expect(mockSocket.on).toHaveBeenCalledWith('device-online', expect.any(Function));
+        expect(mockSocket.on).toHaveBeenCalledWith('device-offline', expect.any(Function));
+        expect(mockSocket.on).toHaveBeenCalledWith('signal', expect.any(Function));
+    });
+
+    it('should send file and trigger signaling', async () => {
+        // Capture socket handlers to simulate events
+        let deviceOnlineHandler;
+        mockSocket.on.mockImplementation((event, handler) => {
+            if (event === 'device-online') deviceOnlineHandler = handler;
+        });
+
+        const { result } = renderHook(() => useP2P());
+
+        // 1. Simulate Device Coming Online
+        const targetDeviceId = 'device-target';
+        await act(async () => {
+            if (deviceOnlineHandler) {
+                deviceOnlineHandler({
+                    socketId: 'socket-target',
+                    deviceId: targetDeviceId,
+                    deviceName: 'Target Device'
+                });
+            }
+        });
+
+        // 2. Trigger Send File
+        const mockFile = new File(['hello world'], 'test.txt', { type: 'text/plain' });
+
+        await act(async () => {
+            await result.current.sendFile(mockFile, targetDeviceId);
+        });
+
+        // Verify Peer Connection created
+        expect(global.RTCPeerConnection).toHaveBeenCalled();
+
+        // Verify Data Channel created
+        expect(mockPeerConnection.createDataChannel).toHaveBeenCalledWith('file-transfer');
+
+        // Note: createOffer might not be called immediately if onnegotiationneeded logic is async or event-driven
+        // In the hook, we set onnegotiationneeded. We need to manually trigger it if we want to test offer generation,
+        // OR the hook calls it explicitly. 
+        // Looking at the hook code: `peer.onnegotiationneeded = async () => { ... }`
+        // It doesn't auto-fire in mock. We can manually fire it.
+
+        if (mockPeerConnection.onnegotiationneeded) {
+            await act(async () => {
+                await mockPeerConnection.onnegotiationneeded();
+            });
+            expect(mockPeerConnection.createOffer).toHaveBeenCalled();
+            expect(mockSocket.emit).toHaveBeenCalledWith('signal', expect.objectContaining({
+                targetSocketId: 'socket-target',
+                type: 'offer'
+            }));
+        }
+    });
+
+    it('should handle incoming signal (offer)', async () => {
+        let signalHandler;
+        mockSocket.on.mockImplementation((event, handler) => {
+            if (event === 'signal') signalHandler = handler;
+        });
+
+        renderHook(() => useP2P());
+
+        // Simulate incoming offer
+        await act(async () => {
+            await signalHandler({
+                senderDeviceId: 'device-sender',
+                senderSocketId: 'socket-sender',
+                type: 'offer',
+                signalData: { type: 'offer', sdp: 'remote-offer' }
+            });
+        });
+
+        // Verify Remote Description set
+        expect(mockPeerConnection.setRemoteDescription).toHaveBeenCalledWith({ type: 'offer', sdp: 'remote-offer' });
+        // Verify Answer created and sent
+        expect(mockPeerConnection.createAnswer).toHaveBeenCalled();
+        expect(mockSocket.emit).toHaveBeenCalledWith('signal', expect.objectContaining({
+            type: 'answer'
+        }));
+    });
+});

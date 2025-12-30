@@ -66,7 +66,6 @@ exports.login = async (req, res) => {
     // Log the initiation of a login request
     logger.debug('Login request received');
     const { email, password } = req.body; // Destructure email and password from the request body
-    console.log(email, password);
 
     try {
         // Attempt to log in the user via the authentication service

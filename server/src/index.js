@@ -1,18 +1,20 @@
 // Load environment variables and libraries
 const env = require('./config/env');
 const express = require('express');
+const http = require('http');
 const helmet = require('helmet');
 const compression = require('compression');
 
 // Load local utilities and middleware
 const logger = require('./utils/logger');
-const cronJob = require('./utils/cron');
+const initSocket = require('./socket');
 const apiLimiter = require('./middleware/rateLimiter');
 const cors = require('./middleware/cors');
 const connectDB = require('./config/db');
 
 // Initialize Express app
 const app = express();
+const server = http.createServer(app);
 
 // --- Middleware Configuration ---
 
@@ -37,17 +39,16 @@ app.use('/api', apiLimiter);
 // Body parsing
 app.use(express.json());
 
-// Static file serving
-app.use('/uploads', express.static('uploads'));
+// Static file serving - DEPRECATED/REMOVED for P2P
+// app.use('/uploads', express.static('uploads'));
 
 // --- Database Connection and Startup ---
 
 // --- Route Definitions ---
 const routes = [
     { path: '/api/auth', route: './routes/auth' },
-    { path: '/api/files', route: './routes/files' },
-    { path: '/api/system', route: './routes/system' },
-    { path: '/api/admin', route: './routes/admin' }
+    { path: '/api/admin', route: './routes/admin' },
+    { path: '/api/system', route: './routes/system' }
 ];
 
 routes.forEach(({ path, route }) => {
@@ -55,20 +56,24 @@ routes.forEach(({ path, route }) => {
 });
 
 // --- Background Jobs ---
-cronJob.start();
+// Cron jobs removed for P2P migration
+// cronJob.start();
 
 // --- Database Connection and Startup ---
 
 const startServer = async () => {
     try {
-        const { connection, gfsBucket } = await connectDB();
-        app.locals.gfsBucket = gfsBucket;
-        logger.info('GridFS Bucket initialized');
+        await connectDB();
+        logger.info('MongoDB connected');
+
+        // --- Socket.io Initialization ---
+        initSocket(server);
+        logger.info('Socket.io initialized');
 
         // --- Server Startup ---
         const PORT = env.PORT || 5000;
 
-        app.listen(PORT, '0.0.0.0', () => logger.info(`Server running on port ${PORT}`));
+        server.listen(PORT, '0.0.0.0', () => logger.info(`Server running on port ${PORT}`));
     } catch (err) {
         logger.error(`Failed to start server: ${err.message}`);
         process.exit(1);

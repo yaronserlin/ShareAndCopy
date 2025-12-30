@@ -1,6 +1,5 @@
 import React from 'react';
 import { useTheme } from '../../context/ThemeContext';
-import BackgroundDecorations from '../../components/common/BackgroundDecorations';
 import StatsOverview from './components/StatsOverview/StatsOverview';
 import UsersTable from './components/UsersTable/UsersTable';
 import AdminDashboardSkeleton from './components/AdminSkeleton/AdminDashboardSkeleton';
@@ -13,7 +12,7 @@ import styles from './AdminDashboard.module.css';
  * @returns {JSX.Element} Rendered component
  */
 const AdminDashboard = () => {
-    const { stats, loading, handleRoomClick } = useAdminDashboard();
+    const { stats, loading } = useAdminDashboard();
     const { theme } = useTheme();
 
     if (loading) {
@@ -21,8 +20,7 @@ const AdminDashboard = () => {
     }
 
     return (
-        <div className={`container mt-4 pt-5 ${styles.adminDashboardContainer}`} style={{ position: 'relative', zIndex: 0 }}>
-            <BackgroundDecorations />
+        <div className={`container mt-5 pt-5 ${styles.adminDashboardContainer}`} style={{ position: 'relative', zIndex: 0 }}>
 
             <div className="d-flex justify-content-between align-items-center mb-5 mt-4">
                 <div>
@@ -35,7 +33,7 @@ const AdminDashboard = () => {
 
             <StatsOverview stats={stats} />
 
-            <UsersTable users={stats.topUsers} onRoomClick={handleRoomClick} />
+            <UsersTable users={stats.topUsers} />
         </div>
     );
 };

@@ -1,1 +1,1 @@
-window.SERVER_URL = "https://edited-frequencies-causes-biotechnology.trycloudflare.com";
+window.SERVER_URL = "https://david-satisfactory-astrology-initiated.trycloudflare.com";

@@ -1,9 +1,7 @@
 const request = require('supertest');
 
-// Mock cron to prevent open handles
-jest.mock('../src/utils/cron', () => ({
-    start: jest.fn()
-}));
+// Mock cron - REMOVED
+
 
 const app = require('../src/index'); // Adjust path as needed
 const testDb = require('./testDb');

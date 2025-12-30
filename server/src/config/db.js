@@ -17,13 +17,7 @@ const connectDB = async () => {
 
         logger.info(`MongoDB Connected: ${conn.connection.host}`);
 
-        // Initialize GridFS Bucket for file storage
-        // We access the native MongoDB driver's db instance via conn.connection.db
-        const gfsBucket = new mongoose.mongo.GridFSBucket(conn.connection.db, {
-            bucketName: 'uploads'
-        });
-
-        return { connection: conn.connection, gfsBucket };
+        return conn.connection;
     } catch (error) {
         // Log the error and exit the process to prevent running without a DB connection
         logger.error(`Error connecting to MongoDB: ${error.message}`);

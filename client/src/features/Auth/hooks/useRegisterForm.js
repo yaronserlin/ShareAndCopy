@@ -45,7 +45,7 @@ export const useRegisterForm = () => {
             const res = await api.post('/auth/register', payload);
             login(res.data.data.token, res.data.data.roomId);
             toast.success('Account created!');
-            navigate(`/room/${res.data.data.roomId}`);
+            navigate('/dashboard');
         } catch (err) {
             console.error("Register Error:", err);
             toast.error(err.response?.data?.message || 'Registration failed');

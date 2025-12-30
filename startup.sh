@@ -180,7 +180,7 @@ elif [[ "$MODE" == "localnet" ]]; then
     
     log_info "Local IP detected: $IP"
     log_info "Updating Frontend configuration..."
-    echo "window.SERVER_URL = \"$SERVER_URL\";" > "$ENV_CONFIG_FILE"
+    echo "window.SERVER_URL = \"$SERVER_URL\";" > "$ENV_CONFIG_FILE_CLIENT"
     
     log_info "Starting Backend Server (logging to $SERVER_LOG)..."
     # Allow CORS from Client URL
@@ -198,7 +198,7 @@ elif [[ "$MODE" == "local" ]]; then
     SERVER_URL="http://localhost:${SERVER_PORT}"
     
     log_info "Updating Frontend configuration..."
-    echo "window.SERVER_URL = \"$SERVER_URL\";" > "$ENV_CONFIG_FILE"
+    echo "window.SERVER_URL = \"$SERVER_URL\";" > "$ENV_CONFIG_FILE_CLIENT"
     
     log_info "Starting Backend Server (logging to $SERVER_LOG)..."
     (cd server && npm run dev >> "../$SERVER_LOG" 2>&1) &

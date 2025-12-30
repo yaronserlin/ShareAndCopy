@@ -1,8 +1,0 @@
-.qrBigContainer {
-    transition: transform 0.2s;
-    cursor: pointer;
-}
-
-.qrBigContainer:hover {
-    transform: scale(1.02);
-}

@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import BackgroundDecorations from '../common/BackgroundDecorations';
 import GradientButton from '../common/GradientButton';
 import styles from './Home.module.css';
 
@@ -15,7 +14,7 @@ const Home = () => {
 
     return (
         <div className="flex-grow-1 position-relative overflow-hidden d-flex flex-column">
-            <BackgroundDecorations />
+
 
             <main className="flex-grow-1 d-flex align-items-center justify-content-center text-center position-relative z-1">
                 <div className="container">
@@ -30,8 +29,8 @@ const Home = () => {
                                         Your private room is ready and waiting.
                                     </p>
                                     <div className="d-flex justify-content-center gap-3">
-                                        <GradientButton to={`/room/${roomId}`}>
-                                            Go to My Room
+                                        <GradientButton to="/dashboard">
+                                            Go to Dashboard
                                         </GradientButton>
 
                                         <Link to="/about" className={`btn btn-lg btn-light border rounded-pill px-4 py-3 text-dark shadow-sm ${styles.btnHoverEffect}`}>

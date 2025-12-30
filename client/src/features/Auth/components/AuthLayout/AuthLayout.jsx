@@ -17,9 +17,7 @@ const AuthLayout = ({ children, title, subtitle, onSwitchMode, switchText }) => 
     return (
         <div className="d-flex justify-content-center align-items-center flex-grow-1 position-relative overflow-hidden">
             {/* Background Decorations */}
-            <div className={`${styles.authBlob} ${styles.authBlob1}`}></div>
-            <div className={`${styles.authBlob} ${styles.authBlob2}`}></div>
-            <div className={`${styles.authBlob} ${styles.authBlob3}`}></div>
+
 
             <div className={`position-relative z-1 w-100 p-4 glass-panel rounded-4 m-3 ${styles.authCard}`}>
                 <div className="text-center mb-4">

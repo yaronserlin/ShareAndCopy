@@ -7,7 +7,7 @@ import api from '../../../utils/api';
  * @returns {Object} { stats, loading, handleRoomClick }
  */
 export const useAdminDashboard = () => {
-    const [stats, setStats] = useState({ users: 0, files: 0, storage: 0, topUsers: [] });
+    const [stats, setStats] = useState({ users: 0, devices: 0, topUsers: [] });
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -28,12 +28,5 @@ export const useAdminDashboard = () => {
         fetchStats();
     }, []);
 
-    const handleRoomClick = (roomId) => {
-        const url = `${window.location.origin}/room/${roomId}`;
-        navigator.clipboard.writeText(url)
-            .then(() => toast.success('Room URL copied to clipboard!'))
-            .catch(() => toast.error('Failed to copy URL'));
-    };
-
-    return { stats, loading, handleRoomClick };
+    return { stats, loading };
 };

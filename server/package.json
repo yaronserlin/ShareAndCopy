@@ -5,7 +5,9 @@
   "scripts": {
     "test": "jest",
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "electron:dev": "electron .",
+    "seed": "node seeder.js"
   },
   "keywords": [],
   "author": "",
@@ -14,7 +16,6 @@
   "dependencies": {
     "archiver": "^7.0.1",
     "bcryptjs": "^3.0.3",
-    "busboy": "^1.6.0",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -25,15 +26,15 @@
     "joi": "^18.0.2",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.0.1",
-    "multer": "^2.0.2",
     "nanoid": "^5.1.6",
-    "node-cron": "^4.2.1",
     "nodemon": "^3.1.11",
+    "socket.io": "^4.8.2",
     "winston": "^3.19.0"
   },
   "devDependencies": {
     "jest": "^30.2.0",
     "mongodb-memory-server": "^11.0.0",
+    "socket.io-client": "^4.8.2",
     "supertest": "^7.1.4"
   }
 }
