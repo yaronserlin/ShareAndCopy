@@ -17,6 +17,19 @@ const auth = async (req, res, next) => {
         const decoded = jwt.verify(token, env.JWT_SECRET);
         req.user = decoded; // Add user payload to request
 
+        // Handle Guest Logic
+        if (decoded.scope === 'guest' || decoded.isGuest) {
+            req.currentUser = {
+                _id: decoded.id, // Guest ID
+                roomId: decoded.roomId, // Host Room ID
+                isGuest: true,
+                email: 'guest@device',
+                firstName: 'Guest',
+                lastName: 'Device'
+            };
+            return next();
+        }
+
         // Optional: Check if user still exists in DB
         const user = await User.findById(decoded.id).select('-password');
         if (!user) {

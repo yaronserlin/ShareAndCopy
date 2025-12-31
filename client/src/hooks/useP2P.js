@@ -223,6 +223,10 @@ export const useP2P = () => {
                         URL.revokeObjectURL(url);
 
                         setTransferProgress(prev => ({ ...prev, [deviceId]: 100 }));
+
+                        // Report Stats (Receiver - Download)
+                        socket.emit('report-transfer', { size: fileMeta.fileSize, type: 'download' });
+
                         setTimeout(() => setTransferProgress(prev => {
                             const newState = { ...prev };
                             delete newState[deviceId];
@@ -345,6 +349,9 @@ export const useP2P = () => {
                             if (channel.readyState === 'open') {
                                 channel.send(JSON.stringify({ type: 'FINISH' }));
                                 console.log('File Transfer Finished (Sender side)');
+
+                                // Report Stats
+                                socket.emit('report-transfer', { size: file.size, type: 'upload' });
                             }
                         } else if (message.type === 'REJECT') {
                             console.log('Transfer Rejected by receiver.');

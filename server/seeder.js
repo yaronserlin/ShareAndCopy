@@ -10,7 +10,7 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 
 // Import Models
 const User = require('./src/models/User');
-const FileModel = require('./src/models/File');
+const DailyStat = require('./src/models/DailyStat');
 
 // Connection
 const connectDB = async () => {
@@ -35,8 +35,10 @@ const seedData = async () => {
         console.log('--- Wiping Database ---');
         await User.deleteMany({});
         console.log('Users deleted');
-        await FileModel.deleteMany({});
-        console.log('File metadata deleted');
+
+        // Wipe Daily Stats
+        await DailyStat.deleteMany({});
+        console.log('Daily Stats deleted');
 
         // Wipe GridFS
         const files = await gfsBucket.find().toArray();
@@ -51,14 +53,30 @@ const seedData = async () => {
 
         const users = [];
         const userConfigs = [
-            { email: 'user1@example.com', name: 'User', last: 'One' },
-            { email: 'user2@example.com', name: 'User', last: 'Two' },
-            { email: 'user3@example.com', name: 'User', last: 'Three' }
+            { email: 'user1@example.com', name: 'User', last: 'One', isAdmin: true },
+            { email: 'user2@example.com', name: 'User', last: 'Two', isAdmin: false },
+            { email: 'user3@example.com', name: 'User', last: 'Three', isAdmin: false }
         ];
 
         for (const config of userConfigs) {
             // Generate random room ID
             const roomId = crypto.randomBytes(8).toString('hex');
+
+            // Random P2P stats
+            const dataTransferred = Math.floor(Math.random() * 1000000000); // 0-1GB
+            const uploadCount = Math.floor(Math.random() * 50);
+            const downloadCount = Math.floor(Math.random() * 100);
+
+            // Mock authorized devices
+            const devices = [];
+            const deviceCount = Math.floor(Math.random() * 3) + 1;
+            for (let d = 0; d < deviceCount; d++) {
+                devices.push({
+                    deviceId: crypto.randomUUID(),
+                    deviceName: `Device ${d + 1}`,
+                    lastActive: new Date(Date.now() - Math.floor(Math.random() * 1000000000))
+                });
+            }
 
             const user = await User.create({
                 email: config.email,
@@ -66,15 +84,21 @@ const seedData = async () => {
                 firstName: config.name,
                 lastName: config.last,
                 roomId: roomId,
-                usedStorage: 0
+                usedStorage: 0,
+                isAdmin: config.isAdmin || false,
+                dataTransferred,
+                uploadCount,
+                downloadCount,
+                authorizedDevices: devices
             });
             users.push(user);
             console.log(`Created user: ${config.email} (Room: ${roomId})`);
         }
 
-        // 3. SEED FILES
-        console.log('--- Seeding Files ---');
+        // 3. SEED FILES (GridFS Only)
+        console.log('--- Seeding Files (GridFS Only) ---');
         for (const user of users) {
+            // Only seed files for non-admin or random users if desired, sticking to current logic:
             const fileCount = 3; // 3 files per user
             for (let i = 1; i <= fileCount; i++) {
                 const content = `This is a test file number ${i} for user ${user.email}. Content: ${crypto.randomBytes(64).toString('hex')}`;
@@ -88,7 +112,8 @@ const seedData = async () => {
                 // Upload to GridFS
                 const uploadStream = gfsBucket.openUploadStream(filename, {
                     metadata: {
-                        contentType: 'text/plain' // Optional, but good practice
+                        contentType: 'text/plain',
+                        owner: user._id // Keeping owner in GridFS metadata
                     }
                 });
 
@@ -100,27 +125,32 @@ const seedData = async () => {
                     uploadStream.on('error', reject);
                 });
 
-                const fileId = uploadStream.id; // GridFS ID
-                const fileSize = uploadStream.length || content.length; // Approximate if length not immediately available
-
-                // Create Checksum
-                const checksum = crypto.createHash('sha256').update(content).digest('hex');
-
-                // Create Metadata
-                await FileModel.create({
-                    filename: filename,
-                    gridFsId: fileId,
-                    checksum: checksum,
-                    size: fileSize,
-                    isPublic: false,
-                    owner: user._id
-                });
+                // const fileId = uploadStream.id; 
+                const fileSize = uploadStream.length || content.length;
 
                 // Update User storage usage
                 user.usedStorage += fileSize;
             }
             await user.save();
             console.log(`Seeded ${fileCount} files for ${user.email}`);
+        }
+
+        // 4. SEED DAILY STATS
+        console.log('--- Seeding Daily Stats ---');
+        const today = new Date();
+        for (let i = 13; i >= 0; i--) {
+            const date = new Date(today);
+            date.setDate(today.getDate() - i);
+            const dateString = date.toISOString().split('T')[0];
+
+            await DailyStat.create({
+                date: dateString,
+                totalDataTransferred: Math.floor(Math.random() * 5000000000) + 100000000, // 100MB - 5GB
+                totalUploads: Math.floor(Math.random() * 200) + 10,
+                guestSessions: Math.floor(Math.random() * 50),
+                activeUsers: Math.floor(Math.random() * 20) + 1
+            });
+            console.log(`Seeded stats for ${dateString}`);
         }
 
         console.log('--- Data Imported Successfully ---');

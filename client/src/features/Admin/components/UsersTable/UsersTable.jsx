@@ -21,7 +21,7 @@ const UsersTable = ({ users }) => {
                 <div className="d-flex align-items-center justify-content-between mb-3">
                     <h4 className={`fw-bold ${theme === 'dark' ? 'text-white' : 'text-dark'}`}>
                         <i className="bi bi-trophy-fill text-warning me-2"></i>
-                        Top Users by Device Count
+                        Top Users by Activity
                     </h4>
                 </div>
 
@@ -32,7 +32,8 @@ const UsersTable = ({ users }) => {
                                 <th scope="col" className="py-3 px-4 d-none d-md-table-cell">#</th>
                                 <th scope="col" className="py-3 px-4">User</th>
                                 <th scope="col" className="py-3 px-4 d-none d-lg-table-cell">Email</th>
-                                <th scope="col" className="py-3 px-4 text-end">Authorized Devices</th>
+                                <th scope="col" className="py-3 px-4 text-center">Uploads</th>
+                                <th scope="col" className="py-3 px-4 text-end">Data Transferred</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -55,10 +56,13 @@ const UsersTable = ({ users }) => {
                                             </div>
                                         </td>
                                         <td className="px-4 text-muted d-none d-lg-table-cell">{user.email}</td>
-                                        <td className="px-4 text-end">
-                                            <span className={`badge ${theme === 'dark' ? 'bg-primary bg-opacity-25 text-primary-emphasis' : 'bg-primary-subtle text-primary-emphasis'} fs-6`}>
-                                                {user.deviceCount || 0}
+                                        <td className="px-4 text-center">
+                                            <span className={`badge ${theme === 'dark' ? 'bg-secondary bg-opacity-25 text-secondary-emphasis' : 'bg-secondary-subtle text-secondary-emphasis'} fs-6`}>
+                                                {user.uploadCount || 0}
                                             </span>
+                                        </td>
+                                        <td className="px-4 text-end fw-bold text-success">
+                                            {formatBytes(user.dataTransferred || 0)}
                                         </td>
                                     </tr>
                                 ))
@@ -81,7 +85,8 @@ UsersTable.propTypes = {
         firstName: PropTypes.string.isRequired,
         lastName: PropTypes.string,
         email: PropTypes.string,
-        deviceCount: PropTypes.number,
+        dataTransferred: PropTypes.number,
+        uploadCount: PropTypes.number,
     })),
 };
 

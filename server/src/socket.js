@@ -2,6 +2,7 @@ const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
 const env = require('./config/env');
 const User = require('./models/User');
+const DailyStat = require('./models/DailyStat');
 const logger = require('./utils/logger');
 
 let io;
@@ -23,6 +24,17 @@ const initSocket = (server) => {
             }
 
             const decoded = jwt.verify(token, env.JWT_SECRET);
+
+            // Handle Guest/Device Tokens
+            if (decoded.scope === 'guest' || decoded.isGuest) {
+                socket.user = {
+                    _id: decoded.roomId, // Treat Room ID as the User ID for room joining purposes
+                    id: decoded.id, // Guest ID
+                    isGuest: true,
+                    name: decoded.name
+                };
+                return next();
+            }
 
             // Handle Pairing Tokens
             if (decoded.scope === 'pairing') {
@@ -47,22 +59,23 @@ const initSocket = (server) => {
     });
 
     io.on('connection', async (socket) => {
-        const userId = socket.user._id.toString();
+        const userId = socket.user._id.toString(); // For Guest, this is RoomId (HostId)
+        const isGuest = socket.user.isGuest;
         const { deviceId, deviceName } = socket.handshake.query;
 
         // Attach device info to socket
         socket.deviceInfo = {
             deviceId,
-            deviceName: deviceName || 'Unknown Device'
+            deviceName: (isGuest ? '[Guest] ' : '') + (deviceName || 'Unknown')
         };
 
-        logger.info(`Socket connected: ${socket.id} (User: ${userId}, Device: ${deviceId})`);
+        logger.info(`Socket connected: ${socket.id} (User/Room: ${userId}, Device: ${deviceId}, Guest: ${isGuest})`);
 
         // Join User's Private Room
         socket.join(userId);
 
-        // Update Device Activity
-        if (deviceId) {
+        // Update Device Activity (Only for authenticated Hosts)
+        if (deviceId && !isGuest) {
             await User.updateOne(
                 { _id: userId, 'authorizedDevices.deviceId': deviceId },
                 {
@@ -189,18 +202,82 @@ const initSocket = (server) => {
             // In a stricter model, we might just send the creds encrypted.
             // Generating a new token here is easier.
 
+            // Generate a Guest Token for the new device
+            // This allows joining the room but not full user access/persistence
+            const guestId = `guest_${Math.random().toString(36).substr(2, 9)}`;
+
             const newToken = jwt.sign(
-                { id: userId },
+                {
+                    id: guestId,
+                    roomId: userId,
+                    isGuest: true,
+                    scope: 'guest',
+                    name: 'Guest Device'
+                },
                 env.JWT_SECRET,
-                { expiresIn: '30d' }
+                { expiresIn: '24h' } // Guest session duration
             );
 
             io.to(targetSocketId).emit('pairing-success', {
                 token: newToken,
-                user: socket.user
+                user: { isGuest: true, roomId: userId }
             });
 
+            // Increment Guest Session Count
+            const today = new Date().toISOString().split('T')[0];
+            DailyStat.findOneAndUpdate(
+                { date: today },
+                { $inc: { guestSessions: 1 } },
+                { upsert: true }
+            ).catch(e => logger.error('Error updating guest stats', e));
+
             logger.info(`Pairing approved by ${userId} for target socket ${targetSocketId}`);
+        });
+
+        // 4. Report Transfer Stats
+        socket.on('report-transfer', async (data) => {
+            const size = data.size || 0;
+            const type = data.type || 'upload'; // 'upload' or 'download'
+            const today = new Date().toISOString().split('T')[0];
+
+            logger.info(`REPORT-TRANSFER (${type}): Received from ${socket.id} (User: ${userId}, Guest: ${socket.user.isGuest}). Size: ${size}`);
+
+            try {
+                // Update Global Daily Stats (Only Count Uploads to avoid double global entry)
+                if (type !== 'download') {
+                    const dailyRes = await DailyStat.findOneAndUpdate(
+                        { date: today },
+                        {
+                            $inc: {
+                                totalDataTransferred: size,
+                                totalUploads: 1
+                            }
+                        },
+                        { upsert: true, new: true }
+                    );
+                    logger.info(`REPORT-TRANSFER: DailyStat updated. Total: ${dailyRes.totalDataTransferred}`);
+                }
+
+                // Update User Stats (if not guest)
+                if (!socket.user.isGuest) {
+                    const incUpdate = { dataTransferred: size };
+                    if (type === 'download') {
+                        incUpdate.downloadCount = 1;
+                    } else {
+                        incUpdate.uploadCount = 1;
+                    }
+
+                    const userRes = await User.updateOne(
+                        { _id: userId },
+                        { $inc: incUpdate }
+                    );
+                    logger.info(`REPORT-TRANSFER: User updated (${userId}). Modified: ${userRes.modifiedCount}`);
+                } else {
+                    logger.info(`REPORT-TRANSFER: User update skipped (Guest).`);
+                }
+            } catch (err) {
+                logger.error(`Stats update error: ${err.message}`);
+            }
         });
 
         socket.on('disconnect', () => {

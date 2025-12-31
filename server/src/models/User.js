@@ -58,6 +58,18 @@ const UserSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    dataTransferred: {
+        type: Number,
+        default: 0
+    },
+    uploadCount: {
+        type: Number,
+        default: 0
+    },
+    downloadCount: {
+        type: Number,
+        default: 0
+    },
     isAdmin: {
         type: Boolean,
         default: false

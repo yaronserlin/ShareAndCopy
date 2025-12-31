@@ -30,27 +30,31 @@ const Dashboard = () => {
         <div className="container py-5 mt-5">
             <header className="mb-5 text-center position-relative">
                 <h1 className="display-4 fw-bold">My Devices</h1>
-                {/* Desktop Button */}
-                <button
-                    className="btn btn-outline-primary position-absolute top-0 end-0 mt-2 hover-scale d-none d-md-inline-flex align-items-center"
-                    onClick={() => setShowPairingModal(true)}
-                >
-                    <i className="bi bi-qr-code-scan me-2"></i>
-                    Add Device
-                </button>
-
-                <p className="lead text-muted">Directly transfer files between your authorized devices.</p>
-
-                {/* Mobile Button */}
-                <div className="d-md-none mt-4">
+                {/* Desktop Button - Hide for Guests */}
+                {!user?.isGuest && (
                     <button
-                        className="btn btn-outline-primary w-100 rounded-pill py-2 shadow-sm"
+                        className="btn btn-outline-primary position-absolute top-0 end-0 mt-2 hover-scale d-none d-md-inline-flex align-items-center"
                         onClick={() => setShowPairingModal(true)}
                     >
                         <i className="bi bi-qr-code-scan me-2"></i>
                         Add Device
                     </button>
-                </div>
+                )}
+
+                <p className="lead text-muted">Directly transfer files between your authorized devices.</p>
+
+                {/* Mobile Button - Hide for Guests */}
+                {!user?.isGuest && (
+                    <div className="d-md-none mt-4">
+                        <button
+                            className="btn btn-outline-primary w-100 rounded-pill py-2 shadow-sm"
+                            onClick={() => setShowPairingModal(true)}
+                        >
+                            <i className="bi bi-qr-code-scan me-2"></i>
+                            Add Device
+                        </button>
+                    </div>
+                )}
             </header>
 
             <DevicePairing show={showPairingModal} onHide={() => setShowPairingModal(false)} />

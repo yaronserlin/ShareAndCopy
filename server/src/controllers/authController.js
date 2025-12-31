@@ -114,8 +114,9 @@ exports.verify = (req, res) => {
             email: req.currentUser.email,
             firstName: req.currentUser.firstName,
             lastName: req.currentUser.lastName,
-            isAdmin: req.currentUser.isAdmin,
-            roomId: req.currentUser.roomId
+            isAdmin: req.currentUser.isAdmin || false,
+            roomId: req.currentUser.roomId || req.currentUser._id, // For host, roomId is _id. For guest, it's explicitly set.
+            isGuest: req.currentUser.isGuest || false
         }
     }, 'Token verified successfully');
 };

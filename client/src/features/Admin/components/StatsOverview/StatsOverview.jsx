@@ -14,23 +14,33 @@ import { formatBytes } from '../../../../utils/format';
  * @param {number} props.stats.storage - Total storage in bytes
  * @returns {JSX.Element} Rendered component
  */
+
+
 const StatsOverview = ({ stats }) => {
 
     return (
         <div className="row g-4 mb-5">
-            <div className="col-md-6">
+            <div className="col-md-4">
                 <StatsCard
-                    title="Total Users"
+                    title="Registered Users"
                     value={stats.users}
                     icon="bi-people-fill"
                     iconColorClass="bg-primary text-primary"
                 />
             </div>
-            <div className="col-md-6">
+            <div className="col-md-4">
                 <StatsCard
-                    title="Authorized Devices"
-                    value={stats.devices}
-                    icon="bi-laptop"
+                    title="Guest Sessions"
+                    value={stats.guests}
+                    icon="bi-incognito"
+                    iconColorClass="bg-info text-info"
+                />
+            </div>
+            <div className="col-md-4">
+                <StatsCard
+                    title="Data Transferred"
+                    value={formatBytes(stats.dataTransferred)}
+                    icon="bi-hdd-network"
                     iconColorClass="bg-success text-success"
                 />
             </div>
@@ -41,7 +51,8 @@ const StatsOverview = ({ stats }) => {
 StatsOverview.propTypes = {
     stats: PropTypes.shape({
         users: PropTypes.number.isRequired,
-        devices: PropTypes.number.isRequired,
+        guests: PropTypes.number.isRequired,
+        dataTransferred: PropTypes.number.isRequired,
     }).isRequired,
 };
 

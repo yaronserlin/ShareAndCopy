@@ -29,6 +29,9 @@ const Navbar = () => {
                     {token ? (
                         <>
 
+                            {user?.isGuest && (
+                                <span className="badge bg-secondary rounded-pill me-2">Guest Mode</span>
+                            )}
                             <Link to="/dashboard" className="btn btn-sm btn-outline-primary rounded-pill px-3 d-none d-sm-inline">
                                 Dashboard
                             </Link>
