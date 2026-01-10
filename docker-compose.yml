@@ -1,0 +1,109 @@
+version: '3.8'
+
+services:
+  # Database
+  mongo:
+    image: mongo:latest
+    container_name: shareandcopy_mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - app_network
+
+  # Redis Cache & Adapter
+  redis:
+    image: redis:alpine
+    container_name: shareandcopy_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - app_network
+
+  # Backend Server
+  server:
+    build: ./server
+    container_name: shareandcopy_server
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGO_URI=mongodb://mongo:27017/shareandcopy
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=supersecretkey_change_in_production
+      - TURN_SECRET=turn_secret_123
+      - TURN_USER=shareandcopy
+      - TURN_URL=turn:localhost:3478
+    depends_on:
+      - mongo
+      - redis
+    networks:
+      - app_network
+
+  # React Client
+  client:
+    build: ./client
+    container_name: shareandcopy_client
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    networks:
+      - app_network
+
+  # TURN Server
+  turn:
+    build: ./turn
+    container_name: shareandcopy_turn
+    # Using a limited range to prevent Docker Desktop freeze on Mac
+    ports:
+      - "3478:3478"
+      - "3478:3478/udp"
+      - "49152-49200:49152-49200/udp"
+    environment:
+      - TURN_USER=shareandcopy
+      - TURN_PASSWORD=turn_secret_123
+      - MIN_PORT=49152
+      - MAX_PORT=49200
+    networks:
+      - app_network
+
+  # Monitoring: Prometheus
+  prometheus:
+    image: prom/prometheus
+    container_name: shareandcopy_prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090"
+    networks:
+      - app_network
+
+  # Monitoring: Grafana
+  grafana:
+    image: grafana/grafana
+    container_name: shareandcopy_grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - app_network
+
+volumes:
+  mongo_data:
+  prometheus_data:
+  grafana_data:
+
+
+networks:
+  app_network:
+    driver: bridge

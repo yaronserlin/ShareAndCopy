@@ -10,7 +10,7 @@ export const useSocket = () => useContext(SocketContext);
 
 export const SocketProvider = ({ children }) => {
     const [socket, setSocket] = useState(null);
-    const { user, token } = useAuth();
+    const { user, token, logout } = useAuth();
 
     useEffect(() => {
         if (!token) {
@@ -36,6 +36,17 @@ export const SocketProvider = ({ children }) => {
 
         newSocket.on('connect_error', (err) => {
             console.error('Socket connection error:', err);
+            if (err.message === 'Authentication error: Token revoked' ||
+                err.message === 'Authentication error: Invalid token' ||
+                err.message === 'Authentication error: User not found') {
+                console.warn('Critical Socket Error -> Logging out');
+                logout();
+            }
+        });
+
+        newSocket.on('force-logout', () => {
+            console.warn('Server forced logout -> Logging out');
+            logout();
         });
 
         setSocket(newSocket);

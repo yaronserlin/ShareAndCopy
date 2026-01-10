@@ -1,6 +1,8 @@
 const logger = require('../utils/logger');
 const systemService = require('../services/systemService');
 const responseHandler = require('../utils/responseHandler');
+const crypto = require('crypto');
+const env = require('../config/env');
 
 /**
  * Controller for System operations
@@ -27,5 +29,40 @@ exports.getServerIp = (req, res) => {
         }
     } catch (err) {
         responseHandler.error(res, 'Server Error', err);
+    }
+};
+
+/**
+ * Generate ephemeral TURN credentials
+ * @param {Object} req - Express request
+ * @param {Object} res - Express response
+ * @route GET /api/system/webrtc-config
+ */
+exports.getWebRTCConfig = (req, res) => {
+    try {
+        const iceServers = [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+        ];
+
+        if (env.TURN_URL && env.TURN_SECRET) {
+            const ttl = 24 * 3600; // 24 hours
+            const timestamp = Math.floor(Date.now() / 1000) + ttl;
+            const username = `${timestamp}:${env.TURN_USER}`;
+
+            const hmac = crypto.createHmac('sha1', env.TURN_SECRET);
+            const password = hmac.update(username).digest('base64');
+
+            iceServers.push({
+                urls: env.TURN_URL,
+                username: username,
+                credential: password
+            });
+        }
+
+        responseHandler.success(res, { iceServers }, 'WebRTC Config generated');
+    } catch (err) {
+        logger.error(`Error generating WebRTC config: ${err.message}`);
+        responseHandler.error(res, 'Failed to generate WebRTC config', err);
     }
 };

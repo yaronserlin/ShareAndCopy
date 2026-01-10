@@ -48,5 +48,15 @@ module.exports = {
     PUBLIC_URL: process.env.PUBLIC_URL,
 
     // Application environment (default: development)
-    NODE_ENV: process.env.NODE_ENV || 'development'
+    NODE_ENV: process.env.NODE_ENV || 'development',
+
+    // TURN Server Configuration
+    TURN_SECRET: process.env.TURN_SECRET || 'dev_secret',
+    TURN_URL: process.env.TURN_URL,
+    TURN_USER: process.env.TURN_USER || 'user',
+
+    // Redis Configuration
+    REDIS_HOST: process.env.REDIS_HOST || 'localhost',
+    REDIS_PORT: parseInt(process.env.REDIS_PORT, 10) || 6379,
+    REDIS_PASSWORD: process.env.REDIS_PASSWORD || ''
 };

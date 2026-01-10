@@ -69,15 +69,25 @@ router.post('/pairing-code', auth, (req, res) => {
 
 // Verify Pairing Code (New Device -> Requesting Pairing)
 // This strictly verifies existence, actual handshake happens over socket
-router.post('/verify-pairing', (req, res) => {
-    const { code } = req.body;
-    if (pairingCodes.has(code)) {
-        const { token } = pairingCodes.get(code);
-        res.json({ valid: true, pairingToken: token });
-    } else {
-        res.status(400).json({ valid: false, message: 'Invalid or expired code' });
+router.post(
+    '/verify-pairing',
+    (req, res) => {
+        const { code } = req.body;
+        if (pairingCodes.has(code)) {
+            const { token } = pairingCodes.get(code);
+            res.json({ valid: true, pairingToken: token });
+        } else {
+            res.status(400).json({ valid: false, message: 'Invalid or expired code' });
+        }
     }
-});
+);
+
+/**
+ * @route   POST api/auth/revoke
+ * @desc    Revoke a device token effectively kicking them
+ * @access  Private (Host)
+ */
+router.post('/revoke', auth, authController.revokeDevice);
 
 /**
  * @route   GET api/auth/verify

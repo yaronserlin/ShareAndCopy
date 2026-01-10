@@ -49,9 +49,10 @@ exports.register = async (userData) => {
 
     await user.save();
 
-    // Generate token
+    // Generate token with JTI
+    const jti = crypto.randomUUID();
     const token = jwt.sign(
-        { id: user._id, isAdmin: user.isAdmin },
+        { id: user._id, isAdmin: user.isAdmin, jti },
         env.JWT_SECRET,
         { expiresIn: '1h' }
     );
@@ -89,7 +90,7 @@ exports.login = async (email, password) => {
     }
 
     const token = jwt.sign(
-        { id: user._id, isAdmin: user.isAdmin },
+        { id: user._id, isAdmin: user.isAdmin, jti: crypto.randomUUID() },
         env.JWT_SECRET,
         { expiresIn: '1h' }
     );

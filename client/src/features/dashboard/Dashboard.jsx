@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { useP2P } from '../../hooks/useP2P';
 import { useAuth } from '../../context/AuthContext';
+import axios from 'axios';
+import API_BASE_URL from '../../config';
 import DevicePairing from '../../components/DevicePairing';
 import DeviceCard from './DeviceCard';
 // import styles from './Dashboard.module.css'; // Removed unused missing CSS
 
 const Dashboard = () => {
     const { user } = useAuth();
-    const { onlineDevices, transferProgress, sendFile, pendingTransfers, acceptTransfer, rejectTransfer } = useP2P();
+    const { onlineDevices, transferProgress, transferStats, sendFile, pendingTransfers, acceptTransfer, rejectTransfer } = useP2P();
     const [selectedFiles, setSelectedFiles] = useState({}); // { deviceId: File }
     const [showPairingModal, setShowPairingModal] = useState(false);
 
@@ -23,6 +25,20 @@ const Dashboard = () => {
             sendFile(file, deviceId);
             // Optional: Clear selection after send starts or keep it?
             // setSelectedFiles(prev => { const n = {...prev}; delete n[deviceId]; return n; });
+        }
+    };
+
+    const handleRevoke = async (deviceId) => {
+        if (!window.confirm('Are you sure you want to revoke this device? It will be disconnected immediately.')) return;
+
+        try {
+            await axios.post(`${API_BASE_URL}/auth/revoke`, { deviceId }, {
+                headers: { 'x-auth-token': localStorage.getItem('token') }
+            });
+            // UI update will happen automatically via socket 'device-offline' event
+        } catch (err) {
+            console.error('Revocation failed', err);
+            alert('Failed to revoke device');
         }
     };
 
@@ -76,6 +92,8 @@ const Dashboard = () => {
                                 onFileChange={handleFileChange}
                                 onSend={handleSend}
                                 transferProgress={transferProgress[device.deviceId]}
+                                transferStats={transferStats?.[device.deviceId]}
+                                onRevoke={!user?.isGuest ? handleRevoke : null}
                             />
                         </div>
                     ))

@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const env = require('../config/env');
 const responseHandler = require('../utils/responseHandler');
 const User = require('../models/User');
+const RevokedToken = require('../models/RevokedToken');
 
 /**
  * Middleware to verify JWT token
@@ -16,6 +17,14 @@ const auth = async (req, res, next) => {
     try {
         const decoded = jwt.verify(token, env.JWT_SECRET);
         req.user = decoded; // Add user payload to request
+
+        // Check Revocation
+        if (decoded.jti) {
+            const isRevoked = await RevokedToken.exists({ jti: decoded.jti });
+            if (isRevoked) {
+                return responseHandler.error(res, 'Token has been revoked', null, 401);
+            }
+        }
 
         // Handle Guest Logic
         if (decoded.scope === 'guest' || decoded.isGuest) {

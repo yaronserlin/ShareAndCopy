@@ -1,6 +1,8 @@
 const authService = require('../services/authService');
 const logger = require('../utils/logger');
 const responseHandler = require('../utils/responseHandler');
+const RevokedToken = require('../models/RevokedToken');
+const { getIO } = require('../socket');
 
 /**
  * Controller for Authentication operations.
@@ -119,4 +121,82 @@ exports.verify = (req, res) => {
             isGuest: req.currentUser.isGuest || false
         }
     }, 'Token verified successfully');
+};
+
+/**
+ * Revokes a device's access (Guest).
+ * Blacklists the JTI and disconnects the socket.
+ * @route POST /api/auth/revoke
+ */
+exports.revokeDevice = async (req, res) => {
+    const { jti, deviceId } = req.body;
+
+    if (!jti && !deviceId) {
+        return responseHandler.error(res, 'JTI or DeviceID required', null, 400);
+    }
+
+    try {
+        // 1. Blacklist Token (if JTI provided or found via DeviceID mapping if we had one)
+        // Since we don't strictly map DeviceID -> JTI in DB yet (unless we added it to User model),
+        // we assume the client sends the JTI to revoke OR we trust the disconnect logic.
+        // For strict security, we should store JTI in the AuthorizedDevices list in User model.
+        // For now, we'll assume JTI is passed or we just kill the socket.
+
+        if (jti) {
+            await RevokedToken.create({
+                jti,
+                expireAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // Default 24h
+            });
+            logger.info(`Token revoked: ${jti}`);
+        }
+
+        // 2. Disconnect Socket
+        if (deviceId) {
+            const io = getIO();
+            // Find socket by deviceId
+            // We need a way to map DeviceID -> SocketID. 
+            // Our socket.js stores this in room, or we can iterate.
+            // Since we don't have a global map exposed easily, we might need to rely on the room.
+            const roomId = req.currentUser._id.toString();
+            // Need to import jwt to decode the token from socket
+            const jwt = require('jsonwebtoken');
+            const sockets = await io.in(roomId).fetchSockets();
+
+            logger.info(`[Revoke Debug] Searching room: ${roomId}, Found sockets: ${sockets.length}`);
+
+            for (const socket of sockets) {
+                const sDeviceId = socket.deviceInfo ? socket.deviceInfo.deviceId : 'UNDEFINED';
+                logger.info(`[Revoke Debug] Checking Socket ${socket.id}, DeviceID: ${sDeviceId} vs Target: ${deviceId}`);
+
+                if (socket.deviceInfo && socket.deviceInfo.deviceId === deviceId) {
+
+                    // Allow extracting token from socket handshake to blacklist it
+                    const token = socket.handshake.auth.token || socket.handshake.query.token;
+                    if (token) {
+                        try {
+                            const decoded = jwt.decode(token);
+                            if (decoded && decoded.jti) {
+                                await RevokedToken.create({
+                                    jti: decoded.jti,
+                                    expireAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+                                });
+                                logger.info(`[Implicit Revocation] JTI blacklisted from socket: ${decoded.jti}`);
+                            }
+                        } catch (e) {
+                            logger.error(`Failed to extract/revoke JTI from socket: ${e.message}`);
+                        }
+                    }
+                    socket.emit('force-logout'); // Notify client to clear session immediately
+                    socket.disconnect(true);
+                    logger.info(`Socket disconnected for revoked device: ${deviceId}`);
+                }
+            }
+        }
+
+        responseHandler.success(res, null, 'Device revoked successfully');
+
+    } catch (err) {
+        logger.error(`Revocation failed: ${err.message}`);
+        responseHandler.error(res, 'Revocation failed', err.message);
+    }
 };

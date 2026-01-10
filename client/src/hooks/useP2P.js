@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
 import { useSocket } from '../context/SocketContext';
+import API_BASE_URL from '../config';
 
-// ICE Configuration (Google STUN)
-const ICE_SERVERS = {
-    iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
-    ]
-};
+// Default ICE Configuration (Fallback)
+const DEFAULT_ICE_SERVERS = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' }
+];
 
 const CHUNK_SIZE = 16 * 1024; // 16KB chunks
 
@@ -15,12 +15,32 @@ export const useP2P = () => {
     const socket = useSocket();
     const [onlineDevices, setOnlineDevices] = useState([]);
     const [transferProgress, setTransferProgress] = useState({}); // { deviceId: percentage }
+    const [transferStats, setTransferStats] = useState({}); // { deviceId: { speed: string, eta: string } }
     const [pendingTransfers, setPendingTransfers] = useState({}); // { deviceId: { fileName, fileSize, channel } }
+    const [connectionStatus, setConnectionStatus] = useState({}); // { deviceId: 'connected' | 'disconnected' | 'failed' | 'checking' }
 
     // Refs for PeerConnections: { deviceId: RTCPeerConnection }
     const peersRef = useRef({});
     // Refs for ICE Candidates Buffer: { deviceId: RTCIceCandidate[] }
     const candidatesBufferRef = useRef({});
+    // Ref for ICE Servers
+    const iceServersRef = useRef({ iceServers: DEFAULT_ICE_SERVERS });
+
+    // Fetch WebRTC Config (TURN Credentials)
+    useEffect(() => {
+        const fetchConfig = async () => {
+            try {
+                const res = await axios.get(`${API_BASE_URL}/system/webrtc-config`);
+                if (res.data && res.data.data && res.data.data.iceServers) {
+                    iceServersRef.current = { iceServers: res.data.data.iceServers };
+                    console.log('WebRTC Configuration Loaded:', iceServersRef.current);
+                }
+            } catch (err) {
+                console.error('Failed to fetch WebRTC config, using default STUN:', err);
+            }
+        };
+        fetchConfig();
+    }, []);
 
     useEffect(() => {
         if (!socket) return;
@@ -137,11 +157,24 @@ export const useP2P = () => {
         }
 
         console.log(`Creating new RTCPeerConnection for ${targetDeviceId}`);
-        const peer = new RTCPeerConnection(ICE_SERVERS);
+        console.log(`Creating new RTCPeerConnection for ${targetDeviceId}`);
+        const peer = new RTCPeerConnection(iceServersRef.current);
         peersRef.current[targetDeviceId] = peer;
+
+        // Init Status
+        setConnectionStatus(prev => ({ ...prev, [targetDeviceId]: 'checking' }));
 
         peer.oniceconnectionstatechange = () => {
             console.log(`ICE Connection State Change (${targetDeviceId}):`, peer.iceConnectionState);
+            const state = peer.iceConnectionState;
+
+            let status = 'checking';
+            if (state === 'connected' || state === 'completed') status = 'connected';
+            else if (state === 'failed') status = 'failed';
+            else if (state === 'disconnected') status = 'disconnected';
+            else if (state === 'closed') status = 'disconnected';
+
+            setConnectionStatus(prev => ({ ...prev, [targetDeviceId]: status }));
         };
 
         peer.onconnectionstatechange = () => {
@@ -258,45 +291,106 @@ export const useP2P = () => {
         };
     };
 
-    // --- Helper: Send Chunks ---
+    // --- Helper: Send Chunks (Adaptive & Stats) ---
     const sendChunks = async (channel, file, targetDeviceId) => {
         const MAX_BUFFERED_AMOUNT = 64 * 1024; // 64KB safe limit
         channel.bufferedAmountLowThreshold = MAX_BUFFERED_AMOUNT / 2;
+
         let offset = 0;
+        const CHUNK_SIZE_FIXED = 16 * 1024; // Fixed 16KB
+
+        const startTime = Date.now();
+        let lastStatTime = startTime;
+        let lastByteCount = 0;
+        let logCounter = 0;
 
         while (offset < file.size) {
+            // Flow Control
             if (channel.bufferedAmount > MAX_BUFFERED_AMOUNT) {
+                console.log(`[Send] Buffer full (${channel.bufferedAmount}). Waiting...`);
+                // Wait for buffer to drain (Event + Polling Fallback)
                 await new Promise(resolve => {
-                    const onLowBuffer = () => {
+                    let resolved = false;
+                    const cleanup = () => {
+                        resolved = true;
                         channel.removeEventListener('bufferedamountlow', onLowBuffer);
-                        resolve();
+                        clearInterval(polling);
                     };
+
+                    const onLowBuffer = () => {
+                        if (!resolved) {
+                            cleanup();
+                            resolve();
+                        }
+                    };
+
+                    // 1. Event Listener
                     channel.addEventListener('bufferedamountlow', onLowBuffer);
+
+                    // 2. Polling Fallback (in case event is missed)
+                    const polling = setInterval(() => {
+                        if (channel.bufferedAmount <= channel.bufferedAmountLowThreshold) {
+                            onLowBuffer();
+                        }
+                    }, 200);
                 });
+                console.log(`[Send] Buffer drained (${channel.bufferedAmount}). Resuming.`);
             }
 
-            if (channel.readyState !== 'open') break;
+            if (channel.readyState !== 'open') {
+                console.error('[Send] Channel closed unexpectedly');
+                break;
+            }
 
-            const chunk = file.slice(offset, offset + CHUNK_SIZE);
+            // Fixed Chunk Size
+            const currentChunkSize = Math.min(CHUNK_SIZE_FIXED, file.size - offset);
+            const chunk = file.slice(offset, offset + currentChunkSize);
             const buffer = await chunk.arrayBuffer();
 
             try {
                 channel.send(buffer);
+                logCounter++;
+                if (logCounter % 50 === 0) {
+                    console.log(`[Send] Sent chunk ${logCounter}. Offset: ${offset}/${file.size}. Buffer: ${channel.bufferedAmount}`);
+                }
             } catch (e) {
                 console.error('Send Error:', e);
                 break;
             }
 
-            offset += CHUNK_SIZE;
-            const progress = Math.round((offset / file.size) * 100);
-            setTransferProgress(prev => {
-                const current = prev[targetDeviceId] || 0;
-                if (progress - current >= 5 || progress === 100) {
-                    return ({ ...prev, [targetDeviceId]: progress });
-                }
-                return prev;
-            });
+            offset += chunk.size;
+
+            // Stats & Progress (Keep existing logic)
+            const now = Date.now();
+            if (now - lastStatTime >= 1000 || offset >= file.size) {
+                const timeDiff = (now - lastStatTime) / 1000; // seconds
+                const bytesDiff = offset - lastByteCount;
+                const speedBytes = bytesDiff / (timeDiff || 1);
+                const speedMB = (speedBytes / (1024 * 1024)).toFixed(2);
+
+                const remainingBytes = file.size - offset;
+                const etaSeconds = speedBytes > 0 ? Math.ceil(remainingBytes / speedBytes) : 0;
+
+
+                setTransferStats(prev => ({
+                    ...prev,
+                    [targetDeviceId]: { speed: `${speedMB} MB/s`, eta: `${etaSeconds}s` }
+                }));
+
+                const progress = Math.round((offset / file.size) * 100);
+                setTransferProgress(prev => ({ ...prev, [targetDeviceId]: progress }));
+
+                lastStatTime = now;
+                lastByteCount = offset;
+            }
         }
+
+        // Final Cleanup stats
+        setTransferStats(prev => {
+            const n = { ...prev };
+            delete n[targetDeviceId];
+            return n;
+        });
     };
 
     // --- Action: Send File ---
@@ -429,7 +523,9 @@ export const useP2P = () => {
         pendingTransfers,
         acceptTransfer,
         rejectTransfer,
-        sendFile
+        sendFile,
+        connectionStatus,
+        transferStats
     };
 };
 

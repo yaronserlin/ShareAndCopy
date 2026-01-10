@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-const DeviceCard = ({ device, selectedFile, onFileChange, onSend, transferProgress }) => {
+const DeviceCard = ({ device, selectedFile, onFileChange, onSend, transferProgress, transferStats, onRevoke }) => {
     const isTransferred = transferProgress === 100;
     const isTransferring = transferProgress !== undefined && transferProgress < 100;
 
@@ -48,6 +48,24 @@ const DeviceCard = ({ device, selectedFile, onFileChange, onSend, transferProgre
                     </button>
                 )}
 
+                {/* Transfer Stats */}
+                {isTransferring && transferStats && (
+                    <div className="d-flex justify-content-between text-muted small mt-1">
+                        <span>{transferStats.speed}</span>
+                        <span>ETA: {transferStats.eta}</span>
+                    </div>
+                )}
+
+                {/* Revoke Button (Red) */}
+                {onRevoke && isTransferred === false && (
+                    <button
+                        className="btn btn-outline-danger w-100 rounded-pill mt-2 btn-sm"
+                        onClick={() => onRevoke(device.deviceId)}
+                    >
+                        <i className="bi bi-x-circle me-1"></i> Revoke Access
+                    </button>
+                )}
+
                 {isTransferred && (
                     <div className="mt-2 text-success small fw-bold">
                         <i className="bi bi-check-circle me-1"></i> Transfer Complete
@@ -66,7 +84,10 @@ DeviceCard.propTypes = {
     selectedFile: PropTypes.object,
     onFileChange: PropTypes.func.isRequired,
     onSend: PropTypes.func.isRequired,
+    onRevoke: PropTypes.func, // Optional: Only for host
     transferProgress: PropTypes.number,
+    transferStats: PropTypes.shape({ speed: PropTypes.string, eta: PropTypes.string }),
+    isGuest: PropTypes.bool
 };
 
 export default DeviceCard;

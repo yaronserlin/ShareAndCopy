@@ -48,7 +48,8 @@ app.use(express.json());
 const routes = [
     { path: '/api/auth', route: './routes/auth' },
     { path: '/api/admin', route: './routes/admin' },
-    { path: '/api/system', route: './routes/system' }
+    { path: '/api/system', route: './routes/system' },
+    { path: '/metrics', route: './routes/metrics' } // Expose metrics
 ];
 
 routes.forEach(({ path, route }) => {

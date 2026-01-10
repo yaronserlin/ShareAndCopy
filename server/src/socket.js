@@ -3,7 +3,11 @@ const jwt = require('jsonwebtoken');
 const env = require('./config/env');
 const User = require('./models/User');
 const DailyStat = require('./models/DailyStat');
+const RevokedToken = require('./models/RevokedToken');
 const logger = require('./utils/logger');
+const { connectedSockets, dataTransferred } = require('./utils/metrics');
+const { createClient } = require('redis');
+const { createAdapter } = require('@socket.io/redis-adapter');
 
 let io;
 
@@ -15,6 +19,30 @@ const initSocket = (server) => {
         }
     });
 
+    // Redis Adapter Setup
+    if (env.REDIS_HOST) {
+        (async () => {
+            try {
+                const pubClient = createClient({
+                    url: `redis://${env.REDIS_PASSWORD ? ':' + env.REDIS_PASSWORD + '@' : ''}${env.REDIS_HOST}:${env.REDIS_PORT}`
+                });
+                const subClient = pubClient.duplicate();
+
+                await Promise.all([pubClient.connect(), subClient.connect()]);
+
+                io.adapter(createAdapter(pubClient, subClient));
+                logger.info('Redis Adapter connected. Cluster mode enabled.');
+            } catch (err) {
+                // If Redis fails, we fall back to in-memory adapter (default)
+                // This is expected for local development without Docker
+                logger.warn('Redis connection failed. Running in Single Node Mode (Memory Adapter).');
+                logger.debug(`Redis Error Details: ${err.message}`);
+            }
+        })();
+    } else {
+        logger.info('Redis config missing. Running in Single Node Mode (Memory Adapter).');
+    }
+
     // Middleware: Authenticate Socket
     io.use(async (socket, next) => {
         try {
@@ -24,6 +52,14 @@ const initSocket = (server) => {
             }
 
             const decoded = jwt.verify(token, env.JWT_SECRET);
+
+            // Check if token is revoked
+            if (decoded.jti) {
+                const revoked = await RevokedToken.findOne({ jti: decoded.jti });
+                if (revoked) {
+                    return next(new Error('Authentication error: Token revoked'));
+                }
+            }
 
             // Handle Guest/Device Tokens
             if (decoded.scope === 'guest' || decoded.isGuest) {
@@ -68,6 +104,9 @@ const initSocket = (server) => {
             deviceId,
             deviceName: (isGuest ? '[Guest] ' : '') + (deviceName || 'Unknown')
         };
+
+        // Increment Connected Sockets Gauge
+        connectedSockets.inc();
 
         logger.info(`Socket connected: ${socket.id} (User/Room: ${userId}, Device: ${deviceId}, Guest: ${isGuest})`);
 
@@ -206,13 +245,16 @@ const initSocket = (server) => {
             // This allows joining the room but not full user access/persistence
             const guestId = `guest_${Math.random().toString(36).substr(2, 9)}`;
 
+            // Include JTI for revocation capability
+            const jti = require('crypto').randomUUID();
             const newToken = jwt.sign(
                 {
                     id: guestId,
                     roomId: userId,
                     isGuest: true,
                     scope: 'guest',
-                    name: 'Guest Device'
+                    name: 'Guest Device',
+                    jti
                 },
                 env.JWT_SECRET,
                 { expiresIn: '24h' } // Guest session duration
@@ -241,6 +283,9 @@ const initSocket = (server) => {
             const today = new Date().toISOString().split('T')[0];
 
             logger.info(`REPORT-TRANSFER (${type}): Received from ${socket.id} (User: ${userId}, Guest: ${socket.user.isGuest}). Size: ${size}`);
+
+            // Increment Data Counter
+            dataTransferred.inc(size);
 
             try {
                 // Update Global Daily Stats (Only Count Uploads to avoid double global entry)
@@ -282,6 +327,8 @@ const initSocket = (server) => {
 
         socket.on('disconnect', () => {
             logger.info(`Socket disconnected: ${socket.id}`);
+            connectedSockets.dec(); // Decrement Connected Sockets Gauge
+
             // Notify others
             socket.to(userId).emit('device-offline', {
                 socketId: socket.id,
@@ -295,3 +342,4 @@ const initSocket = (server) => {
 };
 
 module.exports = initSocket;
+module.exports.getIO = () => io;
