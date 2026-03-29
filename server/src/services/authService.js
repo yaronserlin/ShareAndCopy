@@ -51,14 +51,23 @@ exports.register = async (userData) => {
 
     // Generate token with JTI
     const jti = crypto.randomUUID();
-    const token = jwt.sign(
+    const accessToken = jwt.sign(
         { id: user._id, isAdmin: user.isAdmin, jti },
         env.JWT_SECRET,
         { expiresIn: '1h' }
     );
 
+    // SEC-08: Generate refresh token with 7-day expiry
+    const refreshToken = jwt.sign(
+        { id: user._id, type: 'refresh' },
+        env.JWT_REFRESH_SECRET,
+        { expiresIn: '7d' }
+    );
+
     return {
-        token,
+        token: accessToken, // Keep 'token' for backward compatibility
+        accessToken,
+        refreshToken,
         roomId,
         user: {
             id: user._id,
@@ -78,25 +87,55 @@ exports.register = async (userData) => {
  * @returns {Promise<Object>} Returns object containing token, roomId, and isAdmin status
  * @throws {Error} If credentials are invalid
  */
-exports.login = async (email, password) => {
+exports.login = async (email, password, deviceId, deviceName) => {
     const user = await User.findOne({ email });
-    if (!user) {
+
+    // SECURITY: Always perform bcrypt comparison, even if user doesn't exist
+    // This prevents timing attacks that could reveal whether an email is registered
+    const hashToCompare = user ? user.password : await bcrypt.hash('dummy_password_for_timing', 10);
+    const isMatch = await bcrypt.compare(password, hashToCompare);
+
+    // Return same error for both "user not found" and "invalid password"
+    if (!user || !isMatch) {
         throw new Error('Invalid credentials');
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-        throw new Error('Invalid credentials');
-    }
-
-    const token = jwt.sign(
-        { id: user._id, isAdmin: user.isAdmin, jti: crypto.randomUUID() },
+    const jti = crypto.randomUUID();
+    const accessToken = jwt.sign(
+        { id: user._id, isAdmin: user.isAdmin, jti },
         env.JWT_SECRET,
         { expiresIn: '1h' }
     );
 
+    // SEC-08: Generate refresh token with 7-day expiry
+    const refreshToken = jwt.sign(
+        { id: user._id, type: 'refresh' },
+        env.JWT_REFRESH_SECRET,
+        { expiresIn: '7d' }
+    );
+
+    // Update Authorized Devices with JTI
+    if (deviceId) {
+        const deviceIndex = user.authorizedDevices.findIndex(d => d.deviceId === deviceId);
+        if (deviceIndex > -1) {
+            user.authorizedDevices[deviceIndex].jti = jti;
+            user.authorizedDevices[deviceIndex].lastActive = new Date();
+            if (deviceName) user.authorizedDevices[deviceIndex].deviceName = deviceName;
+        } else {
+            user.authorizedDevices.push({
+                deviceId,
+                deviceName: deviceName || 'Unknown Device',
+                lastActive: new Date(),
+                jti
+            });
+        }
+        await user.save();
+    }
+
     return {
-        token,
+        token: accessToken, // Keep 'token' for backward compatibility
+        accessToken,
+        refreshToken,
         roomId: user.roomId,
         isAdmin: user.isAdmin,
         user: {

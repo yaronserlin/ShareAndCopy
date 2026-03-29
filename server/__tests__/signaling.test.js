@@ -150,5 +150,56 @@ describe('Signaling Server', () => {
             }
         });
     });
+    test('should prevent signaling between users in different rooms', (done) => {
+        // Create User B in different room
+        const userB = new User({
+            firstName: 'Bob',
+            lastName: 'User',
+            email: `bob-${Date.now()}@example.com`,
+            password: 'hashedpassword',
+            roomId: 'room999'
+        });
+
+        userB.save().then(() => {
+            const tokenB = jwt.sign({ id: userB._id }, env.JWT_SECRET, { expiresIn: '1h' });
+
+            clientSocket1 = new Client(`http://localhost:${port}`, {
+                auth: { token: tokenA },
+                query: { deviceId: 'deviceA' }
+            });
+
+            clientSocket2 = new Client(`http://localhost:${port}`, {
+                auth: { token: tokenB },
+                query: { deviceId: 'deviceB' }
+            });
+
+            let signalReceived = false;
+
+            clientSocket2.on('signal', () => {
+                signalReceived = true;
+            });
+
+            clientSocket1.on('connect', () => {
+                clientSocket2.on('connect', () => {
+                    // Try to compromise isolation
+                    clientSocket1.emit('signal', {
+                        targetSocketId: clientSocket2.id,
+                        type: 'offer',
+                        signalData: 'attack'
+                    });
+
+                    // Wait to ensure NOT received
+                    setTimeout(() => {
+                        try {
+                            expect(signalReceived).toBe(false);
+                            done();
+                        } catch (e) {
+                            done(e);
+                        }
+                    }, 500);
+                });
+            });
+        });
+    });
 });
 

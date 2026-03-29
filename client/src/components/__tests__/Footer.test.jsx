@@ -17,7 +17,7 @@ describe('Footer Component', () => {
             </BrowserRouter>
         );
         expect(screen.getByText(/Share & Copy/i)).toBeInTheDocument();
-        expect(screen.getByText(/2025/)).toBeInTheDocument();
+        expect(screen.getByText(new RegExp(new Date().getFullYear().toString()))).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /About/i })).toBeInTheDocument();
     });
 });

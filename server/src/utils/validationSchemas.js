@@ -26,15 +26,25 @@ const registerSchema = Joi.object({
 
 const loginSchema = Joi.object({
     email: Joi.string().email().required(),
-    password: Joi.string().required()
+    password: Joi.string().required(),
+    deviceId: Joi.string().optional(),
+    deviceName: Joi.string().optional()
 });
 
 const renameFileSchema = Joi.object({
     filename: Joi.string().required().trim().min(1).max(255)
 });
 
+const revokeSchema = Joi.object({
+    deviceId: Joi.string().pattern(/^[a-zA-Z0-9_-]+$/).required().messages({
+        'string.pattern.base': 'DeviceID contains invalid characters',
+        'any.required': 'DeviceID is required'
+    })
+});
+
 module.exports = {
     registerSchema,
     loginSchema,
-    renameFileSchema
+    renameFileSchema,
+    revokeSchema
 };

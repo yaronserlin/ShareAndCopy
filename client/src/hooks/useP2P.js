@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 import { useSocket } from '../context/SocketContext';
 import API_BASE_URL from '../config';
 
@@ -10,6 +11,20 @@ const DEFAULT_ICE_SERVERS = [
 ];
 
 const CHUNK_SIZE = 16 * 1024; // 16KB chunks
+const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB Limit
+
+// UUID generation polyfill for browsers that don't support crypto.randomUUID()
+const generateUUID = () => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    // Fallback for Safari and older browsers
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+};
 
 export const useP2P = () => {
     const socket = useSocket();
@@ -19,12 +34,36 @@ export const useP2P = () => {
     const [pendingTransfers, setPendingTransfers] = useState({}); // { deviceId: { fileName, fileSize, channel } }
     const [connectionStatus, setConnectionStatus] = useState({}); // { deviceId: 'connected' | 'disconnected' | 'failed' | 'checking' }
 
+    // PERF-03: Optimize progress updates to prevent excessive re-renders
+    const progressUpdateScheduled = useRef(false);
+    const pendingProgressUpdates = useRef({});
+
+    // BUG-06: Track Object URLs for proper cleanup to prevent memory leaks
+    const objectURLsRef = useRef(new Set());
+
     // Refs for PeerConnections: { deviceId: RTCPeerConnection }
     const peersRef = useRef({});
     // Refs for ICE Candidates Buffer: { deviceId: RTCIceCandidate[] }
     const candidatesBufferRef = useRef({});
     // Ref for ICE Servers
     const iceServersRef = useRef({ iceServers: DEFAULT_ICE_SERVERS });
+
+    // PERF-03: Optimized progress update function using requestAnimationFrame
+    const updateProgress = useCallback((deviceId, progress) => {
+        pendingProgressUpdates.current[deviceId] = progress;
+
+        if (!progressUpdateScheduled.current) {
+            progressUpdateScheduled.current = true;
+            requestAnimationFrame(() => {
+                setTransferProgress(prev => ({
+                    ...prev,
+                    ...pendingProgressUpdates.current
+                }));
+                pendingProgressUpdates.current = {};
+                progressUpdateScheduled.current = false;
+            });
+        }
+    }, []);
 
     // Fetch WebRTC Config (TURN Credentials)
     useEffect(() => {
@@ -144,7 +183,26 @@ export const useP2P = () => {
             socket.off('device-online');
             socket.off('device-offline');
             socket.off('signal');
-            Object.values(peersRef.current).forEach(p => p.close());
+
+            // BUGFIX BUG-02: Properly cleanup peer connections to prevent memory leaks
+            Object.keys(peersRef.current).forEach(deviceId => {
+                const peer = peersRef.current[deviceId];
+                if (peer) {
+                    peer.close();
+                    delete peersRef.current[deviceId];
+                }
+            });
+
+            // Clear candidate buffers
+            Object.keys(candidatesBufferRef.current).forEach(deviceId => {
+                delete candidatesBufferRef.current[deviceId];
+            });
+
+            // BUG-06: Cleanup all Object URLs on unmount
+            objectURLsRef.current.forEach(url => {
+                URL.revokeObjectURL(url);
+            });
+            objectURLsRef.current.clear();
         };
     }, [socket]);
 
@@ -156,7 +214,6 @@ export const useP2P = () => {
             return p;
         }
 
-        console.log(`Creating new RTCPeerConnection for ${targetDeviceId}`);
         console.log(`Creating new RTCPeerConnection for ${targetDeviceId}`);
         const peer = new RTCPeerConnection(iceServersRef.current);
         peersRef.current[targetDeviceId] = peer;
@@ -204,9 +261,9 @@ export const useP2P = () => {
 
     // --- Setup Data Channel for Receiving ---
     const setupReceiveChannel = (channel, deviceId) => {
-        let receivedBuffers = [];
-        let receivedSize = 0;
-        let fileMeta = null;
+        // FIX BUG-01: Track multiple concurrent transfers with unique IDs
+        const activeTransfers = new Map(); // transferId -> { fileMeta, receivedBuffers, receivedSize }
+        let currentTransferId = null;
 
         channel.onopen = () => console.log(`Data Channel Opened (Receiver) for ${deviceId}`);
         channel.onclose = () => console.log(`Data Channel Closed (Receiver) for ${deviceId}`);
@@ -219,7 +276,26 @@ export const useP2P = () => {
                 try {
                     const message = JSON.parse(data);
                     if (message.type === 'METADATA') {
-                        console.log(`Receiving file offer: ${message.fileName} (${message.fileSize} bytes)`);
+                        // SEC-14: Validate file size from metadata
+                        if (!message.fileSize || message.fileSize <= 0 || message.fileSize > MAX_FILE_SIZE) {
+                            console.error(`Invalid file size in metadata: ${message.fileSize}`);
+                            toast.error('Invalid file metadata received');
+                            return;
+                        }
+
+                        // Generate unique transfer ID
+                        const transferId = message.transferId || crypto.randomUUID();
+                        currentTransferId = transferId;
+
+                        console.log(`Receiving file offer [${transferId}]: ${message.fileName} (${message.fileSize} bytes)`);
+
+                        // Initialize transfer tracking
+                        activeTransfers.set(transferId, {
+                            fileMeta: message,
+                            receivedBuffers: [],
+                            receivedSize: 0
+                        });
+
                         // Set Pending Transfer
                         setPendingTransfers(prev => ({
                             ...prev,
@@ -227,65 +303,84 @@ export const useP2P = () => {
                                 fileName: message.fileName,
                                 fileSize: message.fileSize,
                                 deviceName: onlineDevices.find(d => d.deviceId === deviceId)?.deviceName || 'Unknown Device',
-                                channel // Store channel to reply
+                                channel, // Store channel to reply
+                                transferId // Store transfer ID
                             }
                         }));
-
-                        // We do NOT set progress or fileMeta/buffers yet. We wait for user action.
-                        // However, we need to persist fileMeta in the closure for when data starts arriving? 
-                        // No, the channel listener is closure-bound. 
-                        // But `fileMeta` variable is local to `setupReceiveChannel`. 
-                        // If we exit this event handler, `fileMeta` is still in the higher scope?
-                        // YES, `fileMeta` is defined in `setupReceiveChannel` scope.
-                        // So we can update it here, but we shouldn't start processing chunks until we decide.
-
-                        fileMeta = message;
-                        receivedBuffers = [];
-                        receivedSize = 0;
-
                     } else if (message.type === 'FINISH') {
-                        console.log('File Transfer Complete. Reassembling...');
-                        const blob = new Blob(receivedBuffers);
+                        const transferId = message.transferId || currentTransferId;
+                        const transfer = activeTransfers.get(transferId);
+
+                        if (!transfer) {
+                            console.error(`FINISH received for unknown transfer: ${transferId}`);
+                            return;
+                        }
+
+                        console.log(`File Transfer Complete [${transferId}]. Reassembling...`);
+                        const blob = new Blob(transfer.receivedBuffers);
                         const url = URL.createObjectURL(blob);
+
+                        // BUG-06: Track URL for proper cleanup
+                        objectURLsRef.current.add(url);
+
+                        // Trigger Download
                         const a = document.createElement('a');
                         a.href = url;
-                        a.download = fileMeta.fileName;
-                        document.body.appendChild(a);
+                        a.download = transfer.fileMeta.fileName;
                         a.click();
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
 
-                        setTransferProgress(prev => ({ ...prev, [deviceId]: 100 }));
+                        // Report Stats
+                        if (socket) {
+                            socket.emit('report-transfer', { size: transfer.fileMeta.fileSize, type: 'download' });
+                        }
 
-                        // Report Stats (Receiver - Download)
-                        socket.emit('report-transfer', { size: fileMeta.fileSize, type: 'download' });
-
-                        setTimeout(() => setTransferProgress(prev => {
+                        setTransferProgress(prev => {
                             const newState = { ...prev };
                             delete newState[deviceId];
                             return newState;
-                        }), 3000);
+                        });
+
+                        // BUG-06: Properly cleanup with tracking
+                        setTimeout(() => {
+                            URL.revokeObjectURL(url);
+                            objectURLsRef.current.delete(url);
+                        }, 3000);
+                        activeTransfers.delete(transferId);
                     }
                 } catch (e) {
                     console.error('Error parsing signaling message', e);
                 }
             }
-            // Handle ArrayBuffer (File Chunks)
             else {
-                // ... (Existing Chunk Logic)
-                receivedBuffers.push(data);
-                receivedSize += data.byteLength;
+                // Binary data chunk - use current transfer ID
+                const transfer = activeTransfers.get(currentTransferId);
 
-                if (fileMeta) {
-                    const progress = Math.round((receivedSize / fileMeta.fileSize) * 100);
+                if (!transfer) {
+                    console.error('Received chunk for unknown transfer');
+                    return;
+                }
+
+                // Safety Check: Buffer Overflow
+                if (transfer.receivedSize + data.byteLength > MAX_FILE_SIZE) {
+                    console.error('Transfer exceeded max limits during reception.');
+                    channel.close();
                     setTransferProgress(prev => {
-                        // ... (Existing Progress Logic)
-                        const current = prev[deviceId] || 0;
-                        if (progress - current >= 5 || progress === 100) {
-                            return ({ ...prev, [deviceId]: progress });
-                        }
-                        return prev;
+                        const newState = { ...prev };
+                        delete newState[deviceId]; // Clear transfer state
+                        return newState;
                     });
+                    toast.error('Transfer aborted: Limit exceeded.');
+                    activeTransfers.delete(currentTransferId);
+                    return;
+                }
+
+                transfer.receivedBuffers.push(data);
+                transfer.receivedSize += data.byteLength;
+
+                if (transfer.fileMeta) {
+                    const progress = Math.round((transfer.receivedSize / transfer.fileMeta.fileSize) * 100);
+                    // PERF-03: Use optimized progress update
+                    updateProgress(deviceId, progress);
                 }
             }
         };
@@ -395,6 +490,13 @@ export const useP2P = () => {
 
     // --- Action: Send File ---
     const sendFile = async (file, targetDeviceId) => {
+        // BUG-08: Check socket connection before sending
+        if (!socket || !socket.connected) {
+            console.error('Cannot send file: Socket not connected');
+            toast.error('Connection lost. Please refresh.');
+            return;
+        }
+
         const targetDevice = onlineDevices.find(d => d.deviceId === targetDeviceId);
 
         if (!targetDevice) {
@@ -418,15 +520,19 @@ export const useP2P = () => {
         channel.onopen = async () => {
             console.log(`Data Channel Opened (Sender) for ${targetDeviceId}. Starting Transfer...`);
 
-            // 1. Send Metadata
+            // Generate unique transfer ID for this transfer
+            const transferId = generateUUID();
+
+            // 1. Send Metadata with transfer ID
             const metadata = {
                 type: 'METADATA',
                 fileName: file.name,
                 fileSize: file.size,
-                chunkCount: Math.ceil(file.size / CHUNK_SIZE)
+                chunkCount: Math.ceil(file.size / CHUNK_SIZE),
+                transferId // Include transfer ID
             };
             channel.send(JSON.stringify(metadata));
-            console.log('Metadata sent. Waiting for acceptance...');
+            console.log(`Metadata sent with transfer ID: ${transferId}. Waiting for acceptance...`);
 
             // New: Wait for ACCEPT/REJECT response
             channel.onmessage = async (event) => {
@@ -439,10 +545,10 @@ export const useP2P = () => {
                             // 2. Send Chunks logic here
                             await sendChunks(channel, file, targetDeviceId);
 
-                            // 3. Send Finish
+                            // 3. Send Finish with transfer ID
                             if (channel.readyState === 'open') {
-                                channel.send(JSON.stringify({ type: 'FINISH' }));
-                                console.log('File Transfer Finished (Sender side)');
+                                channel.send(JSON.stringify({ type: 'FINISH', transferId }));
+                                console.log(`File Transfer Finished (Sender side) [${transferId}]`);
 
                                 // Report Stats
                                 socket.emit('report-transfer', { size: file.size, type: 'upload' });
@@ -517,6 +623,16 @@ export const useP2P = () => {
         });
     };
 
+    // --- Action: Manual Device Removal (Optimistic UI) ---
+    const removeDevice = (deviceId) => {
+        setOnlineDevices(prev => prev.filter(d => d.deviceId !== deviceId));
+        // Cleanup Peer
+        if (peersRef.current[deviceId]) {
+            peersRef.current[deviceId].close();
+            delete peersRef.current[deviceId];
+        }
+    };
+
     return {
         onlineDevices,
         transferProgress,
@@ -525,7 +641,8 @@ export const useP2P = () => {
         rejectTransfer,
         sendFile,
         connectionStatus,
-        transferStats
+        transferStats,
+        removeDevice
     };
 };
 

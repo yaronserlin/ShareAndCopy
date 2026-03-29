@@ -1,8 +1,16 @@
 
-const SERVER_PORT = 5001;
+const SERVER_PORT = 5001; // Match server default port (changed from 5000 due to macOS ControlCenter)
 
 // Helper to determine protocol
 const getProtocol = (hostname) => {
+    const isProd = import.meta.env.MODE === 'production';
+
+    // SECURITY: Force HTTPS in production
+    if (isProd) {
+        return 'https:';
+    }
+
+    // In development, respect current protocol
     if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
         return 'https:';
     }
@@ -23,7 +31,7 @@ export const SERVER_URL = (typeof window !== 'undefined' && window.SERVER_URL)
     ? window.SERVER_URL
     : (import.meta.env.VITE_SERVER_URL || getDefaultServerUrl());
 
-const API_BASE_URL = (typeof window !== 'undefined' && window.SERVER_URL)
+export const API_BASE_URL = (typeof window !== 'undefined' && window.SERVER_URL)
     ? `${window.SERVER_URL}/api`
     : (import.meta.env.VITE_API_URL || `${SERVER_URL}/api`);
 

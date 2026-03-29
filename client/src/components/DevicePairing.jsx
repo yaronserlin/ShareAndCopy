@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import QRCode from 'react-qr-code';
 import axios from 'axios';
 import { useSocket } from '../context/SocketContext';
+import { SERVER_URL, API_BASE_URL } from '../config';
 import { Modal, Button, Spinner, Alert } from 'react-bootstrap';
 
 const DevicePairing = ({ show, onHide }) => {
@@ -44,7 +45,7 @@ const DevicePairing = ({ show, onHide }) => {
     const generatePairingCode = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.post('/api/auth/pairing-code', {}, {
+            const res = await axios.post(`${API_BASE_URL}/auth/pairing-code`, {}, {
                 headers: { 'x-auth-token': token }
             });
 
@@ -52,7 +53,9 @@ const DevicePairing = ({ show, onHide }) => {
             setStep('show-qr');
 
             // Join the pairing room
-            socket.emit('join-pairing', res.data.code);
+            if (socket) {
+                socket.emit('join-pairing', res.data.code);
+            }
 
         } catch (err) {
             console.error('Error generating pairing code:', err);

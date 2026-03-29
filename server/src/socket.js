@@ -1,5 +1,7 @@
 const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const validator = require('validator');
 const env = require('./config/env');
 const User = require('./models/User');
 const DailyStat = require('./models/DailyStat');
@@ -11,11 +13,59 @@ const { createAdapter } = require('@socket.io/redis-adapter');
 
 let io;
 
+// PERFORMANCE: Buffer device activity updates instead of immediate DB writes
+const deviceActivityBuffer = new Map(); // key: "userId:deviceId", value: { userId, deviceId, deviceName, timestamp }
+
+// SECURITY SEC-09: Rate limiting for socket events to prevent DoS
+const socketRateLimits = new Map(); // socketId -> { event -> { count, resetAt } }
+
+const checkSocketRateLimit = (socketId, event, maxRequests = 100, windowMs = 60000) => {
+    const now = Date.now();
+
+    if (!socketRateLimits.has(socketId)) {
+        socketRateLimits.set(socketId, {});
+    }
+
+    const socketLimits = socketRateLimits.get(socketId);
+
+    if (!socketLimits[event] || now > socketLimits[event].resetAt) {
+        socketLimits[event] = { count: 1, resetAt: now + windowMs };
+        return true;
+    }
+
+    if (socketLimits[event].count >= maxRequests) {
+        return false;
+    }
+
+    socketLimits[event].count++;
+    return true;
+};
+
 const initSocket = (server) => {
+    // SECURITY: Define allowed origins based on environment
+    const allowedOrigins = env.NODE_ENV === 'production'
+        ? [env.PUBLIC_URL].filter(Boolean) // Only production URL
+        : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5001', 'http://127.0.0.1:5173', 'http://192.168.1.112:5173']; // Dev ports
+
+    const localOriginRegex = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(:\d+)?$/;
+
     io = socketIo(server, {
         cors: {
-            origin: '*', // Adjust for production
-            methods: ['GET', 'POST']
+            origin: (origin, callback) => {
+                // Allow requests with no origin (mobile apps, Postman, etc.) in development
+                if (!origin && env.NODE_ENV !== 'production') {
+                    return callback(null, true);
+                }
+
+                if (allowedOrigins.includes(origin) || (env.NODE_ENV !== 'production' && localOriginRegex.test(origin))) {
+                    callback(null, true);
+                } else {
+                    logger.warn(`CORS blocked origin: ${origin}`);
+                    callback(new Error('Not allowed by CORS'));
+                }
+            },
+            methods: ['GET', 'POST'],
+            credentials: true
         }
     });
 
@@ -99,10 +149,14 @@ const initSocket = (server) => {
         const isGuest = socket.user.isGuest;
         const { deviceId, deviceName } = socket.handshake.query;
 
+        // SECURITY: Sanitize user-controlled inputs to prevent XSS
+        const sanitizedDeviceId = validator.escape(deviceId || '');
+        const sanitizedDeviceName = validator.escape((isGuest ? '[Guest] ' : '') + (deviceName || 'Unknown'));
+
         // Attach device info to socket
-        socket.deviceInfo = {
-            deviceId,
-            deviceName: (isGuest ? '[Guest] ' : '') + (deviceName || 'Unknown')
+        socket.data.deviceInfo = {
+            deviceId: sanitizedDeviceId,
+            deviceName: sanitizedDeviceName
         };
 
         // Increment Connected Sockets Gauge
@@ -113,46 +167,33 @@ const initSocket = (server) => {
         // Join User's Private Room
         socket.join(userId);
 
-        // Update Device Activity (Only for authenticated Hosts)
-        if (deviceId && !isGuest) {
-            await User.updateOne(
-                { _id: userId, 'authorizedDevices.deviceId': deviceId },
-                {
-                    $set: {
-                        'authorizedDevices.$.lastActive': new Date(),
-                        'authorizedDevices.$.deviceName': deviceName || 'Unknown Device'
-                    }
-                }
-            ).catch(err => {
-                // If device not found, push it
-                return User.findByIdAndUpdate(userId, {
-                    $addToSet: {
-                        authorizedDevices: {
-                            deviceId,
-                            deviceName: deviceName || 'Unknown Device',
-                            lastActive: new Date()
-                        }
-                    }
-                });
+        // PERFORMANCE: Buffer device activity updates instead of immediate DB write
+        if (sanitizedDeviceId && !isGuest) {
+            const bufferKey = `${userId}:${sanitizedDeviceId}`;
+            deviceActivityBuffer.set(bufferKey, {
+                userId,
+                deviceId: sanitizedDeviceId,
+                deviceName: sanitizedDeviceName,
+                timestamp: new Date()
             });
         }
 
         // Notify other devices in the room (EXCLUDING sender)
         socket.to(userId).emit('device-online', {
             socketId: socket.id,
-            deviceId: deviceId,
-            deviceName: deviceName
+            deviceId: sanitizedDeviceId,
+            deviceName: sanitizedDeviceName
         });
 
         // --- Send Initial Device List to New Connection ---
         try {
             const sockets = await io.in(userId).fetchSockets();
             const deviceList = sockets
-                .filter(s => s.id !== socket.id && s.deviceInfo)
+                .filter(s => s.id !== socket.id && s.data.deviceInfo)
                 .map(s => ({
                     socketId: s.id,
-                    deviceId: s.deviceInfo.deviceId,
-                    deviceName: s.deviceInfo.deviceName
+                    deviceId: s.data.deviceInfo.deviceId,
+                    deviceName: s.data.deviceInfo.deviceName
                 }));
 
             socket.emit('initial-device-list', deviceList);
@@ -162,8 +203,9 @@ const initSocket = (server) => {
 
         // 1. Device Registration (Explicit)
         socket.on('register-device', async (data) => {
-            // Can be used to update metadata if needed
-            logger.info(`Device registered: ${data.deviceId}`);
+            // SECURITY: Sanitize device data
+            const cleanDeviceId = validator.escape(data.deviceId || '');
+            logger.info(`Device registered: ${cleanDeviceId}`);
         });
 
         // 1.5 Request Device List (Fix for navigation)
@@ -171,11 +213,11 @@ const initSocket = (server) => {
             try {
                 const sockets = await io.in(userId).fetchSockets();
                 const deviceList = sockets
-                    .filter(s => s.id !== socket.id && s.deviceInfo)
+                    .filter(s => s.id !== socket.id && s.data.deviceInfo)
                     .map(s => ({
                         socketId: s.id,
-                        deviceId: s.deviceInfo.deviceId,
-                        deviceName: s.deviceInfo.deviceName
+                        deviceId: s.data.deviceInfo.deviceId,
+                        deviceName: s.data.deviceInfo.deviceName
                     }));
 
                 socket.emit('initial-device-list', deviceList);
@@ -186,20 +228,32 @@ const initSocket = (server) => {
 
         // 2. Signaling Event (WebRTC)
         // Payload: { targetSocketId, signalData, type (offer/answer/candidate) }
-        socket.on('signal', (data) => {
+        socket.on('signal', async (data) => {
+            // SECURITY SEC-09: Rate limit signaling events
+            if (!checkSocketRateLimit(socket.id, 'signal', 100, 60000)) {
+                logger.warn(`Rate limit exceeded for socket ${socket.id} on 'signal' event`);
+                return socket.emit('error', { message: 'Too many requests. Please slow down.' });
+            }
+
             const { targetSocketId, signalData, type } = data;
 
-            // Security: Ensure target is in valid format or belongs to user logic (if strictly personal P2P)
-            // For now, allow sending to any valid socket ID, typically another device of same user
-
+            // Security: Ensure target is in the same room
             if (targetSocketId) {
-                io.to(targetSocketId).emit('signal', {
-                    senderSocketId: socket.id,
-                    senderDeviceId: deviceId,
-                    type,
-                    signalData
-                });
-                logger.debug(`Signal (${type}) sent from ${socket.id} to ${targetSocketId}`);
+                // Get all sockets in the user's room to verify membership
+                const roomSockets = await io.in(userId).fetchSockets();
+                const isTargetInRoom = roomSockets.some(s => s.id === targetSocketId);
+
+                if (isTargetInRoom) {
+                    io.to(targetSocketId).emit('signal', {
+                        senderSocketId: socket.id,
+                        senderDeviceId: sanitizedDeviceId,
+                        type,
+                        signalData
+                    });
+                    logger.debug(`Signal (${type}) sent from ${socket.id} to ${targetSocketId}`);
+                } else {
+                    logger.warn(`Security Alert: Socket ${socket.id} attempted to signal socket ${targetSocketId} not in room ${userId}`);
+                }
             }
         });
 
@@ -224,6 +278,12 @@ const initSocket = (server) => {
         // The 'io.use' middleware needs to handle 'pairing' scope tokens.
 
         socket.on('request-pairing', (data) => {
+            // SECURITY SEC-09: Rate limit pairing requests
+            if (!checkSocketRateLimit(socket.id, 'request-pairing', 10, 60000)) {
+                logger.warn(`Rate limit exceeded for socket ${socket.id} on 'request-pairing' event`);
+                return;
+            }
+
             const { code, deviceInfo } = data;
             // Notify Device A (in the room)
             io.to(`pairing-${code}`).emit('confirmation-request', {
@@ -236,17 +296,29 @@ const initSocket = (server) => {
         socket.on('approve-pairing', async (data) => {
             const { targetSocketId } = data;
 
+            // SECURITY: Limit guest sessions per host to prevent DoS
+            const MAX_GUESTS_PER_HOST = 10;
+            const roomSockets = await io.in(userId).fetchSockets();
+            const guestCount = roomSockets.filter(s => s.user && s.user.isGuest).length;
+
+            if (guestCount >= MAX_GUESTS_PER_HOST) {
+                logger.warn(`Guest limit reached for user ${userId}`);
+                return socket.emit('pairing-error', {
+                    message: `Maximum guest limit (${MAX_GUESTS_PER_HOST}) reached`
+                });
+            }
+
             // Generate a full long-term Auth Token for the new device
             // Since Device A is authenticated, it can authorize this.
             // In a stricter model, we might just send the creds encrypted.
             // Generating a new token here is easier.
 
-            // Generate a Guest Token for the new device
-            // This allows joining the room but not full user access/persistence
-            const guestId = `guest_${Math.random().toString(36).substr(2, 9)}`;
+            // SECURITY: Generate a Guest Token for the new device
+            // Use crypto-secure random UUID instead of Math.random()
+            const guestId = `guest_${crypto.randomUUID()}`;
 
             // Include JTI for revocation capability
-            const jti = require('crypto').randomUUID();
+            const jti = crypto.randomUUID();
             const newToken = jwt.sign(
                 {
                     id: guestId,
@@ -278,6 +350,12 @@ const initSocket = (server) => {
 
         // 4. Report Transfer Stats
         socket.on('report-transfer', async (data) => {
+            // SECURITY SEC-09: Rate limit transfer reports
+            if (!checkSocketRateLimit(socket.id, 'report-transfer', 200, 60000)) {
+                logger.warn(`Rate limit exceeded for socket ${socket.id} on 'report-transfer' event`);
+                return;
+            }
+
             const size = data.size || 0;
             const type = data.type || 'upload'; // 'upload' or 'download'
             const today = new Date().toISOString().split('T')[0];
@@ -329,10 +407,13 @@ const initSocket = (server) => {
             logger.info(`Socket disconnected: ${socket.id}`);
             connectedSockets.dec(); // Decrement Connected Sockets Gauge
 
+            // SECURITY SEC-09: Cleanup rate limit tracking
+            socketRateLimits.delete(socket.id);
+
             // Notify others
             socket.to(userId).emit('device-offline', {
                 socketId: socket.id,
-                deviceId: deviceId
+                deviceId: sanitizedDeviceId
             });
         });
     });
@@ -340,6 +421,65 @@ const initSocket = (server) => {
 
     return io;
 };
+
+// PERFORMANCE: Background worker to flush buffered device activity updates
+// Runs every 30 seconds to reduce DB load
+setInterval(async () => {
+    if (deviceActivityBuffer.size === 0) return;
+
+    const updates = Array.from(deviceActivityBuffer.values());
+    deviceActivityBuffer.clear();
+
+    logger.debug(`Processing ${updates.length} buffered device activity updates`);
+
+    try {
+        // Build bulk operations
+        const bulkOps = updates.map(({ userId, deviceId, deviceName, timestamp }) => ({
+            updateOne: {
+                filter: { _id: userId, 'authorizedDevices.deviceId': deviceId },
+                update: {
+                    $set: {
+                        'authorizedDevices.$.lastActive': timestamp,
+                        'authorizedDevices.$.deviceName': deviceName
+                    }
+                },
+                upsert: false
+            }
+        }));
+
+        // Execute bulk write (unordered for performance)
+        if (bulkOps.length > 0) {
+            const result = await User.bulkWrite(bulkOps, { ordered: false });
+            logger.debug(`Device activity bulk update complete: ${result.modifiedCount} modified`);
+
+            // Handle devices that weren't found (need to be added)
+            const notFoundUpdates = updates.filter((update, index) => {
+                return bulkOps[index] && !result.modifiedCount;
+            });
+
+            // Add missing devices
+            for (const { userId, deviceId, deviceName, timestamp } of notFoundUpdates) {
+                await User.findByIdAndUpdate(userId, {
+                    $addToSet: {
+                        authorizedDevices: {
+                            deviceId,
+                            deviceName,
+                            lastActive: timestamp,
+                            jti: '' // Will be set on next login
+                        }
+                    }
+                }).catch(err => logger.error(`Failed to add device: ${err.message}`));
+            }
+        }
+    } catch (err) {
+        logger.error(`Bulk device activity update failed: ${err.message}`);
+        // Re-buffer failed updates for next cycle
+        updates.forEach(update => {
+            const key = `${update.userId}:${update.deviceId}`;
+            deviceActivityBuffer.set(key, update);
+        });
+    }
+}, 30000); // 30 seconds
 
 module.exports = initSocket;
 module.exports.getIO = () => io;

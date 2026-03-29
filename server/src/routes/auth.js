@@ -9,7 +9,7 @@ const validate = require('../middleware/validate');
 const auth = require('../middleware/auth');
 
 // Validation Schemas
-const { registerSchema, loginSchema } = require('../utils/validationSchemas');
+const { registerSchema, loginSchema, revokeSchema } = require('../utils/validationSchemas');
 
 /**
  * @route   POST api/auth/register
@@ -36,16 +36,20 @@ router.post(
 );
 
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const env = require('../config/env');
 const logger = require('../utils/logger');
+const redis = require('../config/redis');
 
 // --- Pairing Logic ---
-const pairingCodes = new Map(); // Store codes in memory (or Redis in production)
+// Fallback in-memory storage if Redis is unavailable
+const pairingCodesMemory = new Map();
 
 // Generate Pairing Code (Authenticated Device)
-router.post('/pairing-code', auth, (req, res) => {
+router.post('/pairing-code', auth, async (req, res) => {
     try {
-        const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+        // SECURITY: Use crypto-secure random instead of Math.random()
+        const code = crypto.randomBytes(3).toString('hex').toUpperCase().substring(0, 6);
         const expiresIn = 60 * 5; // 5 minutes
 
         // Generate a temporary pairing token
@@ -55,10 +59,17 @@ router.post('/pairing-code', auth, (req, res) => {
             { expiresIn }
         );
 
-        pairingCodes.set(code, { userId: req.user.id, token: pairingToken });
+        const pairingData = JSON.stringify({ userId: req.user.id, token: pairingToken });
 
-        // Auto-cleanup
-        setTimeout(() => pairingCodes.delete(code), expiresIn * 1000);
+        // Try Redis first, fallback to memory
+        const stored = await redis.setWithExpiry(`pairing:${code}`, pairingData, expiresIn);
+
+        if (!stored) {
+            // Fallback to in-memory storage
+            logger.warn('Redis unavailable, using in-memory pairing storage');
+            pairingCodesMemory.set(code, { userId: req.user.id, token: pairingToken });
+            setTimeout(() => pairingCodesMemory.delete(code), expiresIn * 1000);
+        }
 
         res.json({ code, pairingToken, expiresIn });
     } catch (err) {
@@ -71,10 +82,18 @@ router.post('/pairing-code', auth, (req, res) => {
 // This strictly verifies existence, actual handshake happens over socket
 router.post(
     '/verify-pairing',
-    (req, res) => {
+    async (req, res) => {
         const { code } = req.body;
-        if (pairingCodes.has(code)) {
-            const { token } = pairingCodes.get(code);
+
+        // Try Redis first
+        const redisData = await redis.get(`pairing:${code}`);
+
+        if (redisData) {
+            const { token } = JSON.parse(redisData);
+            res.json({ valid: true, pairingToken: token });
+        } else if (pairingCodesMemory.has(code)) {
+            // Fallback to in-memory
+            const { token } = pairingCodesMemory.get(code);
             res.json({ valid: true, pairingToken: token });
         } else {
             res.status(400).json({ valid: false, message: 'Invalid or expired code' });
@@ -87,7 +106,7 @@ router.post(
  * @desc    Revoke a device token effectively kicking them
  * @access  Private (Host)
  */
-router.post('/revoke', auth, authController.revokeDevice);
+router.post('/revoke', auth, validate(revokeSchema), authController.revokeDevice);
 
 /**
  * @route   GET api/auth/verify
@@ -99,5 +118,13 @@ router.get(
     auth, // Verify JWT token middleware
     authController.verify // Return user data if token is valid
 );
+
+/**
+ * @route   POST api/auth/refresh
+ * @desc    Refresh access token using refresh token
+ * @access  Public
+ */
+const { refreshToken } = require('../controllers/refreshTokenController');
+router.post('/refresh', refreshToken);
 
 module.exports = router;

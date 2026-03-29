@@ -67,13 +67,14 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
     // Log the initiation of a login request
     logger.debug('Login request received');
-    const { email, password } = req.body; // Destructure email and password from the request body
+    const { email, password, deviceId, deviceName } = req.body; // Destructure email and password from the request body
 
     try {
         // Attempt to log in the user via the authentication service
-        const result = await authService.login(email, password);
+        const result = await authService.login(email, password, deviceId, deviceName);
         // Log successful login
-        logger.info(`User logged in: ${email}`);
+        // CODE-03: Redact PII
+        logger.info(`User logged in: ${email.replace(/(.{2})(.*)(@.*)/, '$1***$3')}`);
         // Send a success response with the authentication token
         responseHandler.success(res, result, 'Login successful');
     } catch (err) {
@@ -129,68 +130,64 @@ exports.verify = (req, res) => {
  * @route POST /api/auth/revoke
  */
 exports.revokeDevice = async (req, res) => {
-    const { jti, deviceId } = req.body;
+    const { deviceId } = req.body;
 
-    if (!jti && !deviceId) {
-        return responseHandler.error(res, 'JTI or DeviceID required', null, 400);
+    if (!deviceId) {
+        return responseHandler.error(res, 'DeviceID required', null, 400);
     }
 
     try {
-        // 1. Blacklist Token (if JTI provided or found via DeviceID mapping if we had one)
-        // Since we don't strictly map DeviceID -> JTI in DB yet (unless we added it to User model),
-        // we assume the client sends the JTI to revoke OR we trust the disconnect logic.
-        // For strict security, we should store JTI in the AuthorizedDevices list in User model.
-        // For now, we'll assume JTI is passed or we just kill the socket.
+        const user = req.currentUser;
+        let deviceFound = false;
 
-        if (jti) {
-            await RevokedToken.create({
-                jti,
-                expireAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // Default 24h
-            });
-            logger.info(`Token revoked: ${jti}`);
-        }
+        // 1. Check in Authorized Devices (DB)
+        const deviceIndex = user.authorizedDevices.findIndex(d => d.deviceId === deviceId);
 
-        // 2. Disconnect Socket
-        if (deviceId) {
-            const io = getIO();
-            // Find socket by deviceId
-            // We need a way to map DeviceID -> SocketID. 
-            // Our socket.js stores this in room, or we can iterate.
-            // Since we don't have a global map exposed easily, we might need to rely on the room.
-            const roomId = req.currentUser._id.toString();
-            // Need to import jwt to decode the token from socket
-            const jwt = require('jsonwebtoken');
-            const sockets = await io.in(roomId).fetchSockets();
+        if (deviceIndex !== -1) {
+            deviceFound = true;
+            const device = user.authorizedDevices[deviceIndex];
+            const jti = device.jti;
 
-            logger.info(`[Revoke Debug] Searching room: ${roomId}, Found sockets: ${sockets.length}`);
-
-            for (const socket of sockets) {
-                const sDeviceId = socket.deviceInfo ? socket.deviceInfo.deviceId : 'UNDEFINED';
-                logger.info(`[Revoke Debug] Checking Socket ${socket.id}, DeviceID: ${sDeviceId} vs Target: ${deviceId}`);
-
-                if (socket.deviceInfo && socket.deviceInfo.deviceId === deviceId) {
-
-                    // Allow extracting token from socket handshake to blacklist it
-                    const token = socket.handshake.auth.token || socket.handshake.query.token;
-                    if (token) {
-                        try {
-                            const decoded = jwt.decode(token);
-                            if (decoded && decoded.jti) {
-                                await RevokedToken.create({
-                                    jti: decoded.jti,
-                                    expireAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
-                                });
-                                logger.info(`[Implicit Revocation] JTI blacklisted from socket: ${decoded.jti}`);
-                            }
-                        } catch (e) {
-                            logger.error(`Failed to extract/revoke JTI from socket: ${e.message}`);
-                        }
-                    }
-                    socket.emit('force-logout'); // Notify client to clear session immediately
-                    socket.disconnect(true);
-                    logger.info(`Socket disconnected for revoked device: ${deviceId}`);
+            // Blacklist Token
+            if (jti) {
+                const exists = await RevokedToken.exists({ jti });
+                if (!exists) {
+                    await RevokedToken.create({
+                        jti,
+                        expireAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24h
+                    });
+                    logger.info(`Token revoked for device ${deviceId} (JTI: ${jti})`);
                 }
             }
+
+            // Remove from authorizedDevices list
+            user.authorizedDevices.splice(deviceIndex, 1);
+            await user.save();
+        }
+
+        // 2. Disconnect Socket (if Online)
+        // This handles both registered devices and Guests
+        const io = getIO();
+        const roomId = user._id.toString();
+        const sockets = await io.in(roomId).fetchSockets();
+
+        let socketFound = false;
+        for (const socket of sockets) {
+            if (socket.data.deviceInfo && socket.data.deviceInfo.deviceId === deviceId) {
+                socketFound = true;
+                deviceFound = true; // Mark as found if we found a socket
+                socket.emit('force-logout');
+                logger.info(`Socket emitting force-logout for device: ${deviceId}`);
+
+                setTimeout(() => {
+                    socket.disconnect(true);
+                    logger.info(`Socket disconnected for revoked device: ${deviceId}`);
+                }, 500);
+            }
+        }
+
+        if (!deviceFound) {
+            return responseHandler.error(res, 'Device not found', null, 404);
         }
 
         responseHandler.success(res, null, 'Device revoked successfully');

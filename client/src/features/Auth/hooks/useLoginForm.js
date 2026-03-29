@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../../utils/api';
 import { useAuth } from '../../../context/AuthContext';
 import { useAuthForm } from '../../../hooks/useAuthForm';
+import { getDeviceId, getDeviceName } from '../../../utils/deviceUtils';
 
 /**
  * Custom hook for Login Form logic
@@ -31,7 +32,9 @@ export const useLoginForm = () => {
 
         setIsLoading(true);
         try {
-            const res = await api.post('/auth/login', formData);
+            const deviceId = getDeviceId();
+            const deviceName = getDeviceName({ email: formData.email });
+            const res = await api.post('/auth/login', { ...formData, deviceId, deviceName });
             login(res.data.data.token, res.data.data.roomId, res.data.data.isAdmin);
             toast.success('Logged in successfully!');
             navigate('/dashboard');

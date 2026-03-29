@@ -72,7 +72,15 @@ const optional = async (req, res, next) => {
         }
         next();
     } catch (err) {
-        // invalid token, just proceed as guest
+        // SECURITY: Log suspicious token attempts for monitoring
+        if (err.name === 'JsonWebTokenError') {
+            logger.warn(`Invalid token in optional auth: ${err.message}`);
+        } else if (err.name === 'TokenExpiredError') {
+            logger.debug(`Expired token in optional auth`);
+        } else {
+            logger.error(`Unexpected error in optional auth: ${err.message}`);
+        }
+        // Proceed without user context
         next();
     }
 };

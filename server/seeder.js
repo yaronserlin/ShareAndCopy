@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const { Readable } = require('stream');
+
 const path = require('path');
 
 // Load env vars
@@ -26,9 +26,6 @@ const connectDB = async () => {
 
 const seedData = async () => {
     const conn = await connectDB();
-    const gfsBucket = new mongoose.mongo.GridFSBucket(conn.connection.db, {
-        bucketName: 'uploads'
-    });
 
     try {
         // 1. WIPE DATABASE
@@ -39,13 +36,6 @@ const seedData = async () => {
         // Wipe Daily Stats
         await DailyStat.deleteMany({});
         console.log('Daily Stats deleted');
-
-        // Wipe GridFS
-        const files = await gfsBucket.find().toArray();
-        for (const file of files) {
-            await gfsBucket.delete(file._id);
-        }
-        console.log('GridFS files deleted');
 
         // 2. SEED USERS
         console.log('--- Seeding Users ---');
@@ -74,7 +64,8 @@ const seedData = async () => {
                 devices.push({
                     deviceId: crypto.randomUUID(),
                     deviceName: `Device ${d + 1}`,
-                    lastActive: new Date(Date.now() - Math.floor(Math.random() * 1000000000))
+                    lastActive: new Date(Date.now() - Math.floor(Math.random() * 1000000000)),
+                    jti: crypto.randomUUID() // Added JTI
                 });
             }
 
@@ -95,47 +86,7 @@ const seedData = async () => {
             console.log(`Created user: ${config.email} (Room: ${roomId})`);
         }
 
-        // 3. SEED FILES (GridFS Only)
-        console.log('--- Seeding Files (GridFS Only) ---');
-        for (const user of users) {
-            // Only seed files for non-admin or random users if desired, sticking to current logic:
-            const fileCount = 3; // 3 files per user
-            for (let i = 1; i <= fileCount; i++) {
-                const content = `This is a test file number ${i} for user ${user.email}. Content: ${crypto.randomBytes(64).toString('hex')}`;
-                const filename = `test_file_${i}.txt`;
-
-                // Create readable stream from string
-                const readableStream = new Readable();
-                readableStream.push(content);
-                readableStream.push(null);
-
-                // Upload to GridFS
-                const uploadStream = gfsBucket.openUploadStream(filename, {
-                    metadata: {
-                        contentType: 'text/plain',
-                        owner: user._id // Keeping owner in GridFS metadata
-                    }
-                });
-
-                readableStream.pipe(uploadStream);
-
-                // Wait for upload to finish to get the file info
-                await new Promise((resolve, reject) => {
-                    uploadStream.on('finish', resolve);
-                    uploadStream.on('error', reject);
-                });
-
-                // const fileId = uploadStream.id; 
-                const fileSize = uploadStream.length || content.length;
-
-                // Update User storage usage
-                user.usedStorage += fileSize;
-            }
-            await user.save();
-            console.log(`Seeded ${fileCount} files for ${user.email}`);
-        }
-
-        // 4. SEED DAILY STATS
+        // 3. SEED DAILY STATS
         console.log('--- Seeding Daily Stats ---');
         const today = new Date();
         for (let i = 13; i >= 0; i--) {

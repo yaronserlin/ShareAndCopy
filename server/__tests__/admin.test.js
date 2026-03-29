@@ -69,7 +69,7 @@ describe('Admin Routes', () => {
                 .set('x-auth-token', adminToken);
 
             expect(res.statusCode).toBe(200);
-            expect(res.body.data).toHaveProperty('devices');
+            expect(res.body.data).toHaveProperty('guests');
             expect(res.body.data).toHaveProperty('users');
         });
 

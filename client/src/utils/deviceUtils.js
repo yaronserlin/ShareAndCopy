@@ -18,3 +18,21 @@ export const getFriendlyDeviceName = (username) => {
 
     return `${deviceType} · ${navigator.platform}`;
 };
+
+export const getDeviceId = () => {
+    let deviceId = localStorage.getItem('device_id');
+    if (!deviceId) {
+        deviceId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        localStorage.setItem('device_id', deviceId);
+    }
+    return deviceId;
+};
+
+export const getDeviceName = (user) => {
+    const storedName = localStorage.getItem('device_name');
+    if (storedName) return storedName;
+
+    // If we have a user, try to generate a friendly name
+    const username = user?.firstName || user?.email?.split('@')[0];
+    return getFriendlyDeviceName(username);
+};

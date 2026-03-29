@@ -38,6 +38,9 @@ module.exports = {
     // Secret key for JWT signing
     JWT_SECRET: process.env.JWT_SECRET,
 
+    // Secret key for refresh token signing
+    JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
+
     // Rate limiting: window size in milliseconds (default: 1 minute)
     RATE_LIMIT_WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 60000,
 

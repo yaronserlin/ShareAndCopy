@@ -9,7 +9,7 @@ import DeviceCard from './DeviceCard';
 
 const Dashboard = () => {
     const { user } = useAuth();
-    const { onlineDevices, transferProgress, transferStats, sendFile, pendingTransfers, acceptTransfer, rejectTransfer } = useP2P();
+    const { onlineDevices, transferProgress, transferStats, sendFile, pendingTransfers, acceptTransfer, rejectTransfer, removeDevice } = useP2P();
     const [selectedFiles, setSelectedFiles] = useState({}); // { deviceId: File }
     const [showPairingModal, setShowPairingModal] = useState(false);
 
@@ -32,13 +32,17 @@ const Dashboard = () => {
         if (!window.confirm('Are you sure you want to revoke this device? It will be disconnected immediately.')) return;
 
         try {
+            // Optimistic UI Update: Remove immediately
+            removeDevice(deviceId);
+
             await axios.post(`${API_BASE_URL}/auth/revoke`, { deviceId }, {
                 headers: { 'x-auth-token': localStorage.getItem('token') }
             });
-            // UI update will happen automatically via socket 'device-offline' event
+            // Socket 'device-offline' event will confirm (redundant but safe)
         } catch (err) {
             console.error('Revocation failed', err);
             alert('Failed to revoke device');
+            // Re-fetch list if failed? For now, we assume success or page refresh.
         }
     };
 

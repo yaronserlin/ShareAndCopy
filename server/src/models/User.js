@@ -24,6 +24,16 @@ const UserSchema = new mongoose.Schema({
         lastActive: {
             type: Date,
             default: Date.now
+        },
+        jti: {
+            type: String,
+            required: true,
+            validate: {
+                validator: function (v) {
+                    return v && v.length > 0;
+                },
+                message: 'JTI cannot be empty'
+            }
         }
     }],
     email: {
@@ -77,5 +87,10 @@ const UserSchema = new mongoose.Schema({
 }, {
     timestamps: true // Adds createdAt and updatedAt
 });
+
+// PERFORMANCE: Add indexes for frequently queried fields
+// Note: roomId and email already have unique indexes from schema definition
+UserSchema.index({ 'authorizedDevices.jti': 1 }); // Fast revocation checks
+UserSchema.index({ 'authorizedDevices.deviceId': 1 }); // Fast device lookups
 
 module.exports = mongoose.model('User', UserSchema);

@@ -1,4 +1,11 @@
 {
+  "scripts": {
+    "test": "jest",
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "electron:dev": "electron .",
+    "seed": "node server/seeder.js"
+  },
   "dependencies": {
     "docker": "^1.0.0"
   }

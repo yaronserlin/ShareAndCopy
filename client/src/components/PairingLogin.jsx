@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button, Form, Alert, Spinner } from 'react-bootstrap';
-import io from 'socket.io-client'; // Direct import
-import axios from 'axios'; // Axios
+import io from 'socket.io-client';
+import axios from 'axios';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { SERVER_URL } from '../config'; // Ensure this matches context
+import { SERVER_URL, API_BASE_URL } from '../config';
 import { getFriendlyDeviceName } from '../utils/deviceUtils';
 
 const PairingLogin = ({ onCancel }) => {
@@ -67,7 +67,7 @@ const PairingLogin = ({ onCancel }) => {
 
         try {
             // 1. Verify Code & Get Pairing Token via HTTP
-            const res = await axios.post('/api/auth/verify-pairing', { code: code.toUpperCase() });
+            const res = await axios.post(`${API_BASE_URL}/auth/verify-pairing`, { code: code.toUpperCase() });
 
             if (!res.data.valid || !res.data.pairingToken) {
                 throw new Error('Invalid code');
@@ -105,14 +105,16 @@ const PairingLogin = ({ onCancel }) => {
 
             socket.on('pairing-success', ({ token, user }) => {
                 console.log('Pairing Successful! Token received.', user);
-                localStorage.setItem('token', token);
-                // localStorage.setItem('user', JSON.stringify(user)); // Optional if context fetches it
-
-                // Disconnect temp socket
+                login(token, user.roomId, false);
                 socket.disconnect();
+                navigate('/dashboard');
+            });
 
-                // Reload to allow main app to initialize with new token
-                window.location.href = '/dashboard';
+            socket.on('pairing-error', (payload) => {
+                console.error('Pairing Error:', payload);
+                setError(payload?.message || 'Pairing failed.');
+                setStatus('input');
+                socket.disconnect();
             });
 
             setTempSocket(socket);
