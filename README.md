@@ -40,5 +40,29 @@ For detailed instructions on configuration, environment variables, and deploymen
 *   [Server Documentation](./server/README.md)
 *   [Client Documentation](./client/README.md)
 
+## Render Deployment
+
+This app can be deployed on Render with two services:
+
+1. **Server**: a Docker web service using `server/Dockerfile`.
+2. **Client**: a static site or Docker service using the `client` directory.
+
+### Required environment variables for the backend
+
+* `MONGO_URI`
+* `JWT_SECRET`
+* `JWT_REFRESH_SECRET`
+* `PUBLIC_URL` (set to the client URL, e.g. `https://your-client.onrender.com`)
+* `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` (optional; Redis fallback is used if unset)
+
+### Client build variables
+
+* `VITE_SERVER_URL` should point to your Render backend URL, e.g. `https://your-server.onrender.com`
+
+### Recommended Render service configuration
+
+* Server: Docker service with `server/Dockerfile`
+* Client: Static site service with root directory `client`, build command `npm install && npm run build`, and publish directory `dist`
+
 ## License
 ISC
