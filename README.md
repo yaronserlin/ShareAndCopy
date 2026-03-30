@@ -1,81 +1,16 @@
-# ShareAndCopy
-
-ShareAndCopy is a secure file-sharing platform built with React, Bootstrap, Node.js, Express, MongoDB, Redis, and Socket.IO.
-
-## Overview
-
-The application is split into two deployable modules:
-
-* **Client** — React + Vite frontend with Bootstrap styling.
-* **Server** — Express backend with REST APIs, Socket.IO, and MongoDB persistence.
-
-## Local development
-
-1. Install dependencies for both modules:
-
-```bash
-cd client && npm install
+ShareAndCopy 🚀ShareAndCopy is a secure, real-time file-sharing platform designed for seamless data transfer. Built with a modern JavaScript stack, it leverages the power of WebSockets for instant communication and Redis for high-performance data handling.✨ FeaturesSecure File Sharing: Fast and reliable file transfers.Real-Time Communication: Powered by Socket.IO for instant system updates and messaging.Secure Authentication: JWT-based user authentication and refresh tokens.Robust Persistence: MongoDB integration for reliable data storage.High Performance: Redis caching integration to ensure rapid data access and session management.Responsive UI: Clean and intuitive interface built with React and Bootstrap.🛠 Tech StackClient:ReactViteBootstrapServer:Node.jsExpressMongoDBRedisSocket.IO📋 PrerequisitesBefore you begin, ensure you have met the following requirements:Node.js installed on your local machine.MongoDB instance running (local or cloud).Redis server running (optional, but recommended for full functionality).🚀 Local DevelopmentClone the repository (if you haven't already):git clone [https://github.com/yaronserlin/ShareAndCopy.git](https://github.com/yaronserlin/ShareAndCopy.git)
+cd ShareAndCopy
+Install dependencies for both the client and server modules:cd client && npm install
 cd ../server && npm install
-```
-
-2. Start the application from the repository root:
-
-```bash
-npm start
-```
-
-This runs `startup.sh --localnet`, starting the backend and frontend together.
-
-## Available start modes
-
-* `npm start` or `bash ./startup.sh --localnet` — start both services on the local network.
-* `bash ./startup.sh --local` — start both services locally.
-* `bash ./startup.sh --net` — start with a Cloudflare tunnel when `cloudflared` is installed.
-
-## Deployment
-
-### Client
-
-Build the frontend for production:
-
-```bash
-cd client
+Start the application from the repository root:npm start
+Note: This executes startup.sh --localnet, starting the backend and frontend together.Available Start ModesUse the included orchestration script to run the app in different network configurations:npm start or bash ./startup.sh --localnet — Start both services on the local network.bash ./startup.sh --local — Start both services locally (localhost only).bash ./startup.sh --net — Start with a Cloudflare tunnel (requires cloudflared to be installed).⚙️ Environment VariablesTo run this project securely, you will need to set up your environment variables in both modules.Backend (Server)Create a .env file in the server/ directory:PORT — Server port (default: 5001)MONGO_URI — MongoDB connection stringJWT_SECRET — Secret key for signing JSON Web TokensJWT_REFRESH_SECRET — Secret key for refresh tokensPUBLIC_URL — Public client URL for CORS and app linksREDIS_HOST — Redis host (optional)REDIS_PORT — Redis port (optional)REDIS_PASSWORD — Redis password (optional)Frontend (Client)Create a .env file in the client/ directory:VITE_SERVER_URL — Base URL of the backend API and Socket server📦 DeploymentClient BuildTo build the frontend for production:cd client
 npm run build
-```
-
-The build output is published to `client/dist`.
-
-### Server
-
-Prepare the backend for production:
-
-```bash
-cd server
+The optimized build output will be located in the client/dist directory.Server SetupPrepare the backend for production:cd server
 npm install
 npm start
-```
-
-### Environment variables
-
-Required backend variables:
-
-* `PORT` — server port, default `5001`
-* `MONGO_URI` — MongoDB connection string
-* `JWT_SECRET` — JWT signing secret
-* `JWT_REFRESH_SECRET` — refresh token secret
-* `PUBLIC_URL` — public client URL for CORS and app links
-* `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` — optional Redis connection
-
-Required frontend variables:
-
-* `VITE_SERVER_URL` — server base URL used by the client
-
-## Project structure
-
-* `client/` — frontend React application
-* `server/` — backend API and socket service
-* `startup.sh` — development orchestration script
-
-## Notes
-
-The repository now uses a clean root package entrypoint and no unnecessary root dependencies. All React and Node source files were cleaned of stale comments and are annotated with new file-level preview headers.
+📁 Project StructureShareAndCopy/
+├── client/          # Frontend React application (Vite + Bootstrap)
+├── server/          # Backend API and Socket.IO service (Express + MongoDB)
+├── startup.sh       # Shell script for development orchestration
+└── package.json     # Root package configuration
+👨‍💻 AuthorYaron SerlinGitHub: @yaronserlinThis repository has been structured with a clean root package entrypoint. All source files contain file-level preview headers and are free of stale comments for maximum readability.
