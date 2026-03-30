@@ -1,14 +1,15 @@
+/**
+ * Preview: client/src/components/Navbar/Navbar.jsx
+ * Description: Frontend application module.
+ */
+
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import logo from '../../assets/logo_v2.svg';
 import { useAuth } from '../../context/AuthContext';
 import styles from './Navbar.module.css';
 
-/**
- * Navbar Component
- * Navigation bar for the application.
- * @returns {JSX.Element} Rendered component
- */
+
 const Navbar = () => {
     const navigate = useNavigate();
     const { user, token, roomId, logout } = useAuth();

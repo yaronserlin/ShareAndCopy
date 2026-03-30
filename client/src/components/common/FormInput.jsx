@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/components/common/FormInput.jsx
+ * Description: Frontend application module.
+ */
+
 import React from 'react';
 import PropTypes from 'prop-types';
 import styles from '../../features/Auth/styles/AuthShared.module.css';

@@ -1,22 +1,17 @@
+/**
+ * Preview: client/src/features/Auth/components/AuthLayout/AuthLayout.jsx
+ * Description: Frontend application module.
+ */
+
 import React from 'react';
 import PropTypes from 'prop-types';
 import styles from './AuthLayout.module.css';
 
-/**
- * Auth Layout Component
- * Layout wrapper for authentication pages.
- * @param {Object} props - Component props
- * @param {React.ReactNode} props.children - Child components
- * @param {string} props.title - Page title
- * @param {string} props.subtitle - Page subtitle
- * @param {Function} [props.onSwitchMode] - Handler to switch auth mode
- * @param {string} [props.switchText] - Text for switch button
- * @returns {JSX.Element} Rendered component
- */
+
 const AuthLayout = ({ children, title, subtitle, onSwitchMode, switchText }) => {
     return (
         <div className="d-flex justify-content-center align-items-center flex-grow-1 position-relative overflow-hidden">
-            {/* Background Decorations */}
+            {}
 
 
             <div className={`position-relative z-1 w-100 p-4 glass-panel rounded-4 m-3 ${styles.authCard}`}>

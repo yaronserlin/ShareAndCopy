@@ -1,13 +1,16 @@
+/**
+ * Preview: server/__tests__/testDb.js
+ * Description: Node.js backend utility file.
+ */
+
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 
 let mongoServer;
 
-/**
- * Connect to the in-memory database.
- */
+
 exports.connect = async () => {
-    // Prevent MongooseError: Can't call `openUri()` on an active connection with different connection strings
+    
     await mongoose.disconnect();
 
     mongoServer = await MongoMemoryServer.create();
@@ -16,9 +19,7 @@ exports.connect = async () => {
     return mongoose.connection;
 };
 
-/**
- * Close the connection and stop the in-memory database.
- */
+
 exports.close = async () => {
     await mongoose.disconnect();
     if (mongoServer) {
@@ -26,9 +27,7 @@ exports.close = async () => {
     }
 };
 
-/**
- * Clear all data in the database.
- */
+
 exports.clear = async () => {
     const collections = mongoose.connection.collections;
     for (const key in collections) {
@@ -37,7 +36,7 @@ exports.clear = async () => {
     }
 };
 
-// Dummy test to satisfy Jest
+
 if (global.test) {
     test('Database helper loaded', () => {
         expect(true).toBe(true);

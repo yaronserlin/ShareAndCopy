@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/utils/api.js
+ * Description: Frontend application module.
+ */
+
 import axios from 'axios';
 import API_BASE_URL from '../config';
 
@@ -8,7 +13,7 @@ const api = axios.create({
     }
 });
 
-// Request Interceptor: Attach Token
+
 api.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -19,16 +24,16 @@ api.interceptors.request.use((config) => {
     return Promise.reject(error);
 });
 
-// Response Interceptor: Handle Global Errors (Optional)
+
 api.interceptors.response.use((response) => {
     return response;
 }, (error) => {
-    // Handle Rate Limiting (429)
+    
     if (error.response && error.response.status === 429) {
         window.dispatchEvent(new Event('rate-limit-exceeded'));
     }
 
-    // We can handle 401s here specifically if needed (e.g. redirect to login)
+    
     return Promise.reject(error);
 });
 

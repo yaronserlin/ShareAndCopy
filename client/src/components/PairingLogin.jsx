@@ -1,3 +1,7 @@
+/**
+ * Preview: client/src/components/PairingLogin.jsx
+ * Description: Frontend application module.
+ */
 
 import React, { useState, useEffect } from 'react';
 import { Button, Form, Alert, Spinner } from 'react-bootstrap';
@@ -9,51 +13,51 @@ import { SERVER_URL, API_BASE_URL } from '../config';
 import { getFriendlyDeviceName } from '../utils/deviceUtils';
 
 const PairingLogin = ({ onCancel }) => {
-    // const socket = useSocket(); // DON'T use global socket here initially, as it lacks token
+    
     const [tempSocket, setTempSocket] = useState(null);
     const navigate = useNavigate();
-    const { login } = useAuth(); // We might need a way to set token manually
+    const { login } = useAuth(); 
 
-    // Manual Input State
+    
     const [code, setCode] = useState('');
-    const [status, setStatus] = useState('input'); // input, connecting, waiting, success, error
+    const [status, setStatus] = useState('input'); 
     const [error, setError] = useState(null);
     const location = useLocation();
 
-    // Check for auto-code in URL
+    
     useEffect(() => {
         const params = new URLSearchParams(location.search);
         const urlCode = params.get('pairingCode');
 
         if (urlCode && status === 'input') {
             setCode(urlCode);
-            // Auto-submit after a brief delay to ensure socket is ready?
-            // checking socket might be better, but let's try immediate or small timeout
-            // For safety, we can just pre-fill. If we want auto-submit, we need 'handlePairingRequest' to be callable here.
+            
+            
+            
 
-            // Let's just pre-fill for now and let user click "Request" to be explicitly sure?
-            // User said "scan it, it not add", implying they want it to just work.
-            // Let's try auto-submitting if socket is ready.
+            
+            
+            
         }
     }, [location]);
 
-    // Cleanup temp socket
+    
     useEffect(() => {
         return () => {
             if (tempSocket) tempSocket.disconnect();
         };
     }, [tempSocket]);
 
-    // Auto-submit effect
+    
     useEffect(() => {
         if (code && code.length === 6 && status === 'input') {
             const params = new URLSearchParams(location.search);
             if (params.get('pairingCode') === code) {
-                // Trigger auto-submit logic
+                
                 handlePairingRequest(new Event('submit'));
             }
         }
-    }, [code]); // Removed socket dependency
+    }, [code]); 
 
     const handlePairingRequest = async (e) => {
         e.preventDefault();
@@ -66,7 +70,7 @@ const PairingLogin = ({ onCancel }) => {
         setError(null);
 
         try {
-            // 1. Verify Code & Get Pairing Token via HTTP
+            
             const res = await axios.post(`${API_BASE_URL}/auth/verify-pairing`, { code: code.toUpperCase() });
 
             if (!res.data.valid || !res.data.pairingToken) {
@@ -75,7 +79,7 @@ const PairingLogin = ({ onCancel }) => {
 
             const pairingToken = res.data.pairingToken;
 
-            // 2. Connect to Socket with Pairing Token
+            
             const socket = io(SERVER_URL, {
                 auth: { token: pairingToken }
             });
@@ -88,7 +92,7 @@ const PairingLogin = ({ onCancel }) => {
             });
 
             socket.on('connect', () => {
-                // 3. Request Pairing
+                
                 const deviceInfo = {
                     deviceName: getFriendlyDeviceName(),
                     model: navigator.userAgent,

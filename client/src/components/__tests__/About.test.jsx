@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/components/__tests__/About.test.jsx
+ * Description: Test suite for ShareAndCopy functionality.
+ */
+
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import About from '../About/About';

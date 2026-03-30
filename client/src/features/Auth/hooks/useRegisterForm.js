@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/features/Auth/hooks/useRegisterForm.js
+ * Description: Frontend application module.
+ */
+
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -5,10 +10,7 @@ import api from '../../../utils/api';
 import { useAuth } from '../../../context/AuthContext';
 import { useAuthForm } from '../../../hooks/useAuthForm';
 
-/**
- * Custom hook for Register Form logic
- * @returns {Object} Register form handlers and state
- */
+
 export const useRegisterForm = () => {
     const navigate = useNavigate();
     const { login } = useAuth();
@@ -38,7 +40,7 @@ export const useRegisterForm = () => {
 
         setIsLoading(true);
         try {
-            // Drop confirmPassword from payload
+            
             const payload = { ...formData };
             delete payload.confirmPassword;
 

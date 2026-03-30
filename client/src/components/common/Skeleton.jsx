@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/components/common/Skeleton.jsx
+ * Description: Frontend application module.
+ */
+
 import React from 'react';
 import './Skeleton.css';
 

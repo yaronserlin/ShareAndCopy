@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/components/DevicePairing.jsx
+ * Description: Frontend application module.
+ */
+
 import React, { useState, useEffect } from 'react';
 import QRCode from 'react-qr-code';
 import axios from 'axios';
@@ -7,12 +12,12 @@ import { Modal, Button, Spinner, Alert } from 'react-bootstrap';
 
 const DevicePairing = ({ show, onHide }) => {
     const socket = useSocket();
-    const [step, setStep] = useState('loading'); // loading, show-qr, success, error
+    const [step, setStep] = useState('loading'); 
     const [pairingCode, setPairingCode] = useState(null);
     const [requestedDevice, setRequestedDevice] = useState(null);
     const [error, setError] = useState(null);
 
-    // Reset state on open
+    
     useEffect(() => {
         if (show) {
             setStep('loading');
@@ -20,12 +25,12 @@ const DevicePairing = ({ show, onHide }) => {
             setRequestedDevice(null);
             generatePairingCode();
         } else {
-            // Cleanup room logic if needed? 
-            // The code expires on server, but we could emit 'leave-pairing' if implemented
+            
+            
         }
     }, [show]);
 
-    // Listen for socket events
+    
     useEffect(() => {
         if (!socket || !pairingCode) return;
 
@@ -52,7 +57,7 @@ const DevicePairing = ({ show, onHide }) => {
             setPairingCode(res.data.code);
             setStep('show-qr');
 
-            // Join the pairing room
+            
             if (socket) {
                 socket.emit('join-pairing', res.data.code);
             }
@@ -72,7 +77,7 @@ const DevicePairing = ({ show, onHide }) => {
         });
 
         setStep('success');
-        setTimeout(onHide, 2000); // Close after 2s
+        setTimeout(onHide, 2000); 
     };
 
     return (

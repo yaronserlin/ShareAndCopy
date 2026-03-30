@@ -1,9 +1,14 @@
+/**
+ * Preview: client/src/components/__tests__/Home.test.jsx
+ * Description: Test suite for ShareAndCopy functionality.
+ */
+
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import Home from '../Home';
 import { AuthProvider } from '../../context/AuthContext';
 
-// Mock AuthContext
+
 vi.mock('../../context/AuthContext', () => ({
     useAuth: () => ({
         token: null,

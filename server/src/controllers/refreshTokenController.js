@@ -1,9 +1,12 @@
+/**
+ * Preview: server/src/controllers/refreshTokenController.js
+ * Description: Server controller handling requests.
+ */
+
 const { refreshAccessToken } = require('../services/refreshTokenService');
 const logger = require('../utils/logger');
 
-/**
- * Refresh access token
- */
+
 exports.refreshToken = async (req, res) => {
     try {
         const { refreshToken } = req.body;

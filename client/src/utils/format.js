@@ -1,9 +1,8 @@
 /**
- * Format bytes to human readable string
- * @param {number} bytes - The number of bytes
- * @param {number} decimals - Number of decimal places
- * @returns {string} Formatted string (e.g. "1.5 MB")
+ * Preview: client/src/utils/format.js
+ * Description: Frontend application module.
  */
+
 export const formatBytes = (bytes, decimals = 2) => {
     if (!+bytes) return '0 Bytes';
     const k = 1024;

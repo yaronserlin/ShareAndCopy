@@ -1,11 +1,12 @@
+/**
+ * Preview: server/src/middleware/validate.js
+ * Description: Express middleware module.
+ */
+
 const Joi = require('joi');
 const responseHandler = require('../utils/responseHandler');
 
-/**
- * Middleware to validate request data against a Joi schema
- * @param {Object} schema - Joi schema object
- * @param {string} property - Request property to validate (body, query, params)
- */
+
 const validate = (schema, property = 'body') => {
     return (req, res, next) => {
         const { error } = schema.validate(req[property], { abortEarly: false });

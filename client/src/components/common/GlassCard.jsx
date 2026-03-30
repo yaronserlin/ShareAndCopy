@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/components/common/GlassCard.jsx
+ * Description: Frontend application module.
+ */
+
 import React from 'react';
 
 const GlassCard = ({ children, className = '', style = {} }) => {

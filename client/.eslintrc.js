@@ -1,3 +1,8 @@
+/**
+ * Preview: client/.eslintrc.js
+ * Description: Frontend application module.
+ */
+
 # ESLint Configuration
 
 module.exports = {
@@ -19,7 +24,7 @@ module.exports = {
         }
     },
     rules: {
-        // CODE-06: Enforce single quote style
+        
         'quotes': ['error', 'single', { avoidEscape: true, allowTemplateLiterals: true }],
         'semi': ['error', 'always'],
         'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',

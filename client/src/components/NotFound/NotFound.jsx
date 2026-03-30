@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/components/NotFound/NotFound.jsx
+ * Description: Frontend application module.
+ */
+
 import React from 'react';
 import PropTypes from 'prop-types';
 import { useLocation } from 'react-router-dom';
@@ -6,14 +11,7 @@ import GlassCard from '../common/GlassCard';
 import GradientButton from '../common/GradientButton';
 import styles from './NotFound.module.css';
 
-/**
- * Not Found Page Component
- * Displays a 404 error message.
- * @param {Object} props - Component props
- * @param {string} [props.title] - Optional title override
- * @param {string} [props.message] - Optional message override
- * @returns {JSX.Element} Rendered component
- */
+
 const NotFound = ({ title: propTitle, message: propMessage }) => {
     const location = useLocation();
     const { title, message } = location.state || {};

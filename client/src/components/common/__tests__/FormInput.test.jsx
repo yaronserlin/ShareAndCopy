@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/components/common/__tests__/FormInput.test.jsx
+ * Description: Test suite for ShareAndCopy functionality.
+ */
+
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { vi } from 'vitest';

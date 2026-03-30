@@ -1,9 +1,14 @@
+/**
+ * Preview: client/src/components/__tests__/Navbar.test.jsx
+ * Description: Test suite for ShareAndCopy functionality.
+ */
+
 import { render, screen, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import Navbar from '../Navbar';
 import { AuthProvider } from '../../context/AuthContext';
 
-// Mock AuthContext
+
 const mockLogout = vi.fn();
 const mockAuth = {
     user: null,

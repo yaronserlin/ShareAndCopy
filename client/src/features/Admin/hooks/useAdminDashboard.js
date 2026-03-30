@@ -1,11 +1,13 @@
+/**
+ * Preview: client/src/features/Admin/hooks/useAdminDashboard.js
+ * Description: Frontend application module.
+ */
+
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import api from '../../../utils/api';
 
-/**
- * Custom hook for Admin Dashboard logic
- * @returns {Object} { stats, loading, handleRoomClick }
- */
+
 export const useAdminDashboard = () => {
     const [stats, setStats] = useState({ users: 0, devices: 0, topUsers: [] });
     const [loading, setLoading] = useState(true);

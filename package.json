@@ -1,12 +1,9 @@
 {
+  "private": true,
   "scripts": {
-    "test": "jest",
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
-    "electron:dev": "electron .",
-    "seed": "node server/seeder.js"
-  },
-  "dependencies": {
-    "docker": "^1.0.0"
+    "start": "bash ./startup.sh --localnet",
+    "local": "bash ./startup.sh --local",
+    "localnet": "bash ./startup.sh --localnet",
+    "net": "bash ./startup.sh --net"
   }
 }

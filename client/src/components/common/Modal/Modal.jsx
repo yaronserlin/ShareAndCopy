@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/components/common/Modal/Modal.jsx
+ * Description: Frontend application module.
+ */
+
 import React from 'react';
 import ReactDOM from 'react-dom';
 import styles from './Modal.module.css';

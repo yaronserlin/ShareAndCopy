@@ -1,24 +1,25 @@
+/**
+ * Preview: client/src/features/Admin/components/AdminSkeleton/AdminDashboardSkeleton.jsx
+ * Description: Frontend application module.
+ */
+
 import React from 'react';
 import Skeleton from '../../../../components/common/Skeleton';
 import BackgroundDecorations from '../../../../components/common/BackgroundDecorations';
 
-/**
- * Admin Dashboard Skeleton Component
- * Loading state for the admin dashboard.
- * @returns {JSX.Element} Rendered component
- */
+
 const AdminDashboardSkeleton = () => {
     return (
         <div className="container mt-4 pt-5" style={{ position: 'relative', zIndex: 0, paddingBottom: '5rem', minHeight: '100vh' }}>
             <BackgroundDecorations />
 
-            {/* Header Skeleton */}
+            {}
             <div className="mb-5 mt-4">
                 <Skeleton width="40%" height="48px" className="mb-2 rounded-3" />
                 <Skeleton width="25%" height="20px" className="rounded-3 opacity-50" />
             </div>
 
-            {/* Cards Skeleton */}
+            {}
             <div className="row g-4 mb-5">
                 {[1, 2, 3].map(i => (
                     <div key={i} className="col-md-4">
@@ -33,7 +34,7 @@ const AdminDashboardSkeleton = () => {
                 ))}
             </div>
 
-            {/* Table Skeleton */}
+            {}
             <div className="card border-0 shadow-sm rounded-4 overflow-hidden" style={{ background: 'rgba(255, 255, 255, 0.05)', backdropFilter: 'blur(10px)' }}>
                 <div className="p-4 border-bottom border-white border-opacity-10 d-flex justify-content-between align-items-center">
                     <Skeleton width="200px" height="28px" />

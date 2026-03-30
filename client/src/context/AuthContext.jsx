@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/context/AuthContext.jsx
+ * Description: Frontend application module.
+ */
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
@@ -37,8 +42,8 @@ export const AuthProvider = ({ children }) => {
                     const res = await api.get('/auth/verify');
 
 
-                    // axios response.status is checked, but api.get throws on 4xx usually unless we catch it.
-                    // However, we are in a try block. If api.get succeeds, it means 2xx.
+                    
+                    
                     if (res.status === 200 && res.data.success) {
                         setToken(storedToken);
                         setRoomId(storedRoomId);
@@ -56,15 +61,15 @@ export const AuthProvider = ({ children }) => {
         verifyToken();
     }, [logout]);
 
-    // Interceptor for 401 Unauthorized on the API instance
+    
     useEffect(() => {
         const interceptor = api.interceptors.response.use(
             (response) => response,
             (error) => {
                 if (error.response && error.response.status === 401) {
-                    // Don't logout if the 401 is from the login endpoint
-                    // This allows the login form to handle the error (show "Wrong password")
-                    // without redirecting the user.
+                    
+                    
+                    
                     if (!error.config.url.includes('/auth/login')) {
                         logout();
                     }

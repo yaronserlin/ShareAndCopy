@@ -1,13 +1,14 @@
+/**
+ * Preview: server/src/routes/metrics.js
+ * Description: Express route definition.
+ */
+
 const express = require('express');
 const router = express.Router();
 const { register } = require('../utils/metrics');
 const logger = require('../utils/logger');
 
-/**
- * @route   GET /metrics
- * @desc    Expose Prometheus metrics
- * @access  Public (Internal/VPC)
- */
+
 router.get('/', async (req, res) => {
     try {
         res.set('Content-Type', register.contentType);

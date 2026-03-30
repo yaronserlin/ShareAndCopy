@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/components/__tests__/PairingLogin.test.jsx
+ * Description: Test suite for ShareAndCopy functionality.
+ */
+
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import PairingLogin from '../PairingLogin';
@@ -6,7 +11,7 @@ import io from 'socket.io-client';
 
 import { AuthProvider } from '../../context/AuthContext';
 
-// Mock dependencies
+
 vi.mock('axios');
 vi.mock('socket.io-client');
 vi.mock('../../context/AuthContext', () => ({
@@ -26,8 +31,8 @@ io.mockReturnValue(mockSocket);
 describe('PairingLogin Component', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        // Setup socket mocks to chainable or functional?
-        // simple mocks are fine
+        
+        
     });
 
     test('renders input form initially', () => {
@@ -48,11 +53,11 @@ describe('PairingLogin Component', () => {
         );
         const input = screen.getByPlaceholderText('6-Digit Code');
         fireEvent.change(input, { target: { value: 'abc123' } });
-        expect(input.value).toBe('ABC123'); // Uppercase enforced
+        expect(input.value).toBe('ABC123'); 
     });
 
     test('submits valid code and connects', async () => {
-        // Mock successful verify
+        
         axios.post.mockResolvedValue({
             data: { valid: true, pairingToken: 'temp-token' }
         });
@@ -72,10 +77,10 @@ describe('PairingLogin Component', () => {
         });
 
         expect(io).toHaveBeenCalled();
-        // Wait for connection simulation
-        // The component subscribes to socket.on('connect'). We must trigger it manually?
+        
+        
 
-        // In this mock, we can inspect calls.
+        
         const onConnect = mockSocket.on.mock.calls.find(call => call[0] === 'connect')?.[1];
         if (onConnect) {
             await act(async () => {
@@ -83,7 +88,7 @@ describe('PairingLogin Component', () => {
             });
         }
 
-        // Should emit request-pairing
+        
         await waitFor(() => {
             expect(mockSocket.emit).toHaveBeenCalledWith('request-pairing', expect.objectContaining({
                 code: '123456'
@@ -109,24 +114,21 @@ describe('PairingLogin Component', () => {
         fireEvent.click(screen.getByText('Request Pairing'));
 
         await waitFor(() => {
-            // Expect error message
+            
             expect(screen.getByText(/Failed to verify code/i)).toBeInTheDocument();
         });
 
         expect(screen.queryByText(/check your logged-in device/i)).not.toBeInTheDocument();
 
-        // Actually component logic:
-        /*
-            if (!res.data.valid || !res.data.pairingToken) {
-                throw new Error('Invalid code');
-        */
+        
+        
 
         await waitFor(() => {
-            // We expect an error alert. But relying on generic error handling might show "Failed to verify code."
-            // The text might vary, let's look for error alert class or partial text
-            // Error state is displayed in Alert variant="danger"
+            
+            
+            
         });
 
-        // Note: 'Invalid code' from throw might be caught and set as error
+        
     });
 });

@@ -1,14 +1,16 @@
+/**
+ * Preview: server/src/models/DailyStat.js
+ * Description: Mongoose model definition.
+ */
+
 const mongoose = require('mongoose');
 
-/**
- * DailyStat Schema
- * Tracks aggregate stats for the entire system per day.
- */
+
 const DailyStatSchema = new mongoose.Schema({
     date: {
-        type: String, // Format: YYYY-MM-DD
+        type: String, 
         required: true,
-        unique: true, // One entry per day
+        unique: true, 
         index: true
     },
     totalDataTransferred: {
@@ -24,7 +26,7 @@ const DailyStatSchema = new mongoose.Schema({
         default: 0
     },
     activeUsers: {
-        type: Number, // Tracking unique active users seen today (optional complexity)
+        type: Number, 
         default: 0
     }
 }, {

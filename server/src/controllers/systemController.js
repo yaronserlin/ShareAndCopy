@@ -1,20 +1,17 @@
+/**
+ * Preview: server/src/controllers/systemController.js
+ * Description: Server controller handling requests.
+ */
+
 const logger = require('../utils/logger');
 const systemService = require('../services/systemService');
 const responseHandler = require('../utils/responseHandler');
 const crypto = require('crypto');
 const env = require('../config/env');
 
-/**
- * Controller for System operations
- * @module controllers/systemController
- */
 
-/**
- * Get server's local IP address
- * @param {Object} req - Express request
- * @param {Object} res - Express response
- * @route GET /api/system/ip
- */
+
+
 exports.getServerIp = (req, res) => {
     logger.debug('System IP request received');
     try {
@@ -32,12 +29,7 @@ exports.getServerIp = (req, res) => {
     }
 };
 
-/**
- * Generate ephemeral TURN credentials
- * @param {Object} req - Express request
- * @param {Object} res - Express response
- * @route GET /api/system/webrtc-config
- */
+
 exports.getWebRTCConfig = (req, res) => {
     try {
         const iceServers = [
@@ -46,7 +38,7 @@ exports.getWebRTCConfig = (req, res) => {
         ];
 
         if (env.TURN_URL && env.TURN_SECRET) {
-            const ttl = 24 * 3600; // 24 hours
+            const ttl = 24 * 3600; 
             const timestamp = Math.floor(Date.now() / 1000) + ttl;
             const username = `${timestamp}:${env.TURN_USER}`;
 

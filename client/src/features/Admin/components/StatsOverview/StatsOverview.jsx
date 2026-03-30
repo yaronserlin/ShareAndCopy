@@ -1,19 +1,15 @@
+/**
+ * Preview: client/src/features/Admin/components/StatsOverview/StatsOverview.jsx
+ * Description: Frontend application module.
+ */
+
 import React from 'react';
 import PropTypes from 'prop-types';
 import styles from './StatsOverview.module.css';
 import StatsCard from './StatsCard';
 import { formatBytes } from '../../../../utils/format';
 
-/**
- * Stats Overview Component
- * Displays summary cards for Users, Files, and Storage.
- * @param {Object} props - Component props
- * @param {Object} props.stats - Stats object
- * @param {number} props.stats.users - Total users
- * @param {number} props.stats.files - Total files
- * @param {number} props.stats.storage - Total storage in bytes
- * @returns {JSX.Element} Rendered component
- */
+
 
 
 const StatsOverview = ({ stats }) => {

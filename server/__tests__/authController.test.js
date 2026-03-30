@@ -1,8 +1,13 @@
+/**
+ * Preview: server/__tests__/authController.test.js
+ * Description: Test suite for ShareAndCopy functionality.
+ */
+
 const authController = require('../src/controllers/authController');
 const authService = require('../src/services/authService');
 const responseHandler = require('../src/utils/responseHandler');
 
-// Mock dependencies
+
 jest.mock('../src/services/authService');
 
 describe('AuthController', () => {
@@ -20,12 +25,8 @@ describe('AuthController', () => {
     });
 
     describe('register', () => {
-        // Validation tests skipped as validation is handled by middleware, not controller logic directly
-        /*
-        it('should return 400 if first name contains non-English characters', async () => { ... });
-        it('should return 400 if last name contains non-English characters', async () => { ... });
-        it('should return 400 for weak passwords', async () => { ... });
-        */
+        
+        
 
         it('should register user successfully with valid data', async () => {
             req.body = { firstName: 'John', lastName: 'Doe', email: 'test@test.com', password: 'Password1' };

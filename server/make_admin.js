@@ -1,3 +1,8 @@
+/**
+ * Preview: server/make_admin.js
+ * Description: Node.js backend utility file.
+ */
+
 const mongoose = require('mongoose');
 const User = require('./src/models/User');
 const path = require('path');

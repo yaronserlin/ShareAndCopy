@@ -1,3 +1,8 @@
+/**
+ * Preview: server/src/utils/validationSchemas.js
+ * Description: Server utility helper.
+ */
+
 const Joi = require('joi');
 
 const registerSchema = Joi.object({
@@ -5,8 +10,8 @@ const registerSchema = Joi.object({
         'string.email': 'Please provide a valid email',
         'any.required': 'Email is required'
     }),
-    // Password must be at least 8 chars, 1 uppercase, 1 lowercase, 1 number.
-    // We removed the strictly alphanumeric regex.
+    
+    
     password: Joi.string().min(8)
         .pattern(new RegExp('(?=.*[a-z])'), 'lowercase')
         .pattern(new RegExp('(?=.*[A-Z])'), 'uppercase')

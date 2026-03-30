@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/components/common/BackgroundDecorations.jsx
+ * Description: Frontend application module.
+ */
+
 import React from 'react';
 
 const BackgroundDecorations = () => {

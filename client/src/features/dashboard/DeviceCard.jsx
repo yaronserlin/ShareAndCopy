@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/features/dashboard/DeviceCard.jsx
+ * Description: Frontend application module.
+ */
+
 import React from 'react';
 import PropTypes from 'prop-types';
 
@@ -14,7 +19,7 @@ const DeviceCard = ({ device, selectedFile, onFileChange, onSend, transferProgre
                 <h3 className="h5 fw-bold mb-1">{device.deviceName}</h3>
                 <p className="text-muted small mb-4">ID: {device.deviceId}</p>
 
-                {/* File Selection */}
+                {}
                 <div className="mb-3">
                     <input
                         type="file"
@@ -23,7 +28,7 @@ const DeviceCard = ({ device, selectedFile, onFileChange, onSend, transferProgre
                     />
                 </div>
 
-                {/* Transfer Progress or Send Button */}
+                {}
                 {isTransferring ? (
                     <div className="progress" style={{ height: '25px' }}>
                         <div
@@ -48,7 +53,7 @@ const DeviceCard = ({ device, selectedFile, onFileChange, onSend, transferProgre
                     </button>
                 )}
 
-                {/* Transfer Stats */}
+                {}
                 {isTransferring && transferStats && (
                     <div className="d-flex justify-content-between text-muted small mt-1">
                         <span>{transferStats.speed}</span>
@@ -56,7 +61,7 @@ const DeviceCard = ({ device, selectedFile, onFileChange, onSend, transferProgre
                     </div>
                 )}
 
-                {/* Revoke Button (Red) */}
+                {}
                 {onRevoke && isTransferred === false && (
                     <button
                         className="btn btn-outline-danger w-100 rounded-pill mt-2 btn-sm"
@@ -84,7 +89,7 @@ DeviceCard.propTypes = {
     selectedFile: PropTypes.object,
     onFileChange: PropTypes.func.isRequired,
     onSend: PropTypes.func.isRequired,
-    onRevoke: PropTypes.func, // Optional: Only for host
+    onRevoke: PropTypes.func, 
     transferProgress: PropTypes.number,
     transferStats: PropTypes.shape({ speed: PropTypes.string, eta: PropTypes.string }),
     isGuest: PropTypes.bool

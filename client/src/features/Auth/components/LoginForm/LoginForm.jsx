@@ -1,14 +1,15 @@
+/**
+ * Preview: client/src/features/Auth/components/LoginForm/LoginForm.jsx
+ * Description: Frontend application module.
+ */
+
 import React from 'react';
 import { useLoginForm } from '../../hooks/useLoginForm';
 import FormInput from '../../../../components/common/FormInput';
 import PasswordInput from '../../../../components/common/PasswordInput';
 import styles from '../../styles/AuthShared.module.css';
 
-/**
- * Login Form Component
- * Handles user login.
- * @returns {JSX.Element} Rendered component
- */
+
 const LoginForm = () => {
     const {
         formData,

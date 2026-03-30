@@ -1,8 +1,13 @@
+/**
+ * Preview: server/__tests__/systemController.test.js
+ * Description: Test suite for ShareAndCopy functionality.
+ */
+
 const request = require('supertest');
 const app = require('../src/index');
 const systemService = require('../src/services/systemService');
 
-// Mock systemService
+
 jest.mock('../src/services/systemService');
 
 describe('System Routes', () => {

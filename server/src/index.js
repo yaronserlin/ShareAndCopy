@@ -1,30 +1,33 @@
-// Load environment variables and libraries
+/**
+ * Preview: server/src/index.js
+ * Description: Server backend module.
+ */
+
 const env = require('./config/env');
 const express = require('express');
 const http = require('http');
 const helmet = require('helmet');
 const compression = require('compression');
 
-// Load local utilities and middleware
+
 const logger = require('./utils/logger');
 const initSocket = require('./socket');
 const apiLimiter = require('./middleware/rateLimiter');
-const cors = require('cors'); // NPM package, not custom middleware
+const cors = require('cors');
 const connectDB = require('./config/db');
-const redis = require('./config/redis');
 
-// Initialize Express app
+
 const app = express();
 const server = http.createServer(app);
 
-// --- Middleware Configuration ---
 
-// SECURITY: Security headers with Content Security Policy
+
+
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'"], // Allow inline styles for React
+            styleSrc: ["'self'", "'unsafe-inline'"],
             scriptSrc: ["'self'"],
             imgSrc: ["'self'", 'data:', 'https:'],
             connectSrc: ["'self'",
@@ -41,19 +44,19 @@ app.use(helmet({
         }
     },
     hsts: {
-        maxAge: 31536000, // 1 year
+        maxAge: 31536000,
         includeSubDomains: true,
         preload: true
     },
     frameguard: {
-        action: 'deny' // Prevent clickjacking
+        action: 'deny'
     }
 }));
 
-// Gzip compression
+
 app.use(compression());
 
-// CORS Configuration - SEC-06: Whitelist approach with localhost support  
+
 const allowedOrigins = env.NODE_ENV === 'production'
     ? [env.PUBLIC_URL].filter(Boolean)
     : [
@@ -67,7 +70,7 @@ const allowedOrigins = env.NODE_ENV === 'production'
 
 const localOriginPattern = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(:\d+)?$/;
 
-// Configure CORS properly for development and production
+
 app.use(cors({
     origin: env.NODE_ENV === 'production'
         ? (env.PUBLIC_URL ? [env.PUBLIC_URL] : false)
@@ -84,55 +87,50 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token']
 }));
 
-// Request logging
+
 app.use((req, res, next) => {
     logger.info(`${req.method} ${req.originalUrl} - IP: ${req.ip}`);
     next();
 });
 
-// Rate limiting for API routes
+
 app.use('/api', apiLimiter);
 
-// Body parsing
+
 app.use(express.json());
 
-// Static file serving - DEPRECATED/REMOVED for P2P
-// app.use('/uploads', express.static('uploads'));
 
-// --- Database Connection and Startup ---
 
-// --- Route Definitions ---
+
+
+
+
 const routes = [
     { path: '/api/auth', route: './routes/auth' },
     { path: '/api/admin', route: './routes/admin' },
     { path: '/api/system', route: './routes/system' },
-    { path: '/metrics', route: './routes/metrics' } // Expose metrics
+    { path: '/metrics', route: './routes/metrics' }
 ];
 
 routes.forEach(({ path, route }) => {
     app.use(path, require(route));
 });
 
-// --- Background Jobs ---
-// Cron jobs removed for P2P migration
-// cronJob.start();
 
-// --- Database Connection and Startup ---
+
+
+
+
 
 const startServer = async () => {
     try {
         await connectDB();
-        logger.info('MongoDB connected');
 
-        // Initialize Redis (non-blocking - will fallback to memory if unavailable)
-        await redis.initRedis();
-
-        // --- Socket.io Initialization ---
         initSocket(server);
         logger.info('Socket.io initialized');
 
-        // --- Server Startup ---
-        const PORT = env.PORT || 5001; // Changed from 5000 due to macOS ControlCenter
+
+        const PORT = env.PORT || 5001;
 
         server.listen(PORT, '0.0.0.0', () => logger.info(`Server running on port ${PORT}`));
     } catch (err) {

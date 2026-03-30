@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/features/Admin/components/StatsOverview/StatsCard.jsx
+ * Description: Frontend application module.
+ */
+
 import React from 'react';
 import PropTypes from 'prop-types';
 import { useTheme } from '../../../../context/ThemeContext';
@@ -6,10 +11,10 @@ import styles from '../../components/StatsOverview/StatsOverview.module.css';
 const StatsCard = ({ title, value, icon, iconColorClass, textColorClass = null }) => {
     const { theme } = useTheme();
 
-    // Determine value color based on theme if not provided
+    
     const valueColor = textColorClass || (theme === 'dark' ? 'text-white' : 'text-dark');
 
-    // Determine icon container class based on theme and input
+    
     const iconContainerClass = `p-2 rounded-circle ${theme === 'dark'
         ? `${iconColorClass} bg-opacity-25`
         : `${iconColorClass} bg-opacity-10`}`;
@@ -33,7 +38,7 @@ StatsCard.propTypes = {
     title: PropTypes.string.isRequired,
     value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
     icon: PropTypes.string.isRequired,
-    iconColorClass: PropTypes.string.isRequired, // e.g., 'bg-primary text-primary'
+    iconColorClass: PropTypes.string.isRequired, 
     textColorClass: PropTypes.string
 };
 

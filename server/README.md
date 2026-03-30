@@ -1,56 +1,61 @@
 # ShareAndCopy Server
 
-This is the backend server for the ShareAndCopy application, built with Node.js, Express, and MongoDB.
-
-## Architecture
-
-- **Models**: Mongoose schemas only.
-- **Routes**: Clean route definitions with middleware.
-- **Middleware**: Validation, Auth, Error Handling.
+The backend for ShareAndCopy, built with Express, Socket.IO, MongoDB, and optional Redis support.
 
 ## Setup
 
-1. **Install Dependencies**
-   ```bash
-   npm install
-   ```
+Install dependencies:
 
-2. **Environment Variables**
-   Create a `.env` file in the `server` directory (or ensure it exists) with:
-   ```env
-   PORT=5000
-   MONGO_URI=mongodb://localhost:27017/shareandcopy
-   JWT_SECRET=your_jwt_secret_key_here
-   RATE_LIMIT_WINDOW_MS=60000
-   RATE_LIMIT_MAX_REQUESTS=100
-   NODE_ENV=development
-   PUBLIC_URL=http://localhost:3000
-   ```
+```bash
+cd server
+npm install
+```
 
-3. **Run Server**
-   - **Development**: `npm run dev`
-   - **Production**: `npm start`
+## Environment variables
 
-## API Documentation
+Create `server/.env` with the following values:
 
-### Auth
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login
-- `GET /api/auth/verify` - Verify token
+```env
+PORT=5001
+MONGO_URI=mongodb://localhost:27017/shareandcopy
+JWT_SECRET=your_jwt_secret
+JWT_REFRESH_SECRET=your_refresh_secret
+NODE_ENV=development
+PUBLIC_URL=http://localhost:5173
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+```
 
-### Files
-- `POST /api/files/upload` - Upload file (Multipart)
-- `GET /api/files/room/:roomId` - List files
-- `GET /api/files/download/:fileId` - Download file
-- `GET /api/files/room/:roomId/download-all` - Download all as ZIP
-- `PUT /api/files/:id/rename` - Rename file
-- `DELETE /api/files/:id` - Delete file
+`PUBLIC_URL` should point to the frontend host used for CORS in production.
 
-### Admin
-- `GET /api/admin/stats` - Dashboard statistics
+## Development
 
-## Security Features
-- **Rate Limiting**: Protects against brute-force.
-- **Helmet**: Secure HTTP headers.
-- **Data Sanitization**: Prevents NoSQL injection (implemented in middleware).
-- **Validation**: Strict Joi validation for inputs.
+Run the server in development mode:
+
+```bash
+npm run dev
+```
+
+## Production
+
+Start the server in production mode:
+
+```bash
+npm start
+```
+
+## API endpoints
+
+* `POST /api/auth/register`
+* `POST /api/auth/login`
+* `GET /api/auth/verify`
+* `GET /api/admin/stats`
+* `GET /api/system/status`
+* `GET /metrics`
+
+## Notes
+
+* The server connects to MongoDB and initializes Redis if configured.
+* CORS is restricted to trusted origins.
+* The API is designed for secure deployment with rate limiting and helmet headers.

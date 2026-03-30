@@ -1,14 +1,15 @@
+/**
+ * Preview: client/src/components/About/index.jsx
+ * Description: Frontend application module.
+ */
+
 import React from 'react';
 import GlassCard from '../common/GlassCard';
 import GradientButton from '../common/GradientButton';
 import BackgroundDecorations from '../common/BackgroundDecorations';
 import styles from './About.module.css';
 
-/**
- * About Page Component
- * Information about the application.
- * @returns {JSX.Element} Rendered component
- */
+
 const About = () => {
     return (
         <div className={`container pb-5 d-flex flex-column flex-grow-1 ${styles.aboutContainer}`}>

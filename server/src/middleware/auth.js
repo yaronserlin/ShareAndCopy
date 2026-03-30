@@ -1,12 +1,16 @@
+/**
+ * Preview: server/src/middleware/auth.js
+ * Description: Express middleware module.
+ */
+
 const jwt = require('jsonwebtoken');
 const env = require('../config/env');
 const responseHandler = require('../utils/responseHandler');
 const User = require('../models/User');
 const RevokedToken = require('../models/RevokedToken');
+const logger = require('../utils/logger');
 
-/**
- * Middleware to verify JWT token
- */
+
 const auth = async (req, res, next) => {
     const token = req.header('x-auth-token');
 
@@ -16,9 +20,9 @@ const auth = async (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, env.JWT_SECRET);
-        req.user = decoded; // Add user payload to request
+        req.user = decoded;
 
-        // Check Revocation
+
         if (decoded.jti) {
             const isRevoked = await RevokedToken.exists({ jti: decoded.jti });
             if (isRevoked) {
@@ -26,11 +30,11 @@ const auth = async (req, res, next) => {
             }
         }
 
-        // Handle Guest Logic
+
         if (decoded.scope === 'guest' || decoded.isGuest) {
             req.currentUser = {
-                _id: decoded.id, // Guest ID
-                roomId: decoded.roomId, // Host Room ID
+                _id: decoded.id,
+                roomId: decoded.roomId,
                 isGuest: true,
                 email: 'guest@device',
                 firstName: 'Guest',
@@ -39,23 +43,22 @@ const auth = async (req, res, next) => {
             return next();
         }
 
-        // Optional: Check if user still exists in DB
+
         const user = await User.findById(decoded.id).select('-password');
         if (!user) {
             return responseHandler.error(res, 'User not found', null, 401);
         }
 
-        req.currentUser = user; // Add full user object to request
+        req.currentUser = user;
+        logger.debug(`Authenticated user: ${user.email} (ID: ${user._id})`);
         next();
     } catch (err) {
+        logger.warn(`Authentication failed: ${err.message}`);
         responseHandler.error(res, 'Token is not valid', null, 401);
     }
 };
 
-/**
- * Middleware for optional authentication
- * Does not error if token is missing
- */
+
 const optional = async (req, res, next) => {
     const token = req.header('x-auth-token');
 
@@ -72,7 +75,7 @@ const optional = async (req, res, next) => {
         }
         next();
     } catch (err) {
-        // SECURITY: Log suspicious token attempts for monitoring
+
         if (err.name === 'JsonWebTokenError') {
             logger.warn(`Invalid token in optional auth: ${err.message}`);
         } else if (err.name === 'TokenExpiredError') {
@@ -80,7 +83,7 @@ const optional = async (req, res, next) => {
         } else {
             logger.error(`Unexpected error in optional auth: ${err.message}`);
         }
-        // Proceed without user context
+
         next();
     }
 };

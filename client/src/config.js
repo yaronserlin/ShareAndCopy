@@ -1,16 +1,20 @@
+/**
+ * Preview: client/src/config.js
+ * Description: Frontend application module.
+ */
 
-const SERVER_PORT = 5001; // Match server default port (changed from 5000 due to macOS ControlCenter)
+const SERVER_PORT = 5001; 
 
-// Helper to determine protocol
+
 const getProtocol = (hostname) => {
     const isProd = import.meta.env.MODE === 'production';
 
-    // SECURITY: Force HTTPS in production
+    
     if (isProd) {
         return 'https:';
     }
 
-    // In development, respect current protocol
+    
     if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
         return 'https:';
     }
@@ -19,9 +23,9 @@ const getProtocol = (hostname) => {
 
 const getDefaultServerUrl = () => {
     if (typeof window !== 'undefined') {
-        // If we are serving from the same domain (production build served by Nginx or similar)
-        // just use the relative path or current origin if API is on same host
-        // But for development defaults:
+        
+        
+        
         return `${getProtocol(window.location.hostname)}//${window.location.hostname}:${SERVER_PORT}`;
     }
     return `http://localhost:${SERVER_PORT}`;

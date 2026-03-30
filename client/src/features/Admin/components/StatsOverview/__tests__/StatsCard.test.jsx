@@ -1,10 +1,15 @@
+/**
+ * Preview: client/src/features/Admin/components/StatsOverview/__tests__/StatsCard.test.jsx
+ * Description: Test suite for ShareAndCopy functionality.
+ */
+
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { vi, beforeAll, describe, it, expect } from 'vitest';
 import StatsCard from '../StatsCard';
 import { ThemeProvider } from '../../../../../context/ThemeContext';
 
-// Mock ThemeProvider to avoid context errors and control theme
+
 const renderWithTheme = (ui, theme = 'light') => {
     return render(
         <ThemeProvider value={{ theme }}>
@@ -20,8 +25,8 @@ beforeAll(() => {
             matches: false,
             media: query,
             onchange: null,
-            addListener: vi.fn(), // deprecated
-            removeListener: vi.fn(), // deprecated
+            addListener: vi.fn(), 
+            removeListener: vi.fn(), 
             addEventListener: vi.fn(),
             removeEventListener: vi.fn(),
             dispatchEvent: vi.fn(),
@@ -45,7 +50,7 @@ describe('StatsCard', () => {
 
     it('applies icon classes', () => {
         renderWithTheme(<StatsCard {...defaultProps} />);
-        // Check if icon exists with basic class
+        
         expect(document.querySelector('.bi-test')).toBeInTheDocument();
     });
 });

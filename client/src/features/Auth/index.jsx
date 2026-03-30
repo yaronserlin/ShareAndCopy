@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/features/Auth/index.jsx
+ * Description: Frontend application module.
+ */
+
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import AuthLayout from './components/AuthLayout/AuthLayout';
@@ -14,12 +19,12 @@ const Auth = () => {
     useEffect(() => {
         setIsLogin(location.pathname !== '/register');
 
-        // Check for pairingCode in URL
+        
         const params = new URLSearchParams(location.search);
         if (params.get('pairingCode')) {
             setIsPairing(true);
         } else {
-            setIsPairing(false); // Reset pairing only if not in URL
+            setIsPairing(false); 
         }
     }, [location]);
 

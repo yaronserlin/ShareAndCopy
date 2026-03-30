@@ -1,13 +1,14 @@
+/**
+ * Preview: client/src/components/Footer/Footer.jsx
+ * Description: Frontend application module.
+ */
+
 import React from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import { Link } from 'react-router-dom';
 import styles from './Footer.module.css';
 
-/**
- * Footer Component
- * Page footer with copyright and theme toggle.
- * @returns {JSX.Element} Rendered component
- */
+
 const Footer = () => {
     const { theme, toggleTheme } = useTheme();
 

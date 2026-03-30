@@ -1,9 +1,12 @@
+/**
+ * Preview: client/src/components/ErrorBoundary.jsx
+ * Description: Frontend application module.
+ */
+
 import React from 'react';
 import PropTypes from 'prop-types';
 
-/**
- * CODE-08: Error Boundary to catch React errors
- */
+
 class ErrorBoundary extends React.Component {
     constructor(props) {
         super(props);

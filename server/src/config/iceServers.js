@@ -1,3 +1,8 @@
+/**
+ * Preview: server/src/config/iceServers.js
+ * Description: Server configuration helper.
+ */
+
 module.exports = {
     iceServers: [
         {
@@ -15,11 +20,11 @@ module.exports = {
         {
             urls: 'stun:stun4.l.google.com:19302'
         }
-        // TODO: Add TURN servers here for production
-        // {
-        //     urls: 'turn:your-turn-server.com',
-        //     username: 'user',
-        //     credential: 'password'
-        // }
+        
+        
+        
+        
+        
+        
     ]
 };

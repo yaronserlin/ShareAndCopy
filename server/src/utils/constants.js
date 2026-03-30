@@ -1,5 +1,10 @@
+/**
+ * Preview: server/src/utils/constants.js
+ * Description: Server utility helper.
+ */
+
 const APP_CONSTANTS = {
-    MAX_STORAGE_BYTES: 1024 * 1024 * 1024 * 10, // 10 GB
+    MAX_STORAGE_BYTES: 1024 * 1024 * 1024 * 10, 
     FORBIDDEN_EXTENSIONS: ['.exe', '.sh', '.bat', '.cmd', '.msi', '.bin', '.vbs', '.js', '.jar'],
     REGEX: {
         EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,

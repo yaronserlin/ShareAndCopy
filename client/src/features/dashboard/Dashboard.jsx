@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/features/dashboard/Dashboard.jsx
+ * Description: Frontend application module.
+ */
+
 import React, { useState } from 'react';
 import { useP2P } from '../../hooks/useP2P';
 import { useAuth } from '../../context/AuthContext';
@@ -5,12 +10,12 @@ import axios from 'axios';
 import API_BASE_URL from '../../config';
 import DevicePairing from '../../components/DevicePairing';
 import DeviceCard from './DeviceCard';
-// import styles from './Dashboard.module.css'; // Removed unused missing CSS
+
 
 const Dashboard = () => {
     const { user } = useAuth();
     const { onlineDevices, transferProgress, transferStats, sendFile, pendingTransfers, acceptTransfer, rejectTransfer, removeDevice } = useP2P();
-    const [selectedFiles, setSelectedFiles] = useState({}); // { deviceId: File }
+    const [selectedFiles, setSelectedFiles] = useState({}); 
     const [showPairingModal, setShowPairingModal] = useState(false);
 
     const handleFileChange = (e, deviceId) => {
@@ -23,8 +28,8 @@ const Dashboard = () => {
         const file = selectedFiles[deviceId];
         if (file) {
             sendFile(file, deviceId);
-            // Optional: Clear selection after send starts or keep it?
-            // setSelectedFiles(prev => { const n = {...prev}; delete n[deviceId]; return n; });
+            
+            
         }
     };
 
@@ -32,17 +37,17 @@ const Dashboard = () => {
         if (!window.confirm('Are you sure you want to revoke this device? It will be disconnected immediately.')) return;
 
         try {
-            // Optimistic UI Update: Remove immediately
+            
             removeDevice(deviceId);
 
             await axios.post(`${API_BASE_URL}/auth/revoke`, { deviceId }, {
                 headers: { 'x-auth-token': localStorage.getItem('token') }
             });
-            // Socket 'device-offline' event will confirm (redundant but safe)
+            
         } catch (err) {
             console.error('Revocation failed', err);
             alert('Failed to revoke device');
-            // Re-fetch list if failed? For now, we assume success or page refresh.
+            
         }
     };
 
@@ -50,7 +55,7 @@ const Dashboard = () => {
         <div className="container py-5 mt-5">
             <header className="mb-5 text-center position-relative">
                 <h1 className="display-4 fw-bold">My Devices</h1>
-                {/* Desktop Button - Hide for Guests */}
+                {}
                 {!user?.isGuest && (
                     <button
                         className="btn btn-outline-primary position-absolute top-0 end-0 mt-2 hover-scale d-none d-md-inline-flex align-items-center"
@@ -63,7 +68,7 @@ const Dashboard = () => {
 
                 <p className="lead text-muted">Directly transfer files between your authorized devices.</p>
 
-                {/* Mobile Button - Hide for Guests */}
+                {}
                 {!user?.isGuest && (
                     <div className="d-md-none mt-4">
                         <button
@@ -104,7 +109,7 @@ const Dashboard = () => {
                 )}
             </div>
 
-            {/* Incoming File Confirmation Modals */}
+            {}
             {Object.entries(pendingTransfers).map(([deviceId, transfer]) => (
                 <div className="modal show d-block" tabIndex="-1" key={deviceId} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                     <div className="modal-dialog modal-dialog-centered">

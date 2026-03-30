@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/context/ThemeContext.jsx
+ * Description: Frontend application module.
+ */
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const ThemeContext = createContext();
@@ -17,14 +22,14 @@ export const ThemeProvider = ({ children }) => {
                     actualTheme = 'light';
                 }
             }
-            // Bootstrap native dark mode
+            
             root.setAttribute('data-bs-theme', actualTheme);
         };
 
         applyTheme(theme);
         localStorage.setItem('theme', theme);
 
-        // Listen for system changes if in system mode
+        
         if (theme === 'system') {
             const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
             const handleChange = () => applyTheme('system');

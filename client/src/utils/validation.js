@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/utils/validation.js
+ * Description: Frontend application module.
+ */
+
 import { APP_CONSTANTS } from '../constants';
 
 export const validateField = (name, value, isLogin = false, password = '') => {

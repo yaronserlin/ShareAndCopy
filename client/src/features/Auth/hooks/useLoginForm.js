@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/features/Auth/hooks/useLoginForm.js
+ * Description: Frontend application module.
+ */
+
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -6,10 +11,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { useAuthForm } from '../../../hooks/useAuthForm';
 import { getDeviceId, getDeviceName } from '../../../utils/deviceUtils';
 
-/**
- * Custom hook for Login Form logic
- * @returns {Object} Login form handlers and state
- */
+
 export const useLoginForm = () => {
     const navigate = useNavigate();
     const { login } = useAuth();

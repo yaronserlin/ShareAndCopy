@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/components/Home/index.jsx
+ * Description: Frontend application module.
+ */
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -5,11 +10,7 @@ import BackgroundDecorations from './common/BackgroundDecorations';
 import GradientButton from './common/GradientButton';
 import styles from './Home.module.css';
 
-/**
- * Home Page Component
- * Landing page for the application.
- * @returns {JSX.Element} Rendered component
- */
+
 const Home = () => {
     const { token, roomId } = useAuth();
 

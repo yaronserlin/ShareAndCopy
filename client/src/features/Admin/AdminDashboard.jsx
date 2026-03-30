@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/features/Admin/AdminDashboard.jsx
+ * Description: Frontend application module.
+ */
+
 import React from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import StatsOverview from './components/StatsOverview/StatsOverview';
@@ -6,11 +11,7 @@ import AdminDashboardSkeleton from './components/AdminSkeleton/AdminDashboardSke
 import { useAdminDashboard } from './hooks/useAdminDashboard';
 import styles from './AdminDashboard.module.css';
 
-/**
- * Admin Dashboard Container
- * Main entry point for the Admin Dashboard feature.
- * @returns {JSX.Element} Rendered component
- */
+
 const AdminDashboard = () => {
     const { stats, loading } = useAdminDashboard();
     const { theme } = useTheme();

@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/components/common/GradientButton/GradientButton.test.jsx
+ * Description: Test suite for ShareAndCopy functionality.
+ */
+
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';

@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/hooks/useAuthForm.js
+ * Description: Frontend application module.
+ */
+
 import { useState, useCallback, useEffect } from 'react';
 import { validateField } from '../utils/validation';
 
@@ -8,12 +13,12 @@ export const useAuthForm = (initialState, validatePasswordMatch = false) => {
     const [isValid, setIsValid] = useState(false);
 
     const checkValidity = useCallback((currentData, currentErrors) => {
-        // Check if there are any errors
+        
         const hasErrors = Object.values(currentErrors).some(error => error !== null);
         if (hasErrors) return false;
 
-        // Check if all required fields are filled (basic check)
-        // This assumes all fields in initialState are required
+        
+        
         const allFilled = Object.values(currentData).every(value => value !== '');
         return allFilled;
     }, []);
@@ -25,7 +30,7 @@ export const useAuthForm = (initialState, validatePasswordMatch = false) => {
             return newData;
         });
 
-        // Validate immediately if touched
+        
         if (touched[name]) {
             const error = validateField(name, value, !validatePasswordMatch, validatePasswordMatch && name === 'confirmPassword' ? formData.password : undefined);
             setErrors(prev => {
@@ -46,11 +51,11 @@ export const useAuthForm = (initialState, validatePasswordMatch = false) => {
         });
     }, [validatePasswordMatch, formData.password]);
 
-    // Check validity whenever data or errors change
+    
     useEffect(() => {
-        // We need to validate all fields to determine overall validity, 
-        // but we don't want to show errors for untouched fields just yet.
-        // So we calculate potential errors for everything.
+        
+        
+        
         const currentErrors = {};
         Object.keys(formData).forEach(key => {
             currentErrors[key] = validateField(key, formData[key], !validatePasswordMatch, validatePasswordMatch && key === 'confirmPassword' ? formData.password : undefined);
@@ -69,7 +74,7 @@ export const useAuthForm = (initialState, validatePasswordMatch = false) => {
             newTouched[key] = true;
         });
 
-        // Filter out null errors
+        
         const activeErrors = {};
         Object.keys(newErrors).forEach(key => {
             if (newErrors[key] !== null) activeErrors[key] = newErrors[key];
@@ -89,6 +94,6 @@ export const useAuthForm = (initialState, validatePasswordMatch = false) => {
         handleChange,
         handleBlur,
         validateAll,
-        setFormData // Exposed in case we need to manually set it
+        setFormData 
     };
 };

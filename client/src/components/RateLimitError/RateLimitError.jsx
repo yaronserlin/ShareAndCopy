@@ -1,11 +1,12 @@
+/**
+ * Preview: client/src/components/RateLimitError/RateLimitError.jsx
+ * Description: Frontend application module.
+ */
+
 import React from 'react';
 import styles from './RateLimitError.module.css';
 
-/**
- * Rate Limit Error Component
- * Full screen overlay displayed when user is rate limited.
- * @returns {JSX.Element} Rendered component
- */
+
 const RateLimitError = () => {
     return (
         <div className={styles.overlay}>

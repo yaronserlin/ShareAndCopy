@@ -1,3 +1,8 @@
+/**
+ * Preview: client/eslint.config.js
+ * Description: Frontend application module.
+ */
+
 import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'

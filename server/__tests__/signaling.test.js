@@ -1,3 +1,8 @@
+/**
+ * Preview: server/__tests__/signaling.test.js
+ * Description: Test suite for ShareAndCopy functionality.
+ */
+
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const Client = require('socket.io-client');
@@ -15,7 +20,7 @@ describe('Signaling Server', () => {
     let port;
 
     beforeAll(async () => {
-        // Connect to in-memory DB
+        
         await testDb.connect();
     });
 
@@ -24,12 +29,12 @@ describe('Signaling Server', () => {
     });
 
     beforeEach(async () => {
-        // Create server and socket for each test to ensure clean state or reuse? 
-        // Reusing server is faster, but need to clean up clients.
-        // Let's create server once per suite usually, but here we might want to ensure fresh state.
-        // Actually, let's keep server running but clear DB.
+        
+        
+        
+        
 
-        // Create a dummy user
+        
         userA = new User({
             firstName: 'Test',
             lastName: 'User',
@@ -52,7 +57,7 @@ describe('Signaling Server', () => {
     });
 
     afterEach((done) => {
-        // Cleanup clients
+        
         if (clientSocket1) {
             clientSocket1.disconnect();
             clientSocket1 = null;
@@ -62,7 +67,7 @@ describe('Signaling Server', () => {
             clientSocket2 = null;
         }
 
-        // Cleanup server
+        
         io.close(() => {
             server.close(() => {
                 testDb.clear().then(() => done());
@@ -91,20 +96,20 @@ describe('Signaling Server', () => {
     });
 
     test('should broadcast device-online to other devices of same user', (done) => {
-        // Device 1 connects
+        
         clientSocket1 = new Client(`http://localhost:${port}`, {
             auth: { token: tokenA },
             query: { deviceId: 'device1', deviceName: 'Laptop' }
         });
 
         clientSocket1.on('connect', () => {
-            // Device 2 connects
+            
             clientSocket2 = new Client(`http://localhost:${port}`, {
                 auth: { token: tokenA },
                 query: { deviceId: 'device2', deviceName: 'Phone' }
             });
 
-            // Device 1 should receive notification about Device 2
+            
             clientSocket1.on('device-online', (data) => {
                 try {
                     expect(data.deviceId).toBe('device2');
@@ -130,7 +135,7 @@ describe('Signaling Server', () => {
 
         clientSocket1.on('connect', () => {
             clientSocket2.on('connect', () => {
-                // Device 1 sends signal to Device 2
+                
                 clientSocket1.emit('signal', {
                     targetSocketId: clientSocket2.id,
                     type: 'offer',
@@ -151,7 +156,7 @@ describe('Signaling Server', () => {
         });
     });
     test('should prevent signaling between users in different rooms', (done) => {
-        // Create User B in different room
+        
         const userB = new User({
             firstName: 'Bob',
             lastName: 'User',
@@ -181,14 +186,14 @@ describe('Signaling Server', () => {
 
             clientSocket1.on('connect', () => {
                 clientSocket2.on('connect', () => {
-                    // Try to compromise isolation
+                    
                     clientSocket1.emit('signal', {
                         targetSocketId: clientSocket2.id,
                         type: 'offer',
                         signalData: 'attack'
                     });
 
-                    // Wait to ensure NOT received
+                    
                     setTimeout(() => {
                         try {
                             expect(signalReceived).toBe(false);

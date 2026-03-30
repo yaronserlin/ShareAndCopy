@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/features/dashboard/__tests__/DeviceCard.test.jsx
+ * Description: Test suite for ShareAndCopy functionality.
+ */
+
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { vi } from 'vitest';
@@ -25,7 +30,7 @@ describe('DeviceCard', () => {
 
     it('triggers file selection', () => {
         render(<DeviceCard {...defaultProps} />);
-        // Use querySelector for file input as it might not have a label
+        
         const fileInput = document.querySelector('input[type="file"]');
         expect(fileInput).toBeInTheDocument();
         fireEvent.change(fileInput, { target: { files: ['dummy_file'] } });

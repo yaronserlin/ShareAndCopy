@@ -1,12 +1,11 @@
+/**
+ * Preview: server/src/models/RevokedToken.js
+ * Description: Mongoose model definition.
+ */
+
 const mongoose = require('mongoose');
 
-/**
- * Revoked Token Schema
- * Used to blacklist JWTs before their expiration.
- * @typedef {Object} RevokedToken
- * @property {string} jti - Unique JWT ID
- * @property {Date} expireAt - Automatic deletion time (TTL)
- */
+
 const RevokedTokenSchema = new mongoose.Schema({
     jti: {
         type: String,
@@ -25,7 +24,7 @@ const RevokedTokenSchema = new mongoose.Schema({
     expireAt: {
         type: Date,
         required: true,
-        index: { expires: 0 } // MongoDB TTL index: document deletes when this date is reached
+        index: { expires: 0 } 
     }
 });
 

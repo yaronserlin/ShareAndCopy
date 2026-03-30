@@ -1,9 +1,14 @@
+/**
+ * Preview: client/src/components/__tests__/DevicePairing.test.jsx
+ * Description: Test suite for ShareAndCopy functionality.
+ */
+
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import DevicePairing from '../DevicePairing';
 import { useSocket } from '../../context/SocketContext';
 import axios from 'axios';
 
-// Mock dependencies
+
 vi.mock('../../context/SocketContext');
 vi.mock('axios', () => {
     const mockAxios = {
@@ -30,7 +35,7 @@ useSocket.mockReturnValue(mockSocket);
 describe('DevicePairing Component', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        // Setup default mocks
+        
         axios.post.mockResolvedValue({ data: { code: '123456' } });
         useSocket.mockReturnValue(mockSocket);
     });
@@ -43,14 +48,14 @@ describe('DevicePairing Component', () => {
     test('generates pairing code on show', async () => {
         const { baseElement } = render(<DevicePairing show={true} onHide={() => { }} />);
 
-        // Should start loading
+        
         expect(baseElement.querySelector('.spinner-border')).toBeInTheDocument();
 
         await waitFor(() => {
             expect(axios.post).toHaveBeenCalledWith('/api/auth/pairing-code', {}, expect.any(Object));
         });
 
-        // Should show code
+        
         await waitFor(() => {
             expect(screen.getByText('123456')).toBeInTheDocument();
         });
@@ -61,11 +66,11 @@ describe('DevicePairing Component', () => {
     test('handles confirmation request', async () => {
         render(<DevicePairing show={true} onHide={() => { }} />);
 
-        // Wait for code generation
+        
         await waitFor(() => expect(screen.getByText('123456')).toBeInTheDocument());
 
-        // Simulate confirmation-request event
-        // We need to capture the listener passed to socket.on('confirmation-request', ...)
+        
+        
         const onCalls = mockSocket.on.mock.calls;
         const confirmCallback = onCalls.find(call => call[0] === 'confirmation-request')?.[1];
 
@@ -105,10 +110,10 @@ describe('DevicePairing Component', () => {
 
         expect(screen.getByText(/Authorized Successfully/i)).toBeInTheDocument();
 
-        // Wait for close
-        // Since we are mocking timers (implicitly or explicitly), we might need to verify onHide calls
-        // default jest environment doesn't use fake timers unless requested.
-        // real timers: wait 2s is too long for test.
-        // We will assume it works or use vi.useFakeTimers()
+        
+        
+        
+        
+        
     });
 });

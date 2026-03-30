@@ -1,15 +1,20 @@
+/**
+ * Preview: server/__tests__/auth.test.js
+ * Description: Test suite for ShareAndCopy functionality.
+ */
+
 const request = require('supertest');
 
-// Mock cron - REMOVED
 
 
-const app = require('../src/index'); // Adjust path as needed
+
+const app = require('../src/index'); 
 const testDb = require('./testDb');
 const User = require('../src/models/User');
 
 beforeAll(async () => {
     await testDb.connect();
-}, 30000); // Increase timeout for MongoMemoryServer
+}, 30000); 
 
 afterEach(async () => {
     await testDb.clear();
@@ -52,7 +57,7 @@ describe('Auth Routes', () => {
 
         it('should not register user with existing email', async () => {
             const mockUser = generateUser();
-            await User.create({ ...mockUser, roomId: 'existing-room' }); // Create user first
+            await User.create({ ...mockUser, roomId: 'existing-room' }); 
 
             const res = await request(app)
                 .post('/api/auth/register')
@@ -68,7 +73,7 @@ describe('Auth Routes', () => {
                 .post('/api/auth/register')
                 .send({ ...mockUser, email: 'invalid-email' });
 
-            expect(res.statusCode).toBe(400); // Or whatever validation error code is used
+            expect(res.statusCode).toBe(400); 
         });
     });
 
@@ -76,7 +81,7 @@ describe('Auth Routes', () => {
         let mockUser;
         beforeEach(async () => {
             mockUser = generateUser();
-            // Register a user before login tests
+            
             const regRes = await request(app).post('/api/auth/register').send(mockUser);
             if (regRes.statusCode !== 201) {
                 console.log('Auth Test Setup Reg Failed:', regRes.statusCode, JSON.stringify(regRes.body));
@@ -110,7 +115,7 @@ describe('Auth Routes', () => {
     describe('GET /api/auth/verify', () => {
         it('should return user data for authenticated user', async () => {
             const mockUser = generateUser();
-            // Register and get token
+            
             const regRes = await request(app)
                 .post('/api/auth/register')
                 .send(mockUser);

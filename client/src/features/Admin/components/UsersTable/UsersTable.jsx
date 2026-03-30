@@ -1,17 +1,15 @@
+/**
+ * Preview: client/src/features/Admin/components/UsersTable/UsersTable.jsx
+ * Description: Frontend application module.
+ */
+
 import React from 'react';
 import PropTypes from 'prop-types';
 import { useTheme } from '../../../../context/ThemeContext';
 import styles from './UsersTable.module.css';
 import { formatBytes } from '../../../../utils/format';
 
-/**
- * Users Table Component
- * Displays top users by storage usage.
- * @param {Object} props - Component props
- * @param {Array} props.users - List of users
- * @param {Function} props.onRoomClick - Handler for room click
- * @returns {JSX.Element} Rendered component
- */
+
 const UsersTable = ({ users }) => {
     const { theme } = useTheme();
 

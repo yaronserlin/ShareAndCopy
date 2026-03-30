@@ -1,14 +1,15 @@
+/**
+ * Preview: client/src/features/Auth/components/RegisterForm/RegisterForm.jsx
+ * Description: Frontend application module.
+ */
+
 import React from 'react';
 import { useRegisterForm } from '../../hooks/useRegisterForm';
 import FormInput from '../../../../components/common/FormInput';
 import PasswordInput from '../../../../components/common/PasswordInput';
 import styles from '../../styles/AuthShared.module.css';
 
-/**
- * Register Form Component
- * Handles user registration.
- * @returns {JSX.Element} Rendered component
- */
+
 const RegisterForm = () => {
     const {
         formData,

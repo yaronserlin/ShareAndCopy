@@ -1,9 +1,14 @@
+/**
+ * Preview: client/src/hooks/__tests__/repro_stall.test.jsx
+ * Description: Test suite for ShareAndCopy functionality.
+ */
+
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useP2P } from '../useP2P';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as SocketContext from '../../context/SocketContext';
 
-// Mock Socket
+
 const mockSocket = {
     on: vi.fn(),
     off: vi.fn(),
@@ -11,16 +16,16 @@ const mockSocket = {
     id: 'socket-123'
 };
 
-// Mock DataChannel
+
 const createMockDataChannel = () => {
     let listeners = {};
     return {
         onopen: null,
         onmessage: null,
-        // Mock send: increases bufferedAmount
+        
         send: vi.fn(function (data) {
             this.bufferedAmount += (data.byteLength || 0);
-            // console.log('Mock Send:', data.byteLength, 'Total Buffer:', this.bufferedAmount);
+            
         }),
         bufferedAmount: 0,
         bufferedAmountLowThreshold: 0,
@@ -34,7 +39,7 @@ const createMockDataChannel = () => {
         }),
         _drainBuffer: function (amount) {
             this.bufferedAmount = Math.max(0, this.bufferedAmount - amount);
-            // Fire event if appropriate
+            
             if (this.bufferedAmount <= this.bufferedAmountLowThreshold && listeners['bufferedamountlow']) {
                 listeners['bufferedamountlow']();
             }
@@ -92,8 +97,8 @@ describe('useP2P 16KB Stall Debug', () => {
             }
         });
 
-        // 100KB file. Fixed chunk size 16KB.
-        // Should send ceil(100/16) = 7 chunks.
+        
+        
         const fileSize = 100 * 1024;
         const mockFile = {
             name: 'test.txt',
@@ -109,9 +114,9 @@ describe('useP2P 16KB Stall Debug', () => {
             channel = createMockDataChannel();
             channel.send = vi.fn(function (data) {
                 console.log('MOCK CHANNEL SEND:', typeof data === 'string' ? data : `Binary ${data.byteLength}`);
-                // Auto accept metadata
+                
                 if (typeof data === 'string' && data.includes('METADATA')) {
-                    // Reply with ACCEPT to trigger the file sending loop
+                    
                     setTimeout(() => {
                         console.log('MOCK REPLY ACCEPT');
                         if (channel.onmessage) {
@@ -125,23 +130,23 @@ describe('useP2P 16KB Stall Debug', () => {
             return channel;
         });
 
-        // Setup AUTO DRAIN in background
-        // Drain 10KB every 10ms. 
-        // 16KB sent -> buffered=16KB. Drain 10 -> 6KB. Drain 10 -> 0KB.
-        // It should never hit MAX limit (64KB) if we just send one by one?
-        // Wait, the loop is: `await channel.send()`.
-        // `send` is sync.
-        // It sends 16k. Loops.
-        // Sends 16k. Total buffer 32k.
-        // Loops.
-        // Sends 16k. Total buffer 48k.
-        // Loops.
-        // Sends 16k. Total buffer 64k.
-        // Loops.
-        // Check buffer: 64k > MAX (64k)? No. 64k == MAX.
-        // Sends 16k. Total buffer 80k.
-        // Loops.
-        // Check buffer: 80k > MAX. Wait.
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
 
         let drainInterval = setInterval(() => {
             if (channel && channel.bufferedAmount > 0) {
@@ -158,7 +163,7 @@ describe('useP2P 16KB Stall Debug', () => {
         });
 
         await waitFor(() => {
-            expect(channel.send).toHaveBeenCalledTimes(1 + 7); // Metadata + 7 chunks
+            expect(channel.send).toHaveBeenCalledTimes(1 + 7); 
         }, { timeout: 5000 });
 
         clearInterval(drainInterval);

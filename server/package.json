@@ -6,7 +6,6 @@
     "test": "jest",
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "electron:dev": "electron .",
     "seed": "node seeder.js"
   },
   "keywords": [],

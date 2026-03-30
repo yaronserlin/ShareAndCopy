@@ -1,70 +1,60 @@
 # ShareAndCopy - Client
 
-The frontend interface for ShareAndCopy, a modern, secure file-sharing application designed for ease of use. Built with React and Vite.
+The frontend for ShareAndCopy, built with React, Vite, Bootstrap 5, and React Bootstrap.
 
-## Features
-- **Modern UI**: Clean, responsive interface built with Bootstrap and custom CSS.
-- **Real-time Interaction**: Instant feedback on file uploads and room activities.
-- **Client-Side Encryption**: Ensures files are encrypted before leaving your browser (feature in progress).
-- **QR Code Sharing**: Easily share room links via QR codes.
+## Setup
 
-## Tech Stack
-- **Framework**: React (Vite)
-- **Styling**: Bootstrap 5, Bootstrap Icons, Custom CSS
-- **HTTP Client**: Axios
-- **Routing**: React Router DOM
+Install dependencies:
 
-## Prerequisites
-- Node.js (v18+ recommended)
-
-## Installation
-
-1. Navigate to the client directory:
-   ```bash
-   cd client
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-## Configuration
-
-Create a `.env` file in the `client` root directory (or use `.env.local`):
-
-```env
-# API Configuration
-# Optional: Set this if your server is not running on localhost:5001 or for production builds.
-VITE_API_URL=http://localhost:5001/api
+```bash
+cd client
+npm install
 ```
 
- If `VITE_API_URL` is omitted, the application will attempt to dynamically determine the API URL based on the current window location and port 5001.
+## Environment
 
-## Usage
+Create `.env` or `.env.local` in the `client` folder to override the backend URL:
 
-### Development Mode
-Starts the development server with Hot Module Replacement (HMR):
+```env
+VITE_SERVER_URL=http://localhost:5001
+```
+
+If `VITE_SERVER_URL` is not provided, the client uses `window.SERVER_URL` if available.
+
+## Development
+
+Run the development server:
+
 ```bash
 npm run dev
 ```
-Access the app at `http://localhost:5173` (or the port shown in terminal).
 
-### Production Build
-Builds the app for production:
+Open the application at `http://localhost:5173`.
+
+## Production
+
+Build the optimized production bundle:
+
 ```bash
 npm run build
 ```
-Preview the production build:
+
+Preview the production output:
+
 ```bash
 npm run preview
 ```
 
 ## Structure
-- `src/assets`: Static assets like images and fonts.
-- `src/components`: Core and reusable UI components (e.g., Navbar, Home, NotFound).
-- `src/features`: Feature-based modules containing logic and components (Auth, Room, Admin).
-- `src/context`: React Context Providers (AuthContext, ThemeContext).
-- `src/hooks`: Global custom React hooks.
-- `src/utils`: Helper functions and validators.
-- `src/variables.css`: Global CSS variables for theming.
+
+* `src/` — React application source
+* `src/components/` — reusable UI components
+* `src/features/` — feature modules
+* `src/context/` — React providers
+* `src/hooks/` — custom hooks
+* `src/utils/` — helper utilities
+* `public/` — static assets
+
+## Notes
+
+The frontend now imports Bootstrap styles at the application entrypoint and is configured for deployment with the root `startup.sh` orchestrator.

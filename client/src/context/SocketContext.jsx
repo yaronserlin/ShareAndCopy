@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/context/SocketContext.jsx
+ * Description: Frontend application module.
+ */
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import io from 'socket.io-client';
 import { useAuth } from './AuthContext';
@@ -21,7 +26,7 @@ export const SocketProvider = ({ children }) => {
             return;
         }
 
-        // Initialize Socket with Token
+        
         const newSocket = io(SERVER_URL, {
             auth: { token },
             query: {
@@ -63,7 +68,7 @@ export const SocketProvider = ({ children }) => {
     );
 };
 
-// Helper to get or generate a persistent Device ID
+
 const getDeviceId = () => {
     let deviceId = localStorage.getItem('device_id');
     if (!deviceId) {
@@ -73,7 +78,7 @@ const getDeviceId = () => {
     return deviceId;
 };
 
-// Helper for Device Name
+
 const getDeviceName = (user) => {
     const username = user?.username || user?.email?.split('@')[0] || 'My';
     return localStorage.getItem('device_name') || getFriendlyDeviceName(username);

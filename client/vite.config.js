@@ -1,12 +1,17 @@
+/**
+ * Preview: client/vite.config.js
+ * Description: Frontend application module.
+ */
+
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vite.dev/config/
+
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: true, // מאפשר גישה מכתובות IP חיצוניות
-    allowedHosts: true, // Allow all hosts (required for dynamic Cloudflare tunnels)
+    host: true, 
+    allowedHosts: true, 
     proxy: {
       '/api': {
         target: 'http://localhost:5001',

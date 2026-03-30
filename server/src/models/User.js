@@ -1,16 +1,11 @@
+/**
+ * Preview: server/src/models/User.js
+ * Description: Mongoose model definition.
+ */
+
 const mongoose = require('mongoose');
 
-/**
- * User Schema
- * @typedef {Object} User
- * @property {string} email - User's email address
- * @property {string} password - Hashed password
- * @property {string} firstName - User's first name
- * @property {string} lastName - User's last name
- * @property {string} roomId - Unique room ID for file sharing
- * @property {number} usedStorage - Storage used in bytes
- * @property {boolean} isAdmin - Admin status
- */
+
 const UserSchema = new mongoose.Schema({
     authorizedDevices: [{
         deviceId: {
@@ -85,12 +80,12 @@ const UserSchema = new mongoose.Schema({
         default: false
     }
 }, {
-    timestamps: true // Adds createdAt and updatedAt
+    timestamps: true 
 });
 
-// PERFORMANCE: Add indexes for frequently queried fields
-// Note: roomId and email already have unique indexes from schema definition
-UserSchema.index({ 'authorizedDevices.jti': 1 }); // Fast revocation checks
-UserSchema.index({ 'authorizedDevices.deviceId': 1 }); // Fast device lookups
+
+
+UserSchema.index({ 'authorizedDevices.jti': 1 }); 
+UserSchema.index({ 'authorizedDevices.deviceId': 1 }); 
 
 module.exports = mongoose.model('User', UserSchema);

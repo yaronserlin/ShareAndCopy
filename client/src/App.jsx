@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/App.jsx
+ * Description: Frontend application module.
+ */
+
 import Home from './components/Home';
 import Auth from './features/Auth';
 import Navbar from './components/Navbar';

@@ -1,9 +1,14 @@
+/**
+ * Preview: client/src/hooks/__tests__/useP2P.test.jsx
+ * Description: Test suite for ShareAndCopy functionality.
+ */
+
 import { renderHook, act } from '@testing-library/react';
 import { useP2P } from '../useP2P';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as SocketContext from '../../context/SocketContext';
 
-// Mock Socket
+
 const mockSocket = {
     on: vi.fn(),
     off: vi.fn(),
@@ -11,14 +16,14 @@ const mockSocket = {
     id: 'socket-123'
 };
 
-// Mock RTCPeerConnection
+
 const mockPeerConnection = {
     createDataChannel: vi.fn(() => ({
         onopen: null,
         onmessage: null,
         send: vi.fn(),
         bufferedAmount: 0,
-        readyState: 'open', // defaulted to open for easier testing
+        readyState: 'open', 
         close: vi.fn(),
     })),
     createOffer: vi.fn(() => Promise.resolve({ type: 'offer', sdp: 'offer-sdp' })),
@@ -37,7 +42,7 @@ const mockPeerConnection = {
     onconnectionstatechange: null
 };
 
-// Properly mock the constructor
+
 global.RTCPeerConnection = vi.fn(function () {
     return mockPeerConnection;
 });
@@ -64,7 +69,7 @@ describe('useP2P Hook', () => {
     });
 
     it('should send file and trigger signaling', async () => {
-        // Capture socket handlers to simulate events
+        
         let deviceOnlineHandler;
         mockSocket.on.mockImplementation((event, handler) => {
             if (event === 'device-online') deviceOnlineHandler = handler;
@@ -72,7 +77,7 @@ describe('useP2P Hook', () => {
 
         const { result } = renderHook(() => useP2P());
 
-        // 1. Simulate Device Coming Online
+        
         const targetDeviceId = 'device-target';
         await act(async () => {
             if (deviceOnlineHandler) {
@@ -84,24 +89,24 @@ describe('useP2P Hook', () => {
             }
         });
 
-        // 2. Trigger Send File
+        
         const mockFile = new File(['hello world'], 'test.txt', { type: 'text/plain' });
 
         await act(async () => {
             await result.current.sendFile(mockFile, targetDeviceId);
         });
 
-        // Verify Peer Connection created
+        
         expect(global.RTCPeerConnection).toHaveBeenCalled();
 
-        // Verify Data Channel created
+        
         expect(mockPeerConnection.createDataChannel).toHaveBeenCalledWith('file-transfer');
 
-        // Note: createOffer might not be called immediately if onnegotiationneeded logic is async or event-driven
-        // In the hook, we set onnegotiationneeded. We need to manually trigger it if we want to test offer generation,
-        // OR the hook calls it explicitly. 
-        // Looking at the hook code: `peer.onnegotiationneeded = async () => { ... }`
-        // It doesn't auto-fire in mock. We can manually fire it.
+        
+        
+        
+        
+        
 
         if (mockPeerConnection.onnegotiationneeded) {
             await act(async () => {
@@ -123,7 +128,7 @@ describe('useP2P Hook', () => {
 
         renderHook(() => useP2P());
 
-        // Simulate incoming offer
+        
         await act(async () => {
             await signalHandler({
                 senderDeviceId: 'device-sender',
@@ -133,9 +138,9 @@ describe('useP2P Hook', () => {
             });
         });
 
-        // Verify Remote Description set
+        
         expect(mockPeerConnection.setRemoteDescription).toHaveBeenCalledWith({ type: 'offer', sdp: 'remote-offer' });
-        // Verify Answer created and sent
+        
         expect(mockPeerConnection.createAnswer).toHaveBeenCalled();
         expect(mockSocket.emit).toHaveBeenCalledWith('signal', expect.objectContaining({
             type: 'answer'

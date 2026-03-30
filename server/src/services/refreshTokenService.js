@@ -1,22 +1,23 @@
+/**
+ * Preview: server/src/services/refreshTokenService.js
+ * Description: Server business logic service.
+ */
+
 const jwt = require('jsonwebtoken');
 const env = require('../config/env');
 const logger = require('../utils/logger');
 
-/**
- * Refresh access token using a valid refresh token
- * @param {string} refreshToken - Refresh token
- * @returns {object} New access and refresh tokens
- */
+
 exports.refreshAccessToken = async (refreshToken) => {
     try {
-        // Verify refresh token
+        
         const decoded = jwt.verify(refreshToken, env.JWT_REFRESH_SECRET);
 
         if (decoded.type !== 'refresh') {
             throw new Error('Invalid token type');
         }
 
-        // Generate new tokens
+        
         const payload = {
             id: decoded.id,
             iat: Math.floor(Date.now() / 1000)

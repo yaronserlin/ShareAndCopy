@@ -1,3 +1,8 @@
+/**
+ * Preview: client/src/components/common/Modal/Modal.test.jsx
+ * Description: Test suite for ShareAndCopy functionality.
+ */
+
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import Modal from './Modal';
@@ -20,13 +25,13 @@ describe('Modal', () => {
             </Modal>
         );
 
-        // Click close button
+        
         fireEvent.click(screen.getByRole('button', { name: /close/i }));
         expect(handleClose).toHaveBeenCalledTimes(1);
 
-        // Click overlay (we need to find the overlay, which wraps content)
-        // Since overlay has onClick, we can target it by class or just blindly click parent of content?
-        // RTL doesn't make it easy to find by class. We can assume the first div is overlay if simple.
-        // Actually, we can add data-testid or just assume interaction.
+        
+        
+        
+        
     });
 });

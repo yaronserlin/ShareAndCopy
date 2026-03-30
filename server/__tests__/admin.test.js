@@ -1,10 +1,15 @@
+/**
+ * Preview: server/__tests__/admin.test.js
+ * Description: Test suite for ShareAndCopy functionality.
+ */
+
 const request = require('supertest');
 const bcrypt = require('bcryptjs');
 const app = require('../src/index');
 const testDb = require('./testDb');
 const User = require('../src/models/User');
 
-// Mock cron - REMOVED
+
 
 
 beforeAll(async () => {
@@ -24,7 +29,7 @@ describe('Admin Routes', () => {
     let userToken;
 
     beforeEach(async () => {
-        // Create Admin
+        
         const hashedPassword = await bcrypt.hash('Password1', 10);
         const adminUser = {
             firstName: 'Admin',
@@ -37,7 +42,7 @@ describe('Admin Routes', () => {
         await User.create(adminUser);
         console.log('Admin User Created:', adminUser);
 
-        // Login Admin
+        
         const adminLogin = await request(app).post('/api/auth/login').send({
             email: adminUser.email,
             password: 'Password1'
@@ -47,14 +52,14 @@ describe('Admin Routes', () => {
         }
         adminToken = adminLogin.body.data.token;
 
-        // Create Regular User
+        
         const regUser = {
             firstName: 'Reg',
             lastName: 'User',
             email: `reg-${Date.now()}@test.com`,
             password: 'Password1'
         };
-        // Register via API to get token easily
+        
         const regRes = await request(app).post('/api/auth/register').send(regUser);
         if (regRes.statusCode !== 201) {
             console.log('Admin Test Reg User Failed:', regRes.statusCode, JSON.stringify(regRes.body));
