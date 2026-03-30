@@ -4,7 +4,9 @@
  */
 
 import axios from 'axios';
-import API_BASE_URL from '../config';
+import { API_BASE_URL } from '../config';
+// import API_BASE_URL from '../config';
+
 
 const api = axios.create({
     baseURL: API_BASE_URL,
@@ -28,12 +30,12 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use((response) => {
     return response;
 }, (error) => {
-    
+
     if (error.response && error.response.status === 429) {
         window.dispatchEvent(new Event('rate-limit-exceeded'));
     }
 
-    
+
     return Promise.reject(error);
 });
 
