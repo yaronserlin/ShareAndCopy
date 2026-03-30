@@ -31,10 +31,6 @@ app.use(helmet({
             scriptSrc: ["'self'"],
             imgSrc: ["'self'", 'data:', 'https:'],
             connectSrc: ["'self'",
-                'http://localhost:*',
-                'http://127.0.0.1:*',
-                'ws://localhost:*',
-                'ws://127.0.0.1:*',
                 env.PUBLIC_URL || ''
             ].filter(Boolean),
             fontSrc: ["'self'"],
@@ -68,24 +64,29 @@ const allowedOrigins = env.NODE_ENV === 'production'
         env.PUBLIC_URL
     ].filter(Boolean);
 
-const localOriginPattern = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(:\d+)?$/;
-
+// const localOriginPattern = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(:\d+)?$/;
 
 app.use(cors({
-    origin: env.NODE_ENV === 'production'
-        ? (env.PUBLIC_URL ? [env.PUBLIC_URL] : false)
-        : function (origin, callback) {
-            if (!origin) return callback(null, true);
-            if (allowedOrigins.includes(origin) || localOriginPattern.test(origin)) {
-                return callback(null, true);
-            }
-            logger.warn(`Blocked by CORS: ${origin}`);
-            callback(new Error('Not allowed by CORS'));
-        },
+    origin: env.PUBLIC_URL || '*',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token']
 }));
+// app.use(cors({
+//     origin: env.NODE_ENV === 'production'
+//         ? (env.PUBLIC_URL ? [env.PUBLIC_URL] : false)
+//         : function (origin, callback) {
+//             if (!origin) return callback(null, true);
+//             if (allowedOrigins.includes(origin) || localOriginPattern.test(origin)) {
+//                 return callback(null, true);
+//             }
+//             logger.warn(`Blocked by CORS: ${origin}`);
+//             callback(new Error('Not allowed by CORS'));
+//         },
+//     credentials: true,
+//     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+//     allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token']
+// }));
 
 
 app.use((req, res, next) => {

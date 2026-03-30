@@ -41,7 +41,7 @@ module.exports = {
     RATE_LIMIT_MAX_REQUESTS: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10) || 100,
 
 
-    PUBLIC_URL: process.env.PUBLIC_URL,
+    PUBLIC_URL: process.env.PUBLIC_URL || '*',
 
 
     NODE_ENV: process.env.NODE_ENV || 'development',
@@ -50,5 +50,6 @@ module.exports = {
     TURN_SECRET: process.env.TURN_SECRET || 'dev_secret',
     TURN_URL: process.env.TURN_URL,
     TURN_USER: process.env.TURN_USER || 'user',
+
 
 };
