@@ -20,7 +20,7 @@ const About = () => {
                             About Share & Copy
                         </h1>
                         <p className="lead text-secondary">
-                            Secure, temporary file sharing made simple.
+                            Direct, private file transfers between your own devices.
                         </p>
                     </div>
 
@@ -32,40 +32,40 @@ const About = () => {
                                     <h3 className="h5 fw-bold mb-0 text-body">Secure & Private</h3>
                                 </div>
                                 <p className="text-secondary mb-0">
-                                    Your data is private and only accessible to those with the room link.
+                                    Files travel directly between your devices over a peer-to-peer connection. They're never uploaded to or stored on our servers.
                                 </p>
                             </GlassCard>
                         </div>
                         <div className="col-md-6">
                             <GlassCard className="h-100">
                                 <div className="d-flex align-items-center mb-3">
-                                    <i className="bi bi-clock-history text-danger fs-3 me-3"></i>
-                                    <h3 className="h5 fw-bold mb-0 text-body">Auto-Deletion</h3>
+                                    <i className="bi bi-qr-code-scan text-info fs-3 me-3"></i>
+                                    <h3 className="h5 fw-bold mb-0 text-body">Device Pairing</h3>
                                 </div>
                                 <p className="text-secondary mb-0">
-                                    Files are automatically deleted after 24 hours (or your custom setting), ensuring no clutter is left behind.
+                                    Add a new device to your account in seconds by scanning a QR code or entering a one-time pairing code.
                                 </p>
                             </GlassCard>
                         </div>
                         <div className="col-md-6">
                             <GlassCard className="h-100">
                                 <div className="d-flex align-items-center mb-3">
-                                    <i className="bi bi-people-fill text-success fs-3 me-3"></i>
-                                    <h3 className="h5 fw-bold mb-0 text-body">Room-Based Sharing</h3>
+                                    <i className="bi bi-laptop text-success fs-3 me-3"></i>
+                                    <h3 className="h5 fw-bold mb-0 text-body">Your Devices, Online</h3>
                                 </div>
                                 <p className="text-secondary mb-0">
-                                    Create a dedicated room and share the link. Anyone with the link can view and download files instantly.
+                                    See every device signed in to your account the moment it comes online, ready to receive files.
                                 </p>
                             </GlassCard>
                         </div>
                         <div className="col-md-6">
                             <GlassCard className="h-100">
                                 <div className="d-flex align-items-center mb-3">
-                                    <i className="bi bi-cloud-arrow-up-fill text-info fs-3 me-3"></i>
-                                    <h3 className="h5 fw-bold mb-0 text-body">Easy Upload</h3>
+                                    <i className="bi bi-send-fill text-warning fs-3 me-3"></i>
+                                    <h3 className="h5 fw-bold mb-0 text-body">Direct Transfers</h3>
                                 </div>
                                 <p className="text-secondary mb-0">
-                                    Drag and drop files to upload. Support for large files and various formats. Rename files easily.
+                                    Pick a file and send it straight to another device. Potentially unsafe file types are blocked automatically.
                                 </p>
                             </GlassCard>
                         </div>
