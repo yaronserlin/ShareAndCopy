@@ -10,6 +10,7 @@ import { useSocket } from '../context/SocketContext';
 import { getDeviceId } from '../utils/deviceUtils';
 import { APP_CONSTANTS } from '../constants';
 import API_BASE_URL from '../config';
+import { debugLog, debugWarn } from '../utils/logger';
 
 
 const DEFAULT_ICE_SERVERS = [
@@ -111,7 +112,7 @@ export const useP2P = () => {
                 const res = await axios.get(`${API_BASE_URL}/system/webrtc-config`);
                 if (res.data && res.data.data && res.data.data.iceServers) {
                     iceServersRef.current = { iceServers: res.data.data.iceServers };
-                    console.log('WebRTC Configuration Loaded:', iceServersRef.current);
+                    debugLog('WebRTC Configuration Loaded:', iceServersRef.current);
                 }
             } catch (err) {
                 console.error('Failed to fetch WebRTC config, using default STUN:', err);
@@ -127,12 +128,12 @@ export const useP2P = () => {
 
         
         socket.on('initial-device-list', (devices) => {
-            console.log('Received initial device list:', devices);
+            debugLog('Received initial device list:', devices);
             setOnlineDevices(devices);
         });
 
         socket.on('device-online', (device) => {
-            console.log('Device Online:', device);
+            debugLog('Device Online:', device);
             setOnlineDevices(prev => {
                 if (prev.find(d => d.deviceId === device.deviceId)) return prev;
                 return [...prev, device];
@@ -140,13 +141,13 @@ export const useP2P = () => {
         });
 
         socket.on('device-offline', ({ deviceId }) => {
-            console.log('Device Offline:', deviceId);
+            debugLog('Device Offline:', deviceId);
             setOnlineDevices(prev => prev.filter(d => d.deviceId !== deviceId));
             cleanupDeviceState(deviceId);
         });
 
         socket.on('signal', async ({ senderSocketId, senderDeviceId, type, signalData }) => {
-            console.log(`Received Signal from ${senderDeviceId} (${type})`);
+            debugLog(`Received Signal from ${senderDeviceId} (${type})`);
 
             
             const peer = getOrCreatePeer(senderDeviceId, senderSocketId);
@@ -158,21 +159,21 @@ export const useP2P = () => {
 
                     state.ignoreOffer = !state.polite && offerCollision;
                     if (state.ignoreOffer) {
-                        console.warn(`Glare detected with ${senderDeviceId}; ignoring offer (impolite peer)`);
+                        debugWarn(`Glare detected with ${senderDeviceId}; ignoring offer (impolite peer)`);
                         return;
                     }
 
                     if (offerCollision) {
-                        console.warn(`Glare detected with ${senderDeviceId}; rolling back local offer (polite peer)`);
+                        debugWarn(`Glare detected with ${senderDeviceId}; rolling back local offer (polite peer)`);
                         await peer.setLocalDescription({ type: 'rollback' });
                     }
 
                     await peer.setRemoteDescription(new RTCSessionDescription(signalData));
-                    console.log('Remote Description Set (Offer)');
+                    debugLog('Remote Description Set (Offer)');
 
                     
                     if (candidatesBufferRef.current[senderDeviceId]) {
-                        console.log(`Processing ${candidatesBufferRef.current[senderDeviceId].length} buffered candidates for ${senderDeviceId}`);
+                        debugLog(`Processing ${candidatesBufferRef.current[senderDeviceId].length} buffered candidates for ${senderDeviceId}`);
                         for (const candidate of candidatesBufferRef.current[senderDeviceId]) {
                             await peer.addIceCandidate(candidate);
                         }
@@ -181,7 +182,7 @@ export const useP2P = () => {
 
                     const answer = await peer.createAnswer();
                     await peer.setLocalDescription(answer);
-                    console.log('Local Description Set (Answer), Sending Answer...');
+                    debugLog('Local Description Set (Answer), Sending Answer...');
 
                     socket.emit('signal', {
                         targetSocketId: senderSocketId,
@@ -190,11 +191,11 @@ export const useP2P = () => {
                     });
                 } else if (type === 'answer') {
                     await peer.setRemoteDescription(new RTCSessionDescription(signalData));
-                    console.log('Remote Description Set (Answer)');
+                    debugLog('Remote Description Set (Answer)');
 
                     
                     if (candidatesBufferRef.current[senderDeviceId]) {
-                        console.log(`Processing ${candidatesBufferRef.current[senderDeviceId].length} buffered candidates for ${senderDeviceId}`);
+                        debugLog(`Processing ${candidatesBufferRef.current[senderDeviceId].length} buffered candidates for ${senderDeviceId}`);
                         for (const candidate of candidatesBufferRef.current[senderDeviceId]) {
                             await peer.addIceCandidate(candidate);
                         }
@@ -204,10 +205,10 @@ export const useP2P = () => {
                     const candidate = new RTCIceCandidate(signalData);
                     if (peer.remoteDescription && peer.remoteDescription.type) {
                         await peer.addIceCandidate(candidate);
-                        console.log('Added ICE Candidate immediately');
+                        debugLog('Added ICE Candidate immediately');
                     } else {
                         
-                        console.log('Buffering ICE Candidate (Remote Desc not ready)');
+                        debugLog('Buffering ICE Candidate (Remote Desc not ready)');
                         if (!candidatesBufferRef.current[senderDeviceId]) {
                             candidatesBufferRef.current[senderDeviceId] = [];
                         }
@@ -254,11 +255,11 @@ export const useP2P = () => {
     const getOrCreatePeer = (targetDeviceId, targetSocketId) => {
         if (peersRef.current[targetDeviceId]) {
             const p = peersRef.current[targetDeviceId];
-            console.log(`Using existing peer for ${targetDeviceId}. ConnectionState: ${p.connectionState}`);
+            debugLog(`Using existing peer for ${targetDeviceId}. ConnectionState: ${p.connectionState}`);
             return p;
         }
 
-        console.log(`Creating new RTCPeerConnection for ${targetDeviceId}`);
+        debugLog(`Creating new RTCPeerConnection for ${targetDeviceId}`);
         const peer = new RTCPeerConnection(iceServersRef.current);
         peersRef.current[targetDeviceId] = peer;
 
@@ -272,7 +273,7 @@ export const useP2P = () => {
         setConnectionStatus(prev => ({ ...prev, [targetDeviceId]: 'checking' }));
 
         peer.oniceconnectionstatechange = () => {
-            console.log(`ICE Connection State Change (${targetDeviceId}):`, peer.iceConnectionState);
+            debugLog(`ICE Connection State Change (${targetDeviceId}):`, peer.iceConnectionState);
             const state = peer.iceConnectionState;
 
             let status = 'checking';
@@ -285,7 +286,7 @@ export const useP2P = () => {
         };
 
         peer.onconnectionstatechange = () => {
-            console.log(`Peer Connection State Change (${targetDeviceId}):`, peer.connectionState);
+            debugLog(`Peer Connection State Change (${targetDeviceId}):`, peer.connectionState);
         };
 
         
@@ -301,20 +302,20 @@ export const useP2P = () => {
 
 
         peer.ondatachannel = (event) => {
-            console.log(`Received Data Channel from ${targetDeviceId}`);
+            debugLog(`Received Data Channel from ${targetDeviceId}`);
             const channel = event.channel;
             setupReceiveChannel(channel, targetDeviceId);
         };
 
 
         peer.onnegotiationneeded = async () => {
-            console.log('Negotiation Needed for', targetDeviceId);
+            debugLog('Negotiation Needed for', targetDeviceId);
             const state = negotiationStateRef.current[targetDeviceId];
             try {
                 state.making = true;
                 const offer = await peer.createOffer();
                 await peer.setLocalDescription(offer);
-                console.log('Sending Offer...');
+                debugLog('Sending Offer...');
                 socket.emit('signal', {
                     targetSocketId,
                     type: 'offer',
@@ -353,9 +354,9 @@ export const useP2P = () => {
             });
         };
 
-        channel.onopen = () => console.log(`Data Channel Opened (Receiver) for ${deviceId}`);
+        channel.onopen = () => debugLog(`Data Channel Opened (Receiver) for ${deviceId}`);
         channel.onclose = () => {
-            console.log(`Data Channel Closed (Receiver) for ${deviceId}`);
+            debugLog(`Data Channel Closed (Receiver) for ${deviceId}`);
             abortActiveTransfer();
         };
         channel.onerror = (e) => {
@@ -383,7 +384,7 @@ export const useP2P = () => {
                         const transferId = message.transferId || crypto.randomUUID();
                         currentTransferId = transferId;
 
-                        console.log(`Receiving file offer [${transferId}]: ${message.fileName} (${message.fileSize} bytes)`);
+                        debugLog(`Receiving file offer [${transferId}]: ${message.fileName} (${message.fileSize} bytes)`);
 
                         
                         activeTransfers.set(transferId, {
@@ -412,7 +413,7 @@ export const useP2P = () => {
                             return;
                         }
 
-                        console.log(`File Transfer Complete [${transferId}]. Reassembling...`);
+                        debugLog(`File Transfer Complete [${transferId}]. Reassembling...`);
                         const blob = new Blob(transfer.receivedBuffers);
                         const url = URL.createObjectURL(blob);
 
@@ -498,7 +499,7 @@ export const useP2P = () => {
         while (offset < file.size) {
             
             if (channel.bufferedAmount > MAX_BUFFERED_AMOUNT) {
-                console.log(`[Send] Buffer full (${channel.bufferedAmount}). Waiting...`);
+                debugLog(`[Send] Buffer full (${channel.bufferedAmount}). Waiting...`);
                 
                 await new Promise(resolve => {
                     let resolved = false;
@@ -524,7 +525,7 @@ export const useP2P = () => {
                         }
                     }, 200);
                 });
-                console.log(`[Send] Buffer drained (${channel.bufferedAmount}). Resuming.`);
+                debugLog(`[Send] Buffer drained (${channel.bufferedAmount}). Resuming.`);
             }
 
             if (channel.readyState !== 'open') {
@@ -541,7 +542,7 @@ export const useP2P = () => {
                 channel.send(buffer);
                 logCounter++;
                 if (logCounter % 50 === 0) {
-                    console.log(`[Send] Sent chunk ${logCounter}. Offset: ${offset}/${file.size}. Buffer: ${channel.bufferedAmount}`);
+                    debugLog(`[Send] Sent chunk ${logCounter}. Offset: ${offset}/${file.size}. Buffer: ${channel.bufferedAmount}`);
                 }
             } catch (e) {
                 console.error('Send Error:', e);
@@ -609,7 +610,7 @@ export const useP2P = () => {
         }
 
         const targetSocketId = targetDevice.socketId;
-        console.log(`Initiating File Transfer to ${targetDeviceId} (Socket: ${targetSocketId})`);
+        debugLog(`Initiating File Transfer to ${targetDeviceId} (Socket: ${targetSocketId})`);
 
         
         
@@ -621,7 +622,7 @@ export const useP2P = () => {
         const channel = peer.createDataChannel('file-transfer');
 
         channel.onopen = async () => {
-            console.log(`Data Channel Opened (Sender) for ${targetDeviceId}. Starting Transfer...`);
+            debugLog(`Data Channel Opened (Sender) for ${targetDeviceId}. Starting Transfer...`);
 
             
             const transferId = generateUUID();
@@ -635,7 +636,7 @@ export const useP2P = () => {
                 transferId 
             };
             channel.send(JSON.stringify(metadata));
-            console.log(`Metadata sent with transfer ID: ${transferId}. Waiting for acceptance...`);
+            debugLog(`Metadata sent with transfer ID: ${transferId}. Waiting for acceptance...`);
 
             
             channel.onmessage = async (event) => {
@@ -644,20 +645,20 @@ export const useP2P = () => {
                     try {
                         const message = JSON.parse(data);
                         if (message.type === 'ACCEPT') {
-                            console.log('Transfer Accepted by receiver. Starting Send...');
+                            debugLog('Transfer Accepted by receiver. Starting Send...');
                             
                             await sendChunks(channel, file, targetDeviceId);
 
                             
                             if (channel.readyState === 'open') {
                                 channel.send(JSON.stringify({ type: 'FINISH', transferId }));
-                                console.log(`File Transfer Finished (Sender side) [${transferId}]`);
+                                debugLog(`File Transfer Finished (Sender side) [${transferId}]`);
 
                                 
                                 socket.emit('report-transfer', { size: file.size, type: 'upload' });
                             }
                         } else if (message.type === 'REJECT') {
-                            console.log('Transfer Rejected by receiver.');
+                            debugLog('Transfer Rejected by receiver.');
                             alert('File transfer declined by the recipient.');
                             channel.close();
                         }
@@ -670,7 +671,7 @@ export const useP2P = () => {
         };
 
         channel.onclose = () => {
-            console.log('Data Channel Closed (Sender)');
+            debugLog('Data Channel Closed (Sender)');
             setTransferStats(prev => {
                 if (!(targetDeviceId in prev)) return prev;
                 const next = { ...prev };
@@ -701,7 +702,7 @@ export const useP2P = () => {
         const transfer = pendingTransfers[deviceId];
         if (!transfer) return;
 
-        console.log(`Accepting transfer from ${deviceId}`);
+        debugLog(`Accepting transfer from ${deviceId}`);
         transfer.channel.send(JSON.stringify({ type: 'ACCEPT' }));
 
         
@@ -720,7 +721,7 @@ export const useP2P = () => {
         const transfer = pendingTransfers[deviceId];
         if (!transfer) return;
 
-        console.log(`Rejecting transfer from ${deviceId}`);
+        debugLog(`Rejecting transfer from ${deviceId}`);
         transfer.channel.send(JSON.stringify({ type: 'REJECT' }));
         
         setPendingTransfers(prev => {

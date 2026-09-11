@@ -3,9 +3,14 @@
  * Description: Server utility helper.
  */
 
+const shared = require('../../../shared-constants.json');
+
+// MAX_STORAGE_BYTES / FORBIDDEN_EXTENSIONS live in shared-constants.json so this
+// file and costant.js can't drift. REGEX can't be shared via JSON, so keep it
+// identical to the copy in costant.js.
 const APP_CONSTANTS = {
-    MAX_STORAGE_BYTES: 1024 * 1024 * 1024 * 10, 
-    FORBIDDEN_EXTENSIONS: ['.exe', '.sh', '.bat', '.cmd', '.msi', '.bin', '.vbs', '.js', '.jar'],
+    MAX_STORAGE_BYTES: shared.MAX_STORAGE_BYTES,
+    FORBIDDEN_EXTENSIONS: shared.FORBIDDEN_EXTENSIONS,
     REGEX: {
         EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
         NAME: /^[A-Za-z]+$/,

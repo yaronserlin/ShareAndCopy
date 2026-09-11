@@ -1,0 +1,4 @@
+{
+  "MAX_STORAGE_BYTES": 10737418240,
+  "FORBIDDEN_EXTENSIONS": [".exe", ".sh", ".bat", ".cmd", ".msi", ".bin", ".vbs", ".js", ".jar"]
+}

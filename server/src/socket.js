@@ -13,8 +13,6 @@ const DailyStat = require('./models/DailyStat');
 const RevokedToken = require('./models/RevokedToken');
 const logger = require('./utils/logger');
 const { connectedSockets, dataTransferred } = require('./utils/metrics');
-const { createClient } = require('redis');
-const { createAdapter } = require('@socket.io/redis-adapter');
 const pairingStore = require('./utils/pairingStore');
 const { parseCookies } = require('./utils/cookies');
 
@@ -75,30 +73,6 @@ const initSocket = (server) => {
             credentials: true
         }
     });
-
-
-    // if (env.REDIS_HOST) {
-    //     (async () => {
-    //         try {
-    //             const pubClient = createClient({
-    //                 url: `redis://${env.REDIS_PASSWORD ? ':' + env.REDIS_PASSWORD + '@' : ''}${env.REDIS_HOST}:${env.REDIS_PORT}`
-    //             });
-    //             const subClient = pubClient.duplicate();
-
-    //             await Promise.all([pubClient.connect(), subClient.connect()]);
-
-    //             io.adapter(createAdapter(pubClient, subClient));
-    //             logger.info('Redis Adapter connected. Cluster mode enabled.');
-    //         } catch (err) {
-
-
-    //             logger.warn('Redis connection failed. Running in Single Node Mode (Memory Adapter).');
-    //             logger.debug(`Redis Error Details: ${err.message}`);
-    //         }
-    //     })();
-    // } else {
-    //     logger.info('Redis config missing. Running in Single Node Mode (Memory Adapter).');
-    // }
 
 
     io.use(async (socket, next) => {

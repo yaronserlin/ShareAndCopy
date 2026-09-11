@@ -66,7 +66,7 @@ const UsersTable = ({ users }) => {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="4" className="text-center py-5 text-muted">No user data available</td>
+                                    <td colSpan="5" className="text-center py-5 text-muted">No user data available</td>
                                 </tr>
                             )}
                         </tbody>

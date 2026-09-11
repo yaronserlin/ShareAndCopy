@@ -139,4 +139,92 @@ describe('Auth Routes', () => {
             expect([401, 403]).toContain(res.statusCode);
         });
     });
+
+    describe('POST /api/auth/pairing-code', () => {
+        it('should issue a pairing code for an authenticated user', async () => {
+            const mockUser = generateUser();
+            const agent = request.agent(app);
+            await agent.post('/api/auth/register').send(mockUser);
+
+            const res = await agent.post('/api/auth/pairing-code');
+
+            expect(res.statusCode).toBe(200);
+            expect(res.body.code).toMatch(/^[0-9A-F]{6}$/);
+            expect(res.body.pairingToken).toEqual(expect.any(String));
+            expect(res.body.expiresIn).toBe(60 * 5);
+        });
+
+        it('should return 401 for unauthenticated request', async () => {
+            const res = await request(app).post('/api/auth/pairing-code');
+            expect(res.statusCode).toBe(401);
+        });
+    });
+
+    describe('POST /api/auth/verify-pairing', () => {
+        it('should exchange a valid pairing code for a pairing token', async () => {
+            const mockUser = generateUser();
+            const agent = request.agent(app);
+            await agent.post('/api/auth/register').send(mockUser);
+            const { body: { code } } = await agent.post('/api/auth/pairing-code');
+
+            const res = await request(app)
+                .post('/api/auth/verify-pairing')
+                .send({ code });
+
+            expect(res.statusCode).toBe(200);
+            expect(res.body.valid).toBe(true);
+            expect(res.body.pairingToken).toEqual(expect.any(String));
+        });
+
+        it('should reject an invalid or expired code', async () => {
+            const res = await request(app)
+                .post('/api/auth/verify-pairing')
+                .send({ code: 'NOTREAL' });
+
+            expect(res.statusCode).toBe(400);
+            expect(res.body.valid).toBe(false);
+        });
+
+        it('should not allow the same code to be consumed twice', async () => {
+            const mockUser = generateUser();
+            const agent = request.agent(app);
+            await agent.post('/api/auth/register').send(mockUser);
+            const { body: { code } } = await agent.post('/api/auth/pairing-code');
+
+            await request(app).post('/api/auth/verify-pairing').send({ code });
+            const res = await request(app).post('/api/auth/verify-pairing').send({ code });
+
+            expect(res.statusCode).toBe(400);
+        });
+    });
+
+    describe('POST /api/auth/refresh', () => {
+        it('should issue a new access token when a valid refresh cookie is present', async () => {
+            const mockUser = generateUser();
+            const agent = request.agent(app);
+            await agent.post('/api/auth/register').send(mockUser);
+
+            const res = await agent.post('/api/auth/refresh');
+
+            expect(res.statusCode).toBe(200);
+            expect(res.body.success).toBe(true);
+            expect(res.headers['set-cookie']).toBeDefined();
+
+            const verifyRes = await agent.get('/api/auth/verify');
+            expect(verifyRes.statusCode).toBe(200);
+        });
+
+        it('should return 400 when no refresh cookie is present', async () => {
+            const res = await request(app).post('/api/auth/refresh');
+            expect(res.statusCode).toBe(400);
+        });
+
+        it('should return 401 for an invalid refresh token', async () => {
+            const res = await request(app)
+                .post('/api/auth/refresh')
+                .set('Cookie', ['refreshToken=not-a-real-token']);
+
+            expect(res.statusCode).toBe(401);
+        });
+    });
 });

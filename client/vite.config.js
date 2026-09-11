@@ -10,8 +10,11 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: true, 
-    allowedHosts: true, 
+    host: true,
+    // '.trycloudflare.com' covers the rotating tunnel hostname used by
+    // `npm run start` (net mode, startup.sh). Local/LAN access via
+    // localhost/127.0.0.1/private IPs is allowed by Vite regardless of this list.
+    allowedHosts: ['.trycloudflare.com'],
     proxy: {
       '/api': {
         target: 'http://localhost:5001',
