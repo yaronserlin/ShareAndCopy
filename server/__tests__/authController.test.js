@@ -19,7 +19,8 @@ describe('AuthController', () => {
         };
         res = {
             status: jest.fn().mockReturnThis(),
-            json: jest.fn()
+            json: jest.fn(),
+            setHeader: jest.fn()
         };
         jest.clearAllMocks();
     });
@@ -33,6 +34,8 @@ describe('AuthController', () => {
 
             const mockResult = {
                 token: 'token',
+                accessToken: 'token',
+                refreshToken: 'refresh-token',
                 roomId: 'room123',
                 user: { id: 'userId', email: 'test@test.com' }
             };
@@ -42,8 +45,9 @@ describe('AuthController', () => {
             await authController.register(req, res);
 
             expect(res.status).toHaveBeenCalledWith(201);
+            expect(res.setHeader).toHaveBeenCalledWith('Set-Cookie', expect.any(Array));
             expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-                data: mockResult
+                data: { roomId: 'room123', user: { id: 'userId', email: 'test@test.com' } }
             }));
         });
 

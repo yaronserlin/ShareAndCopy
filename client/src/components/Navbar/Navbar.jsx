@@ -12,7 +12,7 @@ import styles from './Navbar.module.css';
 
 const Navbar = () => {
     const navigate = useNavigate();
-    const { user, token, roomId, logout } = useAuth();
+    const { user, isAuthenticated, roomId, logout } = useAuth();
 
     const handleLogout = () => {
         logout();
@@ -27,7 +27,7 @@ const Navbar = () => {
                 </Link>
 
                 <div className="d-flex gap-2 align-items-center">
-                    {token ? (
+                    {isAuthenticated ? (
                         <>
 
                             {user?.isGuest && (

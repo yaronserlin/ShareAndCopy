@@ -25,11 +25,11 @@ afterAll(async () => {
 });
 
 describe('Admin Routes', () => {
-    let adminToken;
-    let userToken;
+    let adminAgent;
+    let userAgent;
 
     beforeEach(async () => {
-        
+
         const hashedPassword = await bcrypt.hash('Password1', 10);
         const adminUser = {
             firstName: 'Admin',
@@ -42,36 +42,33 @@ describe('Admin Routes', () => {
         await User.create(adminUser);
         console.log('Admin User Created:', adminUser);
 
-        
-        const adminLogin = await request(app).post('/api/auth/login').send({
+        adminAgent = request.agent(app);
+        const adminLogin = await adminAgent.post('/api/auth/login').send({
             email: adminUser.email,
             password: 'Password1'
         });
         if (adminLogin.statusCode !== 200) {
             console.log('Admin Login Failed:', adminLogin.statusCode, JSON.stringify(adminLogin.body));
         }
-        adminToken = adminLogin.body.data.token;
 
-        
+
         const regUser = {
             firstName: 'Reg',
             lastName: 'User',
             email: `reg-${Date.now()}@test.com`,
             password: 'Password1'
         };
-        
-        const regRes = await request(app).post('/api/auth/register').send(regUser);
+
+        userAgent = request.agent(app);
+        const regRes = await userAgent.post('/api/auth/register').send(regUser);
         if (regRes.statusCode !== 201) {
             console.log('Admin Test Reg User Failed:', regRes.statusCode, JSON.stringify(regRes.body));
         }
-        userToken = regRes.body.data.token;
     });
 
     describe('GET /api/admin/stats', () => {
         it('should return stats for admin', async () => {
-            const res = await request(app)
-                .get('/api/admin/stats')
-                .set('x-auth-token', adminToken);
+            const res = await adminAgent.get('/api/admin/stats');
 
             expect(res.statusCode).toBe(200);
             expect(res.body.data).toHaveProperty('guests');
@@ -79,9 +76,7 @@ describe('Admin Routes', () => {
         });
 
         it('should deny access for regular user', async () => {
-            const res = await request(app)
-                .get('/api/admin/stats')
-                .set('x-auth-token', userToken);
+            const res = await userAgent.get('/api/admin/stats');
 
             expect([401, 403]).toContain(res.statusCode);
         });

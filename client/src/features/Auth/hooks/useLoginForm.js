@@ -37,7 +37,7 @@ export const useLoginForm = () => {
             const deviceId = getDeviceId();
             const deviceName = getDeviceName({ email: formData.email });
             const res = await api.post('/auth/login', { ...formData, deviceId, deviceName });
-            login(res.data.data.token, res.data.data.roomId, res.data.data.isAdmin);
+            login(res.data.data.roomId, res.data.data.isAdmin);
             toast.success('Logged in successfully!');
             navigate('/dashboard');
         } catch (err) {

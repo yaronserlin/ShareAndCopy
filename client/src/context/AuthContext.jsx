@@ -11,55 +11,54 @@ const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [token, setToken] = useState(localStorage.getItem('token'));
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [roomId, setRoomId] = useState(localStorage.getItem('roomId'));
     const navigate = useNavigate();
 
-    const logout = React.useCallback(() => {
-        localStorage.removeItem('token');
+    const logout = React.useCallback(async () => {
+        try {
+            await api.post('/auth/logout');
+        } catch (error) {
+            console.error('Logout request failed', error);
+        }
         localStorage.removeItem('roomId');
-        setToken(null);
+        setIsAuthenticated(false);
         setRoomId(null);
         setUser(null);
         navigate('/', { replace: true });
     }, [navigate]);
 
-    const login = (newToken, newRoomId, isAdmin) => {
-        localStorage.setItem('token', newToken);
+    const login = (newRoomId, isAdmin) => {
         localStorage.setItem('roomId', newRoomId);
-        setToken(newToken);
         setRoomId(newRoomId);
+        setIsAuthenticated(true);
         setUser({ isAuthenticated: true, isAdmin: isAdmin });
     };
 
     useEffect(() => {
         const verifyToken = async () => {
-            const storedToken = localStorage.getItem('token');
-            const storedRoomId = localStorage.getItem('roomId');
+            try {
+                const res = await api.get('/auth/verify');
 
-            if (storedToken) {
-                try {
-                    const res = await api.get('/auth/verify');
-
-
-                    
-                    
-                    if (res.status === 200 && res.data.success) {
-                        setToken(storedToken);
-                        setRoomId(storedRoomId);
-                        setUser(res.data.data.user || { isAuthenticated: true, isAdmin: res.data.data.user?.isAdmin });
-                    } else {
-                        logout();
+                if (res.status === 200 && res.data.success) {
+                    setIsAuthenticated(true);
+                    setUser(res.data.data.user);
+                    if (res.data.data.user?.roomId) {
+                        setRoomId(res.data.data.user.roomId);
+                        localStorage.setItem('roomId', res.data.data.user.roomId);
                     }
-                } catch (error) {
-                    console.error('Auth verification failed', error);
-                    logout();
                 }
+            } catch (error) {
+                if (error.response?.status !== 401) {
+                    console.error('Auth verification failed', error);
+                }
+                setIsAuthenticated(false);
+                setUser(null);
             }
         };
 
         verifyToken();
-    }, [logout]);
+    }, []);
 
     
     useEffect(() => {
@@ -67,10 +66,10 @@ export const AuthProvider = ({ children }) => {
             (response) => response,
             (error) => {
                 if (error.response && error.response.status === 401) {
-                    
-                    
-                    
-                    if (!error.config.url.includes('/auth/login')) {
+
+
+
+                    if (!error.config.url.includes('/auth/login') && !error.config.url.includes('/auth/verify')) {
                         logout();
                     }
                 }
@@ -84,7 +83,7 @@ export const AuthProvider = ({ children }) => {
     }, [logout]);
 
     return (
-        <AuthContext.Provider value={{ user, token, roomId, login, logout }}>
+        <AuthContext.Provider value={{ user, isAuthenticated, roomId, login, logout }}>
             {children}
         </AuthContext.Provider>
     );

@@ -52,7 +52,7 @@ describe('DevicePairing Component', () => {
         expect(baseElement.querySelector('.spinner-border')).toBeInTheDocument();
 
         await waitFor(() => {
-            expect(axios.post).toHaveBeenCalledWith('/api/auth/pairing-code', {}, expect.any(Object));
+            expect(axios.post).toHaveBeenCalledWith('/auth/pairing-code', {});
         });
 
         
@@ -105,7 +105,8 @@ describe('DevicePairing Component', () => {
         fireEvent.click(screen.getByText('Approve'));
 
         expect(mockSocket.emit).toHaveBeenCalledWith('approve-pairing', {
-            targetSocketId: 'socket-client-id'
+            targetSocketId: 'socket-client-id',
+            code: '123456'
         });
 
         expect(screen.getByText(/Authorized Successfully/i)).toBeInTheDocument();

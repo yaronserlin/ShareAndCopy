@@ -48,7 +48,8 @@ describe('Auth Routes', () => {
             }
 
             expect(res.statusCode).toBe(201);
-            expect(res.body.data).toHaveProperty('token');
+            expect(res.headers['set-cookie']).toBeDefined();
+            expect(res.body.data).not.toHaveProperty('token');
             expect(res.body.data).toHaveProperty('roomId');
 
             const user = await User.findOne({ email: mockUser.email });
@@ -97,7 +98,8 @@ describe('Auth Routes', () => {
                 });
 
             expect(res.statusCode).toBe(200);
-            expect(res.body.data).toHaveProperty('token');
+            expect(res.headers['set-cookie']).toBeDefined();
+            expect(res.body.data).not.toHaveProperty('token');
         });
 
         it('should return 400 for invalid credentials', async () => {
@@ -115,19 +117,17 @@ describe('Auth Routes', () => {
     describe('GET /api/auth/verify', () => {
         it('should return user data for authenticated user', async () => {
             const mockUser = generateUser();
-            
-            const regRes = await request(app)
+            const agent = request.agent(app);
+
+            const regRes = await agent
                 .post('/api/auth/register')
                 .send(mockUser);
 
             if (regRes.statusCode !== 201) {
                 console.log('Register failed:', regRes.statusCode, regRes.body);
             }
-            const token = regRes.body.data.token || 'dummy';
 
-            const res = await request(app)
-                .get('/api/auth/verify')
-                .set('x-auth-token', token);
+            const res = await agent.get('/api/auth/verify');
 
             expect(res.statusCode).toBe(200);
             expect(res.body.data.user.email).toBe(mockUser.email);

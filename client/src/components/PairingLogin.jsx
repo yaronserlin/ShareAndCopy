@@ -107,11 +107,18 @@ const PairingLogin = ({ onCancel }) => {
                 setStatus('waiting');
             });
 
-            socket.on('pairing-success', ({ token, user }) => {
-                console.log('Pairing Successful! Token received.', user);
-                login(token, user.roomId, false);
-                socket.disconnect();
-                navigate('/dashboard');
+            socket.on('pairing-success', async ({ token, user }) => {
+                try {
+                    await axios.post(`${API_BASE_URL}/auth/adopt-token`, { token }, { withCredentials: true });
+                    login(user.roomId, user.isAdmin || false);
+                    navigate('/dashboard');
+                } catch (err) {
+                    console.error('Failed to adopt pairing session', err);
+                    setError('Failed to complete pairing.');
+                    setStatus('input');
+                } finally {
+                    socket.disconnect();
+                }
             });
 
             socket.on('pairing-error', (payload) => {

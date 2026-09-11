@@ -12,7 +12,7 @@ import { AuthProvider } from '../../context/AuthContext';
 const mockLogout = vi.fn();
 const mockAuth = {
     user: null,
-    token: null,
+    isAuthenticated: false,
     logout: mockLogout
 };
 
@@ -25,7 +25,7 @@ describe('Navbar Component', () => {
     beforeEach(() => {
         mockLogout.mockClear();
         mockAuth.user = null;
-        mockAuth.token = null;
+        mockAuth.isAuthenticated = false;
     });
 
     test('renders logo and basic links', () => {
@@ -40,7 +40,7 @@ describe('Navbar Component', () => {
     });
 
     test('renders logout button when logged in', () => {
-        mockAuth.token = 'fake-token';
+        mockAuth.isAuthenticated = true;
         mockAuth.user = { id: '123' };
 
         render(
@@ -53,7 +53,7 @@ describe('Navbar Component', () => {
     });
 
     test('calls logout on click', () => {
-        mockAuth.token = 'fake-token';
+        mockAuth.isAuthenticated = true;
         mockAuth.user = { id: '123' };
 
         render(
@@ -67,7 +67,7 @@ describe('Navbar Component', () => {
     });
 
     test('shows admin link for admin user', () => {
-        mockAuth.token = 'fake-token';
+        mockAuth.isAuthenticated = true;
         mockAuth.user = { id: '123', isAdmin: true };
 
         render(

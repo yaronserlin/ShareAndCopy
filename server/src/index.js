@@ -15,6 +15,7 @@ const initSocket = require('./socket');
 const apiLimiter = require('./middleware/rateLimiter');
 const cors = require('cors');
 const connectDB = require('./config/db');
+const { parseCookies } = require('./utils/cookies');
 
 
 const app = express();
@@ -70,7 +71,7 @@ app.use(cors({
     origin: env.PUBLIC_URL || '*',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token']
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 // app.use(cors({
 //     origin: env.NODE_ENV === 'production'
@@ -87,6 +88,12 @@ app.use(cors({
 //     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 //     allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token']
 // }));
+
+
+app.use((req, res, next) => {
+    req.cookies = parseCookies(req.headers.cookie);
+    next();
+});
 
 
 app.use((req, res, next) => {

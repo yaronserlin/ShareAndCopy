@@ -8,17 +8,9 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const AdminRoute = () => {
-    const { user, token } = useAuth();
+    const { user, isAuthenticated } = useAuth();
 
-    
-    
-    
-
-    
-    
-    
-
-    if (!token) {
+    if (!isAuthenticated) {
         return <Navigate to="/login" replace />;
     }
 
@@ -26,11 +18,8 @@ const AdminRoute = () => {
         return <Navigate to="/" replace />;
     }
 
-    
-    
-    
     if (!user) {
-        return <div>Loading...</div>; 
+        return <div>Loading...</div>;
     }
 
     return <Outlet />;

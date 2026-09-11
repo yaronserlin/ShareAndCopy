@@ -6,8 +6,7 @@
 import React, { useState } from 'react';
 import { useP2P } from '../../hooks/useP2P';
 import { useAuth } from '../../context/AuthContext';
-import axios from 'axios';
-import API_BASE_URL from '../../config';
+import api from '../../utils/api';
 import DevicePairing from '../../components/DevicePairing';
 import DeviceCard from './DeviceCard';
 
@@ -40,10 +39,8 @@ const Dashboard = () => {
             
             removeDevice(deviceId);
 
-            await axios.post(`${API_BASE_URL}/auth/revoke`, { deviceId }, {
-                headers: { 'x-auth-token': localStorage.getItem('token') }
-            });
-            
+            await api.post('/auth/revoke', { deviceId });
+
         } catch (err) {
             console.error('Revocation failed', err);
             alert('Failed to revoke device');

@@ -11,7 +11,7 @@ import styles from './Home.module.css';
 
 
 const Home = () => {
-    const { token, roomId } = useAuth();
+    const { isAuthenticated, roomId } = useAuth();
 
     return (
         <div className="flex-grow-1 position-relative overflow-hidden d-flex flex-column">
@@ -21,7 +21,7 @@ const Home = () => {
                 <div className="container">
                     <div className="row justify-content-center">
                         <div className="col-lg-8">
-                            {token ? (
+                            {isAuthenticated ? (
                                 <>
                                     <h1 className="display-3 fw-bold mb-4 lh-sm">
                                         Welcome Back!

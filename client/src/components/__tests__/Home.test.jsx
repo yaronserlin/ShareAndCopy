@@ -11,7 +11,7 @@ import { AuthProvider } from '../../context/AuthContext';
 
 vi.mock('../../context/AuthContext', () => ({
     useAuth: () => ({
-        token: null,
+        isAuthenticated: false,
         roomId: null
     }),
     AuthProvider: ({ children }) => <div>{children}</div>

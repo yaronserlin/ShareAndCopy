@@ -34,11 +34,8 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const env = require('../config/env');
 const logger = require('../utils/logger');
-// const redis = require('../config/redis');
-
-
-
-const pairingCodesMemory = new Map();
+const pairingStore = require('../utils/pairingStore');
+const { setAuthCookies } = require('../utils/cookies');
 
 
 router.post('/pairing-code', auth, async (req, res) => {
@@ -54,17 +51,7 @@ router.post('/pairing-code', auth, async (req, res) => {
             { expiresIn }
         );
 
-        const pairingData = JSON.stringify({ userId: req.user.id, token: pairingToken });
-
-
-        // const stored = await redis.setWithExpiry(`pairing:${code}`, pairingData, expiresIn);
-
-        // if (!stored) {
-
-        // logger.warn('Redis unavailable, using in-memory pairing storage');
-        pairingCodesMemory.set(code, { userId: req.user.id, token: pairingToken });
-        setTimeout(() => pairingCodesMemory.delete(code), expiresIn * 1000);
-        // }
+        pairingStore.set(code, req.user.id, pairingToken, expiresIn * 1000);
 
         res.json({ code, pairingToken, expiresIn });
     } catch (err) {
@@ -80,22 +67,38 @@ router.post(
     async (req, res) => {
         const { code } = req.body;
 
-
-        // const redisData = await redis.get(`pairing:${code}`);
-
-        // if (redisData) {
-        //     const { token } = JSON.parse(redisData);
-        //     res.json({ valid: true, pairingToken: token });
-        // } else 
-        if (pairingCodesMemory.has(code)) {
-
-            const { token } = pairingCodesMemory.get(code);
-            res.json({ valid: true, pairingToken: token });
+        const entry = pairingStore.consume(code);
+        if (entry) {
+            res.json({ valid: true, pairingToken: entry.token });
         } else {
             res.status(400).json({ valid: false, message: 'Invalid or expired code' });
         }
     }
 );
+
+
+router.post('/adopt-token', (req, res) => {
+    const { token } = req.body;
+
+    if (!token) {
+        return res.status(400).json({ message: 'Token is required' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, env.JWT_SECRET);
+        if (decoded.scope !== 'guest' && !decoded.isGuest) {
+            return res.status(400).json({ message: 'Token is not adoptable' });
+        }
+        setAuthCookies(res, { accessToken: token });
+        res.json({ success: true });
+    } catch (err) {
+        logger.warn(`Adopt-token failed: ${err.message}`);
+        res.status(400).json({ message: 'Invalid token' });
+    }
+});
+
+
+router.post('/logout', auth, authController.logout);
 
 
 router.post('/revoke', auth, validate(revokeSchema), authController.revokeDevice);

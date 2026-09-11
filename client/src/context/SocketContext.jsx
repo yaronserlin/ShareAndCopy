@@ -15,10 +15,10 @@ export const useSocket = () => useContext(SocketContext);
 
 export const SocketProvider = ({ children }) => {
     const [socket, setSocket] = useState(null);
-    const { user, token, logout } = useAuth();
+    const { user, isAuthenticated, logout } = useAuth();
 
     useEffect(() => {
-        if (!token) {
+        if (!isAuthenticated) {
             if (socket) {
                 socket.disconnect();
                 setSocket(null);
@@ -26,9 +26,9 @@ export const SocketProvider = ({ children }) => {
             return;
         }
 
-        
+
         const newSocket = io(SERVER_URL, {
-            auth: { token },
+            withCredentials: true,
             query: {
                 deviceId: getDeviceId(),
                 deviceName: getDeviceName(user)
@@ -59,7 +59,7 @@ export const SocketProvider = ({ children }) => {
         return () => {
             newSocket.disconnect();
         };
-    }, [token]);
+    }, [isAuthenticated]);
 
     return (
         <SocketContext.Provider value={socket}>

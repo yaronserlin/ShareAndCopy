@@ -15,6 +15,8 @@ const logger = require('./utils/logger');
 const { connectedSockets, dataTransferred } = require('./utils/metrics');
 const { createClient } = require('redis');
 const { createAdapter } = require('@socket.io/redis-adapter');
+const pairingStore = require('./utils/pairingStore');
+const { parseCookies } = require('./utils/cookies');
 
 let io;
 
@@ -101,7 +103,8 @@ const initSocket = (server) => {
 
     io.use(async (socket, next) => {
         try {
-            const token = socket.handshake.auth.token || socket.handshake.query.token;
+            const cookies = parseCookies(socket.handshake.headers.cookie);
+            const token = socket.handshake.auth?.token || cookies.token;
             if (!token) {
                 return next(new Error('Authentication error: No token provided'));
             }
@@ -170,40 +173,42 @@ const initSocket = (server) => {
         logger.info(`Socket connected: ${socket.id} (User/Room: ${userId}, Device: ${deviceId}, Guest: ${isGuest})`);
 
 
-        socket.join(userId);
+        if (!socket.user.isPairing) {
+            socket.join(userId);
 
 
-        if (sanitizedDeviceId && !isGuest) {
-            const bufferKey = `${userId}:${sanitizedDeviceId}`;
-            deviceActivityBuffer.set(bufferKey, {
-                userId,
+            if (sanitizedDeviceId && !isGuest) {
+                const bufferKey = `${userId}:${sanitizedDeviceId}`;
+                deviceActivityBuffer.set(bufferKey, {
+                    userId,
+                    deviceId: sanitizedDeviceId,
+                    deviceName: sanitizedDeviceName,
+                    timestamp: new Date()
+                });
+            }
+
+
+            socket.to(userId).emit('device-online', {
+                socketId: socket.id,
                 deviceId: sanitizedDeviceId,
-                deviceName: sanitizedDeviceName,
-                timestamp: new Date()
+                deviceName: sanitizedDeviceName
             });
-        }
 
 
-        socket.to(userId).emit('device-online', {
-            socketId: socket.id,
-            deviceId: sanitizedDeviceId,
-            deviceName: sanitizedDeviceName
-        });
+            try {
+                const sockets = await io.in(userId).fetchSockets();
+                const deviceList = sockets
+                    .filter(s => s.id !== socket.id && s.data.deviceInfo)
+                    .map(s => ({
+                        socketId: s.id,
+                        deviceId: s.data.deviceInfo.deviceId,
+                        deviceName: s.data.deviceInfo.deviceName
+                    }));
 
-
-        try {
-            const sockets = await io.in(userId).fetchSockets();
-            const deviceList = sockets
-                .filter(s => s.id !== socket.id && s.data.deviceInfo)
-                .map(s => ({
-                    socketId: s.id,
-                    deviceId: s.data.deviceInfo.deviceId,
-                    deviceName: s.data.deviceInfo.deviceName
-                }));
-
-            socket.emit('initial-device-list', deviceList);
-        } catch (err) {
-            logger.error(`Error fetching device list: ${err.message}`);
+                socket.emit('initial-device-list', deviceList);
+            } catch (err) {
+                logger.error(`Error fetching device list: ${err.message}`);
+            }
         }
 
 
@@ -268,7 +273,10 @@ const initSocket = (server) => {
 
         socket.on('join-pairing', (code) => {
 
-
+            if (socket.user.isGuest || socket.user.isPairing || !pairingStore.isOwner(code, userId)) {
+                logger.warn(`Socket ${socket.id} denied joining pairing room: pairing-${code}`);
+                return;
+            }
 
             socket.join(`pairing-${code}`);
             logger.info(`Socket ${socket.id} joined pairing room: pairing-${code}`);
@@ -299,7 +307,12 @@ const initSocket = (server) => {
 
 
         socket.on('approve-pairing', async (data) => {
-            const { targetSocketId } = data;
+            const { targetSocketId, code } = data;
+
+            if (socket.user.isGuest || socket.user.isPairing || !pairingStore.isOwner(code, userId)) {
+                logger.warn(`Socket ${socket.id} denied approve-pairing for code ${code}`);
+                return socket.emit('pairing-error', { message: 'Not authorized to approve this pairing request' });
+            }
 
 
             const MAX_GUESTS_PER_HOST = 10;
@@ -416,10 +429,12 @@ const initSocket = (server) => {
             socketRateLimits.delete(socket.id);
 
 
-            socket.to(userId).emit('device-offline', {
-                socketId: socket.id,
-                deviceId: sanitizedDeviceId
-            });
+            if (!socket.user.isPairing) {
+                socket.to(userId).emit('device-offline', {
+                    socketId: socket.id,
+                    deviceId: sanitizedDeviceId
+                });
+            }
         });
     });
 
@@ -429,7 +444,7 @@ const initSocket = (server) => {
 
 
 
-setInterval(async () => {
+const deviceActivityInterval = setInterval(async () => {
     if (deviceActivityBuffer.size === 0) return;
 
     const updates = Array.from(deviceActivityBuffer.values());
@@ -485,6 +500,8 @@ setInterval(async () => {
         });
     }
 }, 30000);
+
+deviceActivityInterval.unref();
 
 module.exports = initSocket;
 module.exports.getIO = () => io;

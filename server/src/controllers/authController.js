@@ -8,22 +8,26 @@ const logger = require('../utils/logger');
 const responseHandler = require('../utils/responseHandler');
 const RevokedToken = require('../models/RevokedToken');
 const { getIO } = require('../socket');
+const { setAuthCookies, clearAuthCookies } = require('../utils/cookies');
 
 
 
 
 exports.register = async (req, res) => {
-    
+
     logger.debug('Register request received');
-    const { email, password, firstName, lastName } = req.body; 
+    const { email, password, firstName, lastName } = req.body;
 
     try {
-        
+
         const result = await authService.register({ email, password, firstName, lastName });
-        
+
         logger.info(`New user registered: ${email} with room ID: ${result.roomId}`);
-        
-        responseHandler.success(res, result, 'User registered successfully', 201);
+
+        setAuthCookies(res, { accessToken: result.accessToken, refreshToken: result.refreshToken });
+        const { token, accessToken, refreshToken, ...body } = result;
+
+        responseHandler.success(res, body, 'User registered successfully', 201);
     } catch (err) {
         
         if (err.message === 'Email already exists' || err.code === 11000) {
@@ -47,11 +51,14 @@ exports.login = async (req, res) => {
     try {
         
         const result = await authService.login(email, password, deviceId, deviceName);
-        
-        
+
+
         logger.info(`User logged in: ${email.replace(/(.{2})(.*)(@.*)/, '$1***$3')}`);
-        
-        responseHandler.success(res, result, 'Login successful');
+
+        setAuthCookies(res, { accessToken: result.accessToken, refreshToken: result.refreshToken });
+        const { token, accessToken, refreshToken, ...body } = result;
+
+        responseHandler.success(res, body, 'Login successful');
     } catch (err) {
         
         logger.warn(`Login failed for ${email}: ${err.message}`);
@@ -86,6 +93,26 @@ exports.verify = (req, res) => {
             isGuest: req.currentUser.isGuest || false
         }
     }, 'Token verified successfully');
+};
+
+
+exports.logout = async (req, res) => {
+    try {
+        if (req.user?.jti) {
+            const exists = await RevokedToken.exists({ jti: req.user.jti });
+            if (!exists) {
+                await RevokedToken.create({
+                    jti: req.user.jti,
+                    expireAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+                });
+            }
+        }
+    } catch (err) {
+        logger.error(`Logout revocation failed: ${err.message}`);
+    }
+
+    clearAuthCookies(res);
+    responseHandler.success(res, null, 'Logged out successfully');
 };
 
 

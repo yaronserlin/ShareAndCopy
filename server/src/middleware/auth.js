@@ -12,7 +12,7 @@ const logger = require('../utils/logger');
 
 
 const auth = async (req, res, next) => {
-    const token = req.header('x-auth-token');
+    const token = req.cookies?.token;
 
     if (!token) {
         return responseHandler.error(res, 'No token, authorization denied', null, 401);
@@ -20,6 +20,11 @@ const auth = async (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, env.JWT_SECRET);
+
+        if (decoded.scope === 'pairing') {
+            return responseHandler.error(res, 'Token is not valid', null, 401);
+        }
+
         req.user = decoded;
 
 
@@ -60,7 +65,7 @@ const auth = async (req, res, next) => {
 
 
 const optional = async (req, res, next) => {
-    const token = req.header('x-auth-token');
+    const token = req.cookies?.token;
 
     if (!token) {
         return next();
