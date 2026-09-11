@@ -64,34 +64,4 @@ const auth = async (req, res, next) => {
 };
 
 
-const optional = async (req, res, next) => {
-    const token = req.cookies?.token;
-
-    if (!token) {
-        return next();
-    }
-
-    try {
-        const decoded = jwt.verify(token, env.JWT_SECRET);
-        req.user = decoded;
-        const user = await User.findById(decoded.id).select('-password');
-        if (user) {
-            req.currentUser = user;
-        }
-        next();
-    } catch (err) {
-
-        if (err.name === 'JsonWebTokenError') {
-            logger.warn(`Invalid token in optional auth: ${err.message}`);
-        } else if (err.name === 'TokenExpiredError') {
-            logger.debug(`Expired token in optional auth`);
-        } else {
-            logger.error(`Unexpected error in optional auth: ${err.message}`);
-        }
-
-        next();
-    }
-};
-
 module.exports = auth;
-module.exports.optional = optional;

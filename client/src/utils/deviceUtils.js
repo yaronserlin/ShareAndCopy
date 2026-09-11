@@ -27,7 +27,9 @@ export const getFriendlyDeviceName = (username) => {
 export const getDeviceId = () => {
     let deviceId = localStorage.getItem('device_id');
     if (!deviceId) {
-        deviceId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        deviceId = typeof crypto !== 'undefined' && crypto.randomUUID
+            ? crypto.randomUUID()
+            : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         localStorage.setItem('device_id', deviceId);
     }
     return deviceId;

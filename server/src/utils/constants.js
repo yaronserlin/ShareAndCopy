@@ -13,7 +13,7 @@ const APP_CONSTANTS = {
     FORBIDDEN_EXTENSIONS: shared.FORBIDDEN_EXTENSIONS,
     REGEX: {
         EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-        NAME: /^[A-Za-z]+$/,
+        NAME: /^\p{L}+(?:[' -]\p{L}+)*$/u,
         PASSWORD_STRONG: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/
     }
 };

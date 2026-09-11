@@ -21,11 +21,11 @@ const registerSchema = Joi.object({
             'string.min': 'Password must be at least 8 characters long',
             'string.pattern.name': 'Password must contain at least one uppercase letter, one lowercase letter, and one number'
         }),
-    firstName: Joi.string().pattern(/^[A-Za-z]+$/).required().messages({
-        'string.pattern.base': 'First name must contain only English letters'
+    firstName: Joi.string().pattern(/^\p{L}+(?:[' -]\p{L}+)*$/u).required().messages({
+        'string.pattern.base': 'First name must contain only letters'
     }),
-    lastName: Joi.string().pattern(/^[A-Za-z]+$/).required().messages({
-        'string.pattern.base': 'Last name must contain only English letters'
+    lastName: Joi.string().pattern(/^\p{L}+(?:[' -]\p{L}+)*$/u).required().messages({
+        'string.pattern.base': 'Last name must contain only letters'
     })
 });
 
@@ -34,10 +34,6 @@ const loginSchema = Joi.object({
     password: Joi.string().required(),
     deviceId: Joi.string().optional(),
     deviceName: Joi.string().optional()
-});
-
-const renameFileSchema = Joi.object({
-    filename: Joi.string().required().trim().min(1).max(255)
 });
 
 const revokeSchema = Joi.object({
@@ -50,6 +46,5 @@ const revokeSchema = Joi.object({
 module.exports = {
     registerSchema,
     loginSchema,
-    renameFileSchema,
     revokeSchema
 };

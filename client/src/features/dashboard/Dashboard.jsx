@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import { useP2P } from '../../hooks/useP2P';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
@@ -14,8 +15,9 @@ import DeviceCard from './DeviceCard';
 const Dashboard = () => {
     const { user } = useAuth();
     const { onlineDevices, transferProgress, transferStats, sendFile, pendingTransfers, acceptTransfer, rejectTransfer, removeDevice } = useP2P();
-    const [selectedFiles, setSelectedFiles] = useState({}); 
+    const [selectedFiles, setSelectedFiles] = useState({});
     const [showPairingModal, setShowPairingModal] = useState(false);
+    const [deviceToRevoke, setDeviceToRevoke] = useState(null);
 
     const handleFileChange = (e, deviceId) => {
         if (e.target.files[0]) {
@@ -32,19 +34,20 @@ const Dashboard = () => {
         }
     };
 
-    const handleRevoke = async (deviceId) => {
-        if (!window.confirm('Are you sure you want to revoke this device? It will be disconnected immediately.')) return;
+    const handleRevoke = (deviceId) => {
+        setDeviceToRevoke(deviceId);
+    };
+
+    const confirmRevoke = async () => {
+        const deviceId = deviceToRevoke;
+        setDeviceToRevoke(null);
 
         try {
-            
             removeDevice(deviceId);
-
             await api.post('/auth/revoke', { deviceId });
-
         } catch (err) {
             console.error('Revocation failed', err);
-            alert('Failed to revoke device');
-            
+            toast.error('Failed to revoke device');
         }
     };
 
@@ -139,6 +142,32 @@ const Dashboard = () => {
                     </div>
                 </div>
             ))}
+
+            {deviceToRevoke && (
+                <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content border-0 shadow-lg">
+                            <div className="modal-header bg-danger text-white border-bottom-0">
+                                <h5 className="modal-title fw-bold">
+                                    <i className="bi bi-exclamation-triangle me-2"></i>
+                                    Revoke Device
+                                </h5>
+                            </div>
+                            <div className="modal-body p-4 text-center">
+                                <p className="mb-0">Are you sure you want to revoke this device? It will be disconnected immediately.</p>
+                            </div>
+                            <div className="modal-footer border-top-0 justify-content-center pb-4">
+                                <button className="btn btn-outline-secondary rounded-pill px-4" onClick={() => setDeviceToRevoke(null)}>
+                                    Cancel
+                                </button>
+                                <button className="btn btn-danger rounded-pill px-4 fw-bold" onClick={confirmRevoke}>
+                                    Revoke
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

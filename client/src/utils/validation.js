@@ -13,7 +13,7 @@ export const validateField = (name, value, isLogin = false, password = '') => {
         case 'firstName':
         case 'lastName':
             if (!value) error = 'Required';
-            else if (!REGEX.NAME.test(value)) error = 'Only English letters allowed';
+            else if (!REGEX.NAME.test(value)) error = 'Only letters allowed';
             break;
         case 'email':
             if (!value) error = 'Required';

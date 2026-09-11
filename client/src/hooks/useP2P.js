@@ -597,7 +597,7 @@ export const useP2P = () => {
 
         if (!targetDevice) {
             console.error('Target device not online or not found');
-            alert('Target device not reachable');
+            toast.error('Target device not reachable');
             return;
         }
 
@@ -659,7 +659,7 @@ export const useP2P = () => {
                             }
                         } else if (message.type === 'REJECT') {
                             debugLog('Transfer Rejected by receiver.');
-                            alert('File transfer declined by the recipient.');
+                            toast.error('File transfer declined by the recipient.');
                             channel.close();
                         }
                     } catch (e) {

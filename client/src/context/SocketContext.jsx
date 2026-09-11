@@ -7,7 +7,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import io from 'socket.io-client';
 import { useAuth } from './AuthContext';
 import { SERVER_URL } from '../config';
-import { getFriendlyDeviceName } from '../utils/deviceUtils';
+import { getFriendlyDeviceName, getDeviceId } from '../utils/deviceUtils';
 
 const SocketContext = createContext();
 
@@ -66,16 +66,6 @@ export const SocketProvider = ({ children }) => {
             {children}
         </SocketContext.Provider>
     );
-};
-
-
-const getDeviceId = () => {
-    let deviceId = localStorage.getItem('device_id');
-    if (!deviceId) {
-        deviceId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        localStorage.setItem('device_id', deviceId);
-    }
-    return deviceId;
 };
 
 

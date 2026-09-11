@@ -15,7 +15,7 @@ export const APP_CONSTANTS = {
 
         EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
 
-        NAME: /^[A-Za-z]+$/,
+        NAME: /^\p{L}+(?:[' -]\p{L}+)*$/u,
 
         PASSWORD_STRONG: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/
     }
