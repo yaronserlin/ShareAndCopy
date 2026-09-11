@@ -1,6 +1,5 @@
 /**
- * Preview: client/src/components/About/About.jsx
- * Description: Frontend application module.
+ * About page describing how Share & Copy's device-to-device transfers work.
  */
 
 import React from 'react';
@@ -8,7 +7,12 @@ import GlassCard from '../common/GlassCard';
 import GradientButton from '../common/GradientButton';
 import styles from './About.module.css';
 
-
+/**
+ * Renders the "About" page: a static overview of the app's privacy model,
+ * device pairing, and direct peer-to-peer file transfer features.
+ *
+ * @returns {JSX.Element} The About page content.
+ */
 const About = () => {
     return (
         <div className={`container pb-5 pt-5 mt-5 d-flex flex-column flex-grow-1 ${styles.aboutContainer}`}>

@@ -1,6 +1,7 @@
 /**
- * Preview: client/src/context/AuthContext.jsx
- * Description: Frontend application module.
+ * Authentication context: tracks the signed-in user, verifies the
+ * session cookie on mount, and installs an axios interceptor that logs
+ * the user out on a 401 response from any endpoint other than login/verify.
  */
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -9,12 +10,25 @@ import api from '../utils/api';
 
 const AuthContext = createContext(null);
 
+/**
+ * Provides authentication state and actions to descendant components.
+ *
+ * @param {Object} props
+ * @param {React.ReactNode} props.children
+ * @returns {JSX.Element} The context provider wrapping `children`.
+ */
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [roomId, setRoomId] = useState(localStorage.getItem('roomId'));
     const navigate = useNavigate();
 
+    /**
+     * Logs the current user out: notifies the server, clears local auth
+     * state, and redirects to the home page.
+     *
+     * @returns {Promise<void>}
+     */
     const logout = React.useCallback(async () => {
         try {
             await api.post('/auth/logout');
@@ -28,6 +42,12 @@ export const AuthProvider = ({ children }) => {
         navigate('/', { replace: true });
     }, [navigate]);
 
+    /**
+     * Marks the user as authenticated and persists their room ID.
+     *
+     * @param {string} newRoomId - Room ID assigned to the authenticated user.
+     * @param {boolean} isAdmin - Whether the user has admin privileges.
+     */
     const login = (newRoomId, isAdmin) => {
         localStorage.setItem('roomId', newRoomId);
         setRoomId(newRoomId);
@@ -60,15 +80,11 @@ export const AuthProvider = ({ children }) => {
         verifyToken();
     }, []);
 
-    
     useEffect(() => {
         const interceptor = api.interceptors.response.use(
             (response) => response,
             (error) => {
                 if (error.response && error.response.status === 401) {
-
-
-
                     if (!error.config.url.includes('/auth/login') && !error.config.url.includes('/auth/verify')) {
                         logout();
                     }
@@ -89,4 +105,5 @@ export const AuthProvider = ({ children }) => {
     );
 };
 
+/** @returns {Object} The current auth context value (user, state, actions). */
 export const useAuth = () => useContext(AuthContext);

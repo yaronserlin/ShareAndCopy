@@ -1,6 +1,6 @@
 /**
- * Preview: server/src/services/authService.js
- * Description: Server business logic service.
+ * Core authentication business logic: user registration, login, and the
+ * JWT access/refresh token pairs issued for each.
  */
 
 const jwt = require('jsonwebtoken');
@@ -9,17 +9,21 @@ const crypto = require('crypto');
 const util = require('util');
 const User = require('../models/User');
 const env = require('../config/env');
-const logger = require('../utils/logger'); 
+const logger = require('../utils/logger');
 
 const randomBytesAsync = util.promisify(crypto.randomBytes);
 
-
-
-
+/**
+ * Creates a new user account with a hashed password and a freshly
+ * generated room ID, then issues an access/refresh token pair.
+ *
+ * @param {{email: string, password: string, firstName: string, lastName: string}} userData
+ * @returns {Promise<Object>} Tokens, room ID, and the public user profile.
+ * @throws {Error} If the email is already registered.
+ */
 exports.register = async (userData) => {
     const { email, password, firstName, lastName } = userData;
 
-    
     const existingUser = await User.findOne({ email });
     if (existingUser) {
         throw new Error('Email already exists');
@@ -71,16 +75,25 @@ exports.register = async (userData) => {
     };
 };
 
-
+/**
+ * Verifies credentials and issues an access/refresh token pair,
+ * registering or updating the given device as an authorized device on
+ * the account. Always runs a bcrypt comparison, even for an unknown
+ * email, so response timing doesn't reveal whether an account exists.
+ *
+ * @param {string} email
+ * @param {string} password
+ * @param {string} [deviceId]
+ * @param {string} [deviceName]
+ * @returns {Promise<Object>} Tokens, room ID, admin flag, and the public user profile.
+ * @throws {Error} If the credentials are invalid.
+ */
 exports.login = async (email, password, deviceId, deviceName) => {
     const user = await User.findOne({ email });
 
-    
-    
     const hashToCompare = user ? user.password : await bcrypt.hash('dummy_password_for_timing', 10);
     const isMatch = await bcrypt.compare(password, hashToCompare);
 
-    
     if (!user || !isMatch) {
         throw new Error('Invalid credentials');
     }
@@ -92,14 +105,12 @@ exports.login = async (email, password, deviceId, deviceName) => {
         { expiresIn: '1h' }
     );
 
-    
     const refreshToken = jwt.sign(
         { id: user._id, type: 'refresh' },
         env.JWT_REFRESH_SECRET,
         { expiresIn: '7d' }
     );
 
-    
     if (deviceId) {
         const deviceIndex = user.authorizedDevices.findIndex(d => d.deviceId === deviceId);
         if (deviceIndex > -1) {
@@ -118,7 +129,7 @@ exports.login = async (email, password, deviceId, deviceName) => {
     }
 
     return {
-        token: accessToken, 
+        token: accessToken,
         accessToken,
         refreshToken,
         roomId: user.roomId,

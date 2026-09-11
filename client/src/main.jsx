@@ -1,6 +1,7 @@
 /**
- * Preview: client/src/main.jsx
- * Description: Frontend application module.
+ * Client entry point. Mounts the React application tree into the `#root`
+ * DOM node, wrapping it with the router and the auth, socket, and theme
+ * context providers that the rest of the app depends on.
  */
 
 import { StrictMode } from 'react'

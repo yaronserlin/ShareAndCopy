@@ -1,6 +1,6 @@
 /**
- * Preview: server/src/services/refreshTokenService.js
- * Description: Server business logic service.
+ * Refresh-token exchange logic: validates a refresh token and issues a
+ * new access/refresh token pair.
  */
 
 const jwt = require('jsonwebtoken');
@@ -9,10 +9,17 @@ const env = require('../config/env');
 const logger = require('../utils/logger');
 const User = require('../models/User');
 
-
+/**
+ * Verifies a refresh token and issues a new access/refresh token pair
+ * for its subject.
+ *
+ * @param {string} refreshToken
+ * @returns {Promise<{accessToken: string, refreshToken: string}>}
+ * @throws {Error} If the token is missing, invalid, expired, of the
+ *   wrong type, or its user no longer exists.
+ */
 exports.refreshAccessToken = async (refreshToken) => {
     try {
-
         const decoded = jwt.verify(refreshToken, env.JWT_REFRESH_SECRET);
 
         if (decoded.type !== 'refresh') {

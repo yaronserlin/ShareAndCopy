@@ -1,6 +1,7 @@
 /**
- * Preview: client/src/features/dashboard/Dashboard.jsx
- * Description: Frontend application module.
+ * Authenticated user's device dashboard: lists their other online
+ * devices, lets them pick and send a file to each, and shows incoming
+ * transfer requests and device-revocation confirmations as modals.
  */
 
 import React, { useState } from 'react';
@@ -11,7 +12,12 @@ import api from '../../utils/api';
 import DevicePairing from '../../components/DevicePairing';
 import DeviceCard from './DeviceCard';
 
-
+/**
+ * Renders the device dashboard and mediates file transfers via
+ * {@link module:hooks/useP2P}.
+ *
+ * @returns {JSX.Element} The dashboard page.
+ */
 const Dashboard = () => {
     const { user } = useAuth();
     const { onlineDevices, transferProgress, transferStats, sendFile, pendingTransfers, acceptTransfer, rejectTransfer, removeDevice } = useP2P();
@@ -19,25 +25,27 @@ const Dashboard = () => {
     const [showPairingModal, setShowPairingModal] = useState(false);
     const [deviceToRevoke, setDeviceToRevoke] = useState(null);
 
+    /** Stores the file chosen for a given target device. */
     const handleFileChange = (e, deviceId) => {
         if (e.target.files[0]) {
             setSelectedFiles(prev => ({ ...prev, [deviceId]: e.target.files[0] }));
         }
     };
 
+    /** Sends the file currently selected for a device, if any. */
     const handleSend = (deviceId) => {
         const file = selectedFiles[deviceId];
         if (file) {
             sendFile(file, deviceId);
-            
-            
         }
     };
 
+    /** Opens the revoke-device confirmation modal for a device. */
     const handleRevoke = (deviceId) => {
         setDeviceToRevoke(deviceId);
     };
 
+    /** Revokes the pending device's access after user confirmation. */
     const confirmRevoke = async () => {
         const deviceId = deviceToRevoke;
         setDeviceToRevoke(null);
@@ -55,7 +63,6 @@ const Dashboard = () => {
         <div className="container py-5 mt-5">
             <header className="mb-5 text-center position-relative">
                 <h1 className="display-4 fw-bold">My Devices</h1>
-                {}
                 {!user?.isGuest && (
                     <button
                         className="btn btn-outline-primary position-absolute top-0 end-0 mt-2 hover-scale d-none d-md-inline-flex align-items-center"
@@ -68,7 +75,6 @@ const Dashboard = () => {
 
                 <p className="lead text-muted">Directly transfer files between your authorized devices.</p>
 
-                {}
                 {!user?.isGuest && (
                     <div className="d-md-none mt-4">
                         <button
@@ -109,7 +115,6 @@ const Dashboard = () => {
                 )}
             </div>
 
-            {}
             {Object.entries(pendingTransfers).map(([deviceId, transfer]) => (
                 <div className="modal show d-block" tabIndex="-1" key={deviceId} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                     <div className="modal-dialog modal-dialog-centered">

@@ -1,6 +1,6 @@
 /**
- * Preview: client/src/components/About/index.js
- * Description: Frontend application module.
+ * Re-exports the About page component as the public entry point for the
+ * `About` component directory.
  */
 
 import About from './About';

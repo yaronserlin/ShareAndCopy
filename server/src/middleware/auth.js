@@ -1,6 +1,8 @@
 /**
- * Preview: server/src/middleware/auth.js
- * Description: Express middleware module.
+ * Authentication middleware: verifies the access token cookie and
+ * populates `req.currentUser` for downstream handlers. Supports full
+ * user accounts, guest sessions, and a `pairing`-scoped token type that
+ * is rejected here (it's only valid for the pairing handshake).
  */
 
 const jwt = require('jsonwebtoken');
@@ -10,7 +12,11 @@ const User = require('../models/User');
 const RevokedToken = require('../models/RevokedToken');
 const logger = require('../utils/logger');
 
-
+/**
+ * Verifies the `token` cookie and attaches the authenticated user (or
+ * guest identity) to `req.currentUser`, responding with 401 if the
+ * token is missing, invalid, revoked, or not a valid session scope.
+ */
 const auth = async (req, res, next) => {
     const token = req.cookies?.token;
 
@@ -27,14 +33,12 @@ const auth = async (req, res, next) => {
 
         req.user = decoded;
 
-
         if (decoded.jti) {
             const isRevoked = await RevokedToken.exists({ jti: decoded.jti });
             if (isRevoked) {
                 return responseHandler.error(res, 'Token has been revoked', null, 401);
             }
         }
-
 
         if (decoded.scope === 'guest' || decoded.isGuest) {
             req.currentUser = {
@@ -47,7 +51,6 @@ const auth = async (req, res, next) => {
             };
             return next();
         }
-
 
         const user = await User.findById(decoded.id).select('-password');
         if (!user) {
@@ -62,6 +65,5 @@ const auth = async (req, res, next) => {
         responseHandler.error(res, 'Token is not valid', null, 401);
     }
 };
-
 
 module.exports = auth;

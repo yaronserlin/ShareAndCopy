@@ -1,6 +1,6 @@
 /**
- * Preview: server/src/config/iceServers.js
- * Description: Server configuration helper.
+ * Fallback STUN server list returned to clients when no TURN server is
+ * configured via environment variables.
  */
 
 module.exports = {
@@ -20,11 +20,5 @@ module.exports = {
         {
             urls: 'stun:stun4.l.google.com:19302'
         }
-        
-        
-        
-        
-        
-        
     ]
 };

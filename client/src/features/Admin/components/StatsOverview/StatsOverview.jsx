@@ -1,6 +1,6 @@
 /**
- * Preview: client/src/features/Admin/components/StatsOverview/StatsOverview.jsx
- * Description: Frontend application module.
+ * Row of top-level admin statistics: registered users, guest sessions,
+ * and total data transferred.
  */
 
 import React from 'react';
@@ -9,11 +9,12 @@ import styles from './StatsOverview.module.css';
 import StatsCard from './StatsCard';
 import { formatBytes } from '../../../../utils/format';
 
-
-
-
+/**
+ * @param {Object} props
+ * @param {{users: number, guests: number, dataTransferred: number}} props.stats
+ * @returns {JSX.Element} The stats overview row.
+ */
 const StatsOverview = ({ stats }) => {
-
     return (
         <div className="row g-4 mb-5">
             <div className="col-md-4">

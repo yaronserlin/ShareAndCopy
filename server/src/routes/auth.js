@@ -1,22 +1,20 @@
 /**
- * Preview: server/src/routes/auth.js
- * Description: Express route definition.
+ * Routes for authentication, session, and device-pairing endpoints,
+ * mounted under `/api/auth`. The pairing handshake (`/pairing-code`,
+ * `/verify-pairing`, `/adopt-token`) is implemented inline here rather
+ * than in a controller.
  */
 
 const express = require('express');
 const router = express.Router();
 
-
 const authController = require('../controllers/authController');
-
 
 const validate = require('../middleware/validate');
 const auth = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimiter');
 
-
 const { registerSchema, loginSchema, revokeSchema } = require('../utils/validationSchemas');
-
 
 router.post(
     '/register',
@@ -24,7 +22,6 @@ router.post(
     validate(registerSchema),
     authController.register
 );
-
 
 router.post(
     '/login',
@@ -40,13 +37,16 @@ const logger = require('../utils/logger');
 const pairingStore = require('../utils/pairingStore');
 const { setAuthCookies } = require('../utils/cookies');
 
-
+/**
+ * POST /auth/pairing-code
+ * Generates a short-lived, six-character pairing code and a matching
+ * `pairing`-scoped JWT, stored server-side in `pairingStore` so a second
+ * device can redeem the code within the expiry window.
+ */
 router.post('/pairing-code', authLimiter, auth, async (req, res) => {
     try {
-
         const code = crypto.randomBytes(3).toString('hex').toUpperCase().substring(0, 6);
         const expiresIn = 60 * 5;
-
 
         const pairingToken = jwt.sign(
             { id: req.user.id, scope: 'pairing', code },
@@ -63,8 +63,11 @@ router.post('/pairing-code', authLimiter, auth, async (req, res) => {
     }
 });
 
-
-
+/**
+ * POST /auth/verify-pairing
+ * Redeems a pairing code for its one-time pairing token, consuming the
+ * code so it cannot be reused.
+ */
 router.post(
     '/verify-pairing',
     authLimiter,
@@ -80,7 +83,11 @@ router.post(
     }
 );
 
-
+/**
+ * POST /auth/adopt-token
+ * Accepts a guest-scoped token issued during pairing and sets it as the
+ * session's auth cookie, completing the new device's login.
+ */
 router.post('/adopt-token', (req, res) => {
     const { token } = req.body;
 
@@ -101,19 +108,15 @@ router.post('/adopt-token', (req, res) => {
     }
 });
 
-
 router.post('/logout', auth, authController.logout);
 
-
 router.post('/revoke', auth, validate(revokeSchema), authController.revokeDevice);
-
 
 router.get(
     '/verify',
     auth,
     authController.verify
 );
-
 
 const { refreshToken } = require('../controllers/refreshTokenController');
 router.post('/refresh', refreshToken);

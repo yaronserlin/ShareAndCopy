@@ -1,6 +1,6 @@
 /**
- * Preview: server/src/controllers/systemController.js
- * Description: Server controller handling requests.
+ * Controllers for system/utility endpoints (server IP discovery, WebRTC
+ * ICE server configuration).
  */
 
 const logger = require('../utils/logger');
@@ -9,9 +9,11 @@ const responseHandler = require('../utils/responseHandler');
 const crypto = require('crypto');
 const env = require('../config/env');
 
-
-
-
+/**
+ * GET /system/ip
+ * Returns the server's local network IP, used by clients to help
+ * discover the server on a LAN.
+ */
 exports.getServerIp = (req, res) => {
     logger.debug('System IP request received');
     try {
@@ -29,7 +31,12 @@ exports.getServerIp = (req, res) => {
     }
 };
 
-
+/**
+ * GET /system/webrtc-config
+ * Returns the ICE server list clients should use for WebRTC. Includes a
+ * time-limited TURN credential (HMAC-SHA1 over a timestamp:username
+ * string) when a TURN server is configured.
+ */
 exports.getWebRTCConfig = (req, res) => {
     try {
         const iceServers = [
@@ -38,7 +45,7 @@ exports.getWebRTCConfig = (req, res) => {
         ];
 
         if (env.TURN_URL && env.TURN_SECRET) {
-            const ttl = 24 * 3600; 
+            const ttl = 24 * 3600;
             const timestamp = Math.floor(Date.now() / 1000) + ttl;
             const username = `${timestamp}:${env.TURN_USER}`;
 

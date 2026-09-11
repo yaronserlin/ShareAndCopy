@@ -1,10 +1,18 @@
 /**
- * Preview: client/src/utils/validation.js
- * Description: Frontend application module.
+ * Field-level validation used by the Auth forms.
  */
 
 import { APP_CONSTANTS } from '../constants';
 
+/**
+ * Validates a single form field by name.
+ *
+ * @param {string} name - Field name (`firstName`, `lastName`, `email`, `password`, `confirmPassword`).
+ * @param {string} value - Current field value.
+ * @param {boolean} [isLogin=false] - Relaxes password strength rules for the login form.
+ * @param {string} [password=''] - The password value, used to validate `confirmPassword`.
+ * @returns {string|null} An error message, or `null` if the field is valid.
+ */
 export const validateField = (name, value, isLogin = false, password = '') => {
     let error = null;
     const { REGEX } = APP_CONSTANTS;

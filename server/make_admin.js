@@ -1,6 +1,7 @@
 /**
- * Preview: server/make_admin.js
- * Description: Node.js backend utility file.
+ * CLI script that promotes a user to admin by email address.
+ *
+ * Usage: `node make_admin.js <email>`
  */
 
 const mongoose = require('mongoose');
@@ -9,11 +10,16 @@ const path = require('path');
 const logger = require('./src/utils/logger');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
+/**
+ * Connects to MongoDB, finds the user with the email given as the first
+ * CLI argument, and sets `isAdmin` to `true` on their account.
+ *
+ * @returns {Promise<void>}
+ */
 const makeAdmin = async () => {
     try {
         await mongoose.connect(process.env.MONGO_URI);
         logger.info('MongoDB Connected');
-
 
         const email = process.argv[2];
         if (!email) {

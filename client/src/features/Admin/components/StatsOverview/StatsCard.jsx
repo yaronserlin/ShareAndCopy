@@ -1,6 +1,5 @@
 /**
- * Preview: client/src/features/Admin/components/StatsOverview/StatsCard.jsx
- * Description: Frontend application module.
+ * Single statistic tile used in the admin dashboard's stats overview row.
  */
 
 import React from 'react';
@@ -8,13 +7,20 @@ import PropTypes from 'prop-types';
 import { useTheme } from '../../../../context/ThemeContext';
 import styles from '../../components/StatsOverview/StatsOverview.module.css';
 
+/**
+ * @param {Object} props
+ * @param {string} props.title - Label describing the statistic.
+ * @param {string|number} props.value - The statistic's value.
+ * @param {string} props.icon - Bootstrap icon class for the tile's icon.
+ * @param {string} props.iconColorClass - Bootstrap color class applied to the icon background.
+ * @param {string} [props.textColorClass] - Overrides the theme-based value text color.
+ * @returns {JSX.Element} The stat card element.
+ */
 const StatsCard = ({ title, value, icon, iconColorClass, textColorClass = null }) => {
     const { theme } = useTheme();
 
-    
     const valueColor = textColorClass || (theme === 'dark' ? 'text-white' : 'text-dark');
 
-    
     const iconContainerClass = `p-2 rounded-circle ${theme === 'dark'
         ? `${iconColorClass} bg-opacity-25`
         : `${iconColorClass} bg-opacity-10`}`;

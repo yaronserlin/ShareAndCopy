@@ -1,6 +1,6 @@
 /**
- * Preview: client/src/components/Home/Home.jsx
- * Description: Frontend application module.
+ * Landing page shown at the app root, with distinct calls to action for
+ * authenticated and anonymous visitors.
  */
 
 import React from 'react';
@@ -9,7 +9,11 @@ import { useAuth } from '../../context/AuthContext';
 import GradientButton from '../common/GradientButton';
 import styles from './Home.module.css';
 
-
+/**
+ * Renders the home/landing page.
+ *
+ * @returns {JSX.Element} The home page content.
+ */
 const Home = () => {
     const { isAuthenticated, roomId } = useAuth();
 

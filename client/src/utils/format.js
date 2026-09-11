@@ -1,8 +1,15 @@
 /**
- * Preview: client/src/utils/format.js
- * Description: Frontend application module.
+ * Formatting helpers for displaying data in the UI.
  */
 
+/**
+ * Formats a byte count as a human-readable string with the appropriate
+ * unit (Bytes, KB, MB, ...).
+ *
+ * @param {number} bytes
+ * @param {number} [decimals=2] - Decimal places to keep.
+ * @returns {string} The formatted size, e.g. "1.5 MB".
+ */
 export const formatBytes = (bytes, decimals = 2) => {
     if (!+bytes) return '0 Bytes';
     const k = 1024;

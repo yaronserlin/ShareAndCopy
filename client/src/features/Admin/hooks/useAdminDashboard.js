@@ -1,13 +1,16 @@
 /**
- * Preview: client/src/features/Admin/hooks/useAdminDashboard.js
- * Description: Frontend application module.
+ * Hook that fetches admin dashboard statistics on mount.
  */
 
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import api from '../../../utils/api';
 
-
+/**
+ * Fetches system-wide stats from `GET /admin/stats` on mount.
+ *
+ * @returns {{stats: {users: number, devices: number, topUsers: Array}, loading: boolean}}
+ */
 export const useAdminDashboard = () => {
     const [stats, setStats] = useState({ users: 0, devices: 0, topUsers: [] });
     const [loading, setLoading] = useState(true);

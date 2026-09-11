@@ -1,6 +1,6 @@
 /**
- * Preview: client/src/components/Navbar/Navbar.jsx
- * Description: Frontend application module.
+ * Top navigation bar showing branding, auth-aware links, and account
+ * actions (logout, admin/dashboard shortcuts).
  */
 
 import React from 'react';
@@ -9,11 +9,16 @@ import logo from '../../assets/logo_v2.svg';
 import { useAuth } from '../../context/AuthContext';
 import styles from './Navbar.module.css';
 
-
+/**
+ * Renders the fixed top navigation bar.
+ *
+ * @returns {JSX.Element} The navigation bar element.
+ */
 const Navbar = () => {
     const navigate = useNavigate();
     const { user, isAuthenticated, roomId, logout } = useAuth();
 
+    /** Logs the current user out via the auth context. */
     const handleLogout = () => {
         logout();
     };

@@ -1,6 +1,7 @@
 /**
- * Preview: client/src/components/About/index.jsx
- * Description: Frontend application module.
+ * Alternate About page variant describing room-based sharing with
+ * auto-deletion. Superseded by `About.jsx`, which `index.js` resolves
+ * ahead of this file's `.jsx` extension.
  */
 
 import React from 'react';
@@ -9,7 +10,11 @@ import GradientButton from '../common/GradientButton';
 import BackgroundDecorations from '../common/BackgroundDecorations';
 import styles from './About.module.css';
 
-
+/**
+ * Renders the alternate "About" page content.
+ *
+ * @returns {JSX.Element} The About page content.
+ */
 const About = () => {
     return (
         <div className={`container pb-5 d-flex flex-column flex-grow-1 ${styles.aboutContainer}`}>

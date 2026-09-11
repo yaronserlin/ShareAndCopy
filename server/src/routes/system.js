@@ -1,6 +1,5 @@
 /**
- * Preview: server/src/routes/system.js
- * Description: Express route definition.
+ * Routes for system/utility endpoints, mounted under `/api/system`.
  */
 
 const express = require('express');

@@ -1,6 +1,6 @@
 /**
- * Preview: client/src/components/Navbar/index.js
- * Description: Frontend application module.
+ * Re-exports the Navbar component as the public entry point for the
+ * `Navbar` component directory.
  */
 
 import Navbar from './Navbar';

@@ -1,6 +1,6 @@
 /**
- * Preview: server/src/routes/metrics.js
- * Description: Express route definition.
+ * Prometheus metrics endpoint, mounted under `/metrics`. Gated behind a
+ * bearer token and disabled entirely (404) when `METRICS_TOKEN` is unset.
  */
 
 const express = require('express');
@@ -10,7 +10,6 @@ const { register } = require('../utils/metrics');
 const logger = require('../utils/logger');
 const env = require('../config/env');
 
-
 const metricsLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 30,
@@ -18,7 +17,7 @@ const metricsLimiter = rateLimit({
     legacyHeaders: false,
 });
 
-
+/** Requires a `Bearer` token matching `env.METRICS_TOKEN`. */
 const requireMetricsToken = (req, res, next) => {
     if (!env.METRICS_TOKEN) {
         return res.status(404).end();

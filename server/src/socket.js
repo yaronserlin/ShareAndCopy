@@ -1,6 +1,8 @@
 /**
- * Preview: server/src/socket.js
- * Description: Server backend module.
+ * Socket.IO server setup: authenticates connections via the same JWTs
+ * used for HTTP requests, tracks which devices are online per user room,
+ * relays WebRTC signaling messages between a user's own devices, and
+ * handles the device-pairing handshake and usage-stat reporting.
  */
 
 const socketIo = require('socket.io');
@@ -18,12 +20,21 @@ const { parseCookies } = require('./utils/cookies');
 
 let io;
 
-
+/** Buffers `authorizedDevices` activity updates, flushed periodically in bulk. */
 const deviceActivityBuffer = new Map();
 
-
+/** Per-socket, per-event rate limit counters. */
 const socketRateLimits = new Map();
 
+/**
+ * Simple fixed-window rate limiter for socket events.
+ *
+ * @param {string} socketId
+ * @param {string} event
+ * @param {number} [maxRequests=100] - Requests allowed per window.
+ * @param {number} [windowMs=60000] - Window size, in ms.
+ * @returns {boolean} Whether the request is within the rate limit.
+ */
 const checkSocketRateLimit = (socketId, event, maxRequests = 100, windowMs = 60000) => {
     const now = Date.now();
 
@@ -46,8 +57,14 @@ const checkSocketRateLimit = (socketId, event, maxRequests = 100, windowMs = 600
     return true;
 };
 
+/**
+ * Creates and configures the Socket.IO server on top of the given HTTP
+ * server, wiring up authentication and all real-time event handlers.
+ *
+ * @param {import('http').Server} server
+ * @returns {import('socket.io').Server}
+ */
 const initSocket = (server) => {
-
     const allowedOrigins = env.NODE_ENV === 'production'
         ? [env.PUBLIC_URL].filter(Boolean)
         : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5001', 'http://127.0.0.1:5173', 'http://192.168.1.112:5173'];
@@ -57,7 +74,6 @@ const initSocket = (server) => {
     io = socketIo(server, {
         cors: {
             origin: (origin, callback) => {
-
                 if (!origin && env.NODE_ENV !== 'production') {
                     return callback(null, true);
                 }
@@ -74,7 +90,11 @@ const initSocket = (server) => {
         }
     });
 
-
+    /**
+     * Authenticates each connecting socket using the same JWT (from
+     * cookie or handshake auth) issued by the HTTP auth flow, attaching
+     * a `user`, guest identity, or pairing identity to `socket.user`.
+     */
     io.use(async (socket, next) => {
         try {
             const cookies = parseCookies(socket.handshake.headers.cookie);
@@ -85,14 +105,12 @@ const initSocket = (server) => {
 
             const decoded = jwt.verify(token, env.JWT_SECRET);
 
-
             if (decoded.jti) {
                 const revoked = await RevokedToken.findOne({ jti: decoded.jti });
                 if (revoked) {
                     return next(new Error('Authentication error: Token revoked'));
                 }
             }
-
 
             if (decoded.scope === 'guest' || decoded.isGuest) {
                 socket.user = {
@@ -103,7 +121,6 @@ const initSocket = (server) => {
                 };
                 return next();
             }
-
 
             if (decoded.scope === 'pairing') {
                 socket.user = { _id: decoded.id, isPairing: true };
@@ -117,7 +134,6 @@ const initSocket = (server) => {
                 return next(new Error('Authentication error: User not found'));
             }
 
-
             socket.user = user;
             next();
         } catch (err) {
@@ -126,30 +142,31 @@ const initSocket = (server) => {
         }
     });
 
+    /**
+     * Per-connection setup: registers the socket in its user's room (so
+     * signaling and device-list events can be broadcast to just that
+     * user's own devices), announces it to the user's other devices, and
+     * wires up all client-to-server event handlers.
+     */
     io.on('connection', async (socket) => {
         const userId = socket.user._id.toString();
         const isGuest = socket.user.isGuest;
         const { deviceId, deviceName } = socket.handshake.query;
 
-
         const sanitizedDeviceId = validator.escape(deviceId || '');
         const sanitizedDeviceName = validator.escape((isGuest ? '[Guest] ' : '') + (deviceName || 'Unknown'));
-
 
         socket.data.deviceInfo = {
             deviceId: sanitizedDeviceId,
             deviceName: sanitizedDeviceName
         };
 
-
         connectedSockets.inc();
 
         logger.info(`Socket connected: ${socket.id} (User/Room: ${userId}, Device: ${deviceId}, Guest: ${isGuest})`);
 
-
         if (!socket.user.isPairing) {
             socket.join(userId);
-
 
             if (sanitizedDeviceId && !isGuest) {
                 const bufferKey = `${userId}:${sanitizedDeviceId}`;
@@ -161,13 +178,11 @@ const initSocket = (server) => {
                 });
             }
 
-
             socket.to(userId).emit('device-online', {
                 socketId: socket.id,
                 deviceId: sanitizedDeviceId,
                 deviceName: sanitizedDeviceName
             });
-
 
             try {
                 const sockets = await io.in(userId).fetchSockets();
@@ -185,13 +200,10 @@ const initSocket = (server) => {
             }
         }
 
-
         socket.on('register-device', async (data) => {
-
             const cleanDeviceId = validator.escape(data.deviceId || '');
             logger.info(`Device registered: ${cleanDeviceId}`);
         });
-
 
         socket.on('request-device-list', async () => {
             try {
@@ -210,10 +222,13 @@ const initSocket = (server) => {
             }
         });
 
-
-
+        /**
+         * Relays a WebRTC signaling payload (offer/answer/candidate) to
+         * another of this user's sockets, after confirming the target is
+         * actually in the sender's own room (prevents signaling an
+         * arbitrary socket ID belonging to someone else).
+         */
         socket.on('signal', async (data) => {
-
             if (!checkSocketRateLimit(socket.id, 'signal', 100, 60000)) {
                 logger.warn(`Rate limit exceeded for socket ${socket.id} on 'signal' event`);
                 return socket.emit('error', { message: 'Too many requests. Please slow down.' });
@@ -221,9 +236,7 @@ const initSocket = (server) => {
 
             const { targetSocketId, signalData, type } = data;
 
-
             if (targetSocketId) {
-
                 const roomSockets = await io.in(userId).fetchSockets();
                 const isTargetInRoom = roomSockets.some(s => s.id === targetSocketId);
 
@@ -241,12 +254,12 @@ const initSocket = (server) => {
             }
         });
 
-
-
-
-
+        /**
+         * Lets the pairing-code owner's socket join a dedicated room for
+         * that code, so a `request-pairing` from a new device can be
+         * routed only to the device that generated the code.
+         */
         socket.on('join-pairing', (code) => {
-
             if (socket.user.isGuest || socket.user.isPairing || !pairingStore.isOwner(code, userId)) {
                 logger.warn(`Socket ${socket.id} denied joining pairing room: pairing-${code}`);
                 return;
@@ -257,15 +270,11 @@ const initSocket = (server) => {
         });
 
 
-
-
-
-
-
-
-
+        /**
+         * Broadcasts a new device's pairing request to the pairing
+         * code's room, prompting the owning device to approve or deny it.
+         */
         socket.on('request-pairing', (data) => {
-
             if (!checkSocketRateLimit(socket.id, 'request-pairing', 10, 60000)) {
                 logger.warn(`Rate limit exceeded for socket ${socket.id} on 'request-pairing' event`);
                 return;
@@ -279,7 +288,11 @@ const initSocket = (server) => {
             });
         });
 
-
+        /**
+         * Approves a pending pairing request: issues a short-lived guest
+         * JWT scoped to this user's room and sends it to the requesting
+         * device, subject to a per-host guest-device cap.
+         */
         socket.on('approve-pairing', async (data) => {
             const { targetSocketId, code } = data;
 
@@ -287,7 +300,6 @@ const initSocket = (server) => {
                 logger.warn(`Socket ${socket.id} denied approve-pairing for code ${code}`);
                 return socket.emit('pairing-error', { message: 'Not authorized to approve this pairing request' });
             }
-
 
             const MAX_GUESTS_PER_HOST = 10;
             const roomSockets = await io.in(userId).fetchSockets();
@@ -300,15 +312,7 @@ const initSocket = (server) => {
                 });
             }
 
-
-
-
-
-
-
-
             const guestId = `guest_${crypto.randomUUID()}`;
-
 
             const jti = crypto.randomUUID();
             const newToken = jwt.sign(
@@ -329,7 +333,6 @@ const initSocket = (server) => {
                 user: { isGuest: true, roomId: userId }
             });
 
-
             const today = new Date().toISOString().split('T')[0];
             DailyStat.findOneAndUpdate(
                 { date: today },
@@ -340,9 +343,12 @@ const initSocket = (server) => {
             logger.info(`Pairing approved by ${userId} for target socket ${targetSocketId}`);
         });
 
-
+        /**
+         * Records a completed upload/download for metrics and, unless
+         * the reporting socket is a guest, updates that user's lifetime
+         * transfer stats.
+         */
         socket.on('report-transfer', async (data) => {
-
             if (!checkSocketRateLimit(socket.id, 'report-transfer', 200, 60000)) {
                 logger.warn(`Rate limit exceeded for socket ${socket.id} on 'report-transfer' event`);
                 return;
@@ -354,11 +360,9 @@ const initSocket = (server) => {
 
             logger.info(`REPORT-TRANSFER (${type}): Received from ${socket.id} (User: ${userId}, Guest: ${socket.user.isGuest}). Size: ${size}`);
 
-
             dataTransferred.inc(size);
 
             try {
-
                 if (type !== 'download') {
                     const dailyRes = await DailyStat.findOneAndUpdate(
                         { date: today },
@@ -372,7 +376,6 @@ const initSocket = (server) => {
                     );
                     logger.info(`REPORT-TRANSFER: DailyStat updated. Total: ${dailyRes.totalDataTransferred}`);
                 }
-
 
                 if (!socket.user.isGuest) {
                     const incUpdate = { dataTransferred: size };
@@ -395,13 +398,12 @@ const initSocket = (server) => {
             }
         });
 
+        /** Decrements connection metrics and clears per-socket rate limit state. */
         socket.on('disconnect', () => {
             logger.info(`Socket disconnected: ${socket.id}`);
             connectedSockets.dec();
 
-
             socketRateLimits.delete(socket.id);
-
 
             if (!socket.user.isPairing) {
                 socket.to(userId).emit('device-offline', {
@@ -412,12 +414,14 @@ const initSocket = (server) => {
         });
     });
 
-
     return io;
 };
 
-
-
+/**
+ * Periodically flushes buffered `lastActive`/`deviceName` updates for
+ * authorized devices in one bulk write, instead of writing to MongoDB on
+ * every socket connection.
+ */
 const deviceActivityInterval = setInterval(async () => {
     if (deviceActivityBuffer.size === 0) return;
 
@@ -427,7 +431,6 @@ const deviceActivityInterval = setInterval(async () => {
     logger.debug(`Processing ${updates.length} buffered device activity updates`);
 
     try {
-
         const bulkOps = updates.map(({ userId, deviceId, deviceName, timestamp }) => ({
             updateOne: {
                 filter: { _id: userId, 'authorizedDevices.deviceId': deviceId },
@@ -441,16 +444,13 @@ const deviceActivityInterval = setInterval(async () => {
             }
         }));
 
-
         if (bulkOps.length > 0) {
             const result = await User.bulkWrite(bulkOps, { ordered: false });
             logger.debug(`Device activity bulk update complete: ${result.modifiedCount} modified`);
 
-
             const notFoundUpdates = updates.filter((update, index) => {
                 return bulkOps[index] && !result.modifiedCount;
             });
-
 
             for (const { userId, deviceId, deviceName, timestamp } of notFoundUpdates) {
                 await User.findByIdAndUpdate(userId, {

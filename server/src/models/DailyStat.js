@@ -1,16 +1,16 @@
 /**
- * Preview: server/src/models/DailyStat.js
- * Description: Mongoose model definition.
+ * One document per calendar day (`date` as `YYYY-MM-DD`), aggregating
+ * system-wide usage for the admin dashboard's history charts.
  */
 
 const mongoose = require('mongoose');
 
-
 const DailyStatSchema = new mongoose.Schema({
+    /** Calendar day this document summarizes, as `YYYY-MM-DD`. */
     date: {
-        type: String, 
+        type: String,
         required: true,
-        unique: true, 
+        unique: true,
         index: true
     },
     totalDataTransferred: {
@@ -26,7 +26,7 @@ const DailyStatSchema = new mongoose.Schema({
         default: 0
     },
     activeUsers: {
-        type: Number, 
+        type: Number,
         default: 0
     }
 }, {

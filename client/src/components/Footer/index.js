@@ -1,6 +1,6 @@
 /**
- * Preview: client/src/components/Footer/index.js
- * Description: Frontend application module.
+ * Re-exports the Footer component as the public entry point for the
+ * `Footer` component directory.
  */
 
 import Footer from './Footer';

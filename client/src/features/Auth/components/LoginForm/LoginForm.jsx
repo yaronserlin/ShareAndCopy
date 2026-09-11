@@ -1,6 +1,6 @@
 /**
- * Preview: client/src/features/Auth/components/LoginForm/LoginForm.jsx
- * Description: Frontend application module.
+ * Login form for the Auth screen; delegates field state and submission
+ * logic to {@link module:features/Auth/hooks/useLoginForm}.
  */
 
 import React from 'react';
@@ -9,7 +9,11 @@ import FormInput from '../../../../components/common/FormInput';
 import PasswordInput from '../../../../components/common/PasswordInput';
 import styles from '../../styles/AuthShared.module.css';
 
-
+/**
+ * Renders the email/password login form.
+ *
+ * @returns {JSX.Element} The login form.
+ */
 const LoginForm = () => {
     const {
         formData,

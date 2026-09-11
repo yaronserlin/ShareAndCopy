@@ -1,15 +1,15 @@
 /**
- * Preview: server/src/controllers/adminController.js
- * Description: Server controller handling requests.
+ * Controllers for admin-only endpoints.
  */
 
 const adminService = require('../services/adminService');
 const logger = require('../utils/logger');
 const responseHandler = require('../utils/responseHandler');
 
-
-
-
+/**
+ * GET /admin/stats
+ * Returns aggregate usage statistics for the admin dashboard.
+ */
 exports.getDashboardStats = async (req, res) => {
     try {
         const stats = await adminService.getDashboardStats();

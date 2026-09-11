@@ -1,11 +1,22 @@
 /**
- * Preview: client/src/features/dashboard/DeviceCard.jsx
- * Description: Frontend application module.
+ * Card for a single online device on the dashboard: file picker, send
+ * button/progress bar, transfer stats, and an optional revoke action.
  */
 
 import React from 'react';
 import PropTypes from 'prop-types';
 
+/**
+ * @param {Object} props
+ * @param {{deviceId: string, deviceName: string}} props.device
+ * @param {File} [props.selectedFile] - File currently chosen to send to this device.
+ * @param {Function} props.onFileChange - Called when a file is selected.
+ * @param {Function} props.onSend - Called with the device ID to start a transfer.
+ * @param {number} [props.transferProgress] - Send/receive progress percentage (0-100).
+ * @param {{speed: string, eta: string}} [props.transferStats] - Current transfer speed/ETA.
+ * @param {Function} [props.onRevoke] - Called with the device ID to revoke its access; omit to hide the action.
+ * @returns {JSX.Element} The device card.
+ */
 const DeviceCard = ({ device, selectedFile, onFileChange, onSend, transferProgress, transferStats, onRevoke }) => {
     const isTransferred = transferProgress === 100;
     const isTransferring = transferProgress !== undefined && transferProgress < 100;
@@ -19,7 +30,6 @@ const DeviceCard = ({ device, selectedFile, onFileChange, onSend, transferProgre
                 <h3 className="h5 fw-bold mb-1">{device.deviceName}</h3>
                 <p className="text-muted small mb-4">ID: {device.deviceId}</p>
 
-                {}
                 <div className="mb-3">
                     <label htmlFor={`file-input-${device.deviceId}`} className="visually-hidden">
                         Select a file to send to {device.deviceName}
@@ -32,7 +42,6 @@ const DeviceCard = ({ device, selectedFile, onFileChange, onSend, transferProgre
                     />
                 </div>
 
-                {}
                 {isTransferring ? (
                     <div className="progress" style={{ height: '25px' }}>
                         <div
@@ -57,7 +66,6 @@ const DeviceCard = ({ device, selectedFile, onFileChange, onSend, transferProgre
                     </button>
                 )}
 
-                {}
                 {isTransferring && transferStats && (
                     <div className="d-flex justify-content-between text-muted small mt-1">
                         <span>{transferStats.speed}</span>
@@ -65,7 +73,6 @@ const DeviceCard = ({ device, selectedFile, onFileChange, onSend, transferProgre
                     </div>
                 )}
 
-                {}
                 {onRevoke && isTransferred === false && (
                     <button
                         className="btn btn-outline-danger w-100 rounded-pill mt-2 btn-sm"
@@ -93,7 +100,7 @@ DeviceCard.propTypes = {
     selectedFile: PropTypes.object,
     onFileChange: PropTypes.func.isRequired,
     onSend: PropTypes.func.isRequired,
-    onRevoke: PropTypes.func, 
+    onRevoke: PropTypes.func,
     transferProgress: PropTypes.number,
     transferStats: PropTypes.shape({ speed: PropTypes.string, eta: PropTypes.string }),
     isGuest: PropTypes.bool

@@ -1,6 +1,8 @@
 /**
- * Preview: client/src/components/PairingLogin.jsx
- * Description: Frontend application module.
+ * Standalone login form that authenticates a new device using a six
+ * character pairing code (typed manually or pre-filled from a QR code's
+ * `pairingCode` query parameter), completing the handshake over a
+ * short-lived Socket.IO connection.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -12,53 +14,54 @@ import { useAuth } from '../context/AuthContext';
 import { SERVER_URL, API_BASE_URL } from '../config';
 import { getFriendlyDeviceName } from '../utils/deviceUtils';
 
+/**
+ * @param {Object} props
+ * @param {() => void} props.onCancel - Called when the user cancels pairing.
+ * @returns {JSX.Element} The pairing login form.
+ */
 const PairingLogin = ({ onCancel }) => {
-    
     const [tempSocket, setTempSocket] = useState(null);
     const navigate = useNavigate();
-    const { login } = useAuth(); 
+    const { login } = useAuth();
 
-    
     const [code, setCode] = useState('');
-    const [status, setStatus] = useState('input'); 
+    const [status, setStatus] = useState('input');
     const [error, setError] = useState(null);
     const location = useLocation();
 
-    
     useEffect(() => {
         const params = new URLSearchParams(location.search);
         const urlCode = params.get('pairingCode');
 
         if (urlCode && status === 'input') {
             setCode(urlCode);
-            
-            
-            
-
-            
-            
-            
         }
     }, [location]);
 
-    
     useEffect(() => {
         return () => {
             if (tempSocket) tempSocket.disconnect();
         };
     }, [tempSocket]);
 
-    
     useEffect(() => {
         if (code && code.length === 6 && status === 'input') {
             const params = new URLSearchParams(location.search);
             if (params.get('pairingCode') === code) {
-                
                 handlePairingRequest(new Event('submit'));
             }
         }
-    }, [code]); 
+    }, [code]);
 
+    /**
+     * Verifies the entered pairing code with the server, opens a
+     * temporary authenticated socket, and requests pairing approval from
+     * the already-signed-in device. On success, adopts the issued session
+     * token and navigates to the dashboard.
+     *
+     * @param {Event} e - The form submit event.
+     * @returns {Promise<void>}
+     */
     const handlePairingRequest = async (e) => {
         e.preventDefault();
         if (!code || code.length !== 6) {
@@ -70,7 +73,6 @@ const PairingLogin = ({ onCancel }) => {
         setError(null);
 
         try {
-            
             const res = await axios.post(`${API_BASE_URL}/auth/verify-pairing`, { code: code.toUpperCase() });
 
             if (!res.data.valid || !res.data.pairingToken) {
@@ -79,7 +81,6 @@ const PairingLogin = ({ onCancel }) => {
 
             const pairingToken = res.data.pairingToken;
 
-            
             const socket = io(SERVER_URL, {
                 auth: { token: pairingToken }
             });
@@ -92,7 +93,6 @@ const PairingLogin = ({ onCancel }) => {
             });
 
             socket.on('connect', () => {
-                
                 const deviceInfo = {
                     deviceName: getFriendlyDeviceName(),
                     model: navigator.userAgent,

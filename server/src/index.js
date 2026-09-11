@@ -1,6 +1,7 @@
 /**
- * Preview: server/src/index.js
- * Description: Server backend module.
+ * Express application entry point: configures security/parsing
+ * middleware, mounts the API routes, and starts the HTTP + Socket.IO
+ * server.
  */
 
 const env = require('./config/env');
@@ -9,7 +10,6 @@ const http = require('http');
 const helmet = require('helmet');
 const compression = require('compression');
 
-
 const logger = require('./utils/logger');
 const initSocket = require('./socket');
 const { apiLimiter } = require('./middleware/rateLimiter');
@@ -17,15 +17,10 @@ const cors = require('./middleware/cors');
 const connectDB = require('./config/db');
 const { parseCookies } = require('./utils/cookies');
 
-
 const app = express();
 const server = http.createServer(app);
 
-
 app.set('trust proxy', 1);
-
-
-
 
 app.use(helmet({
     contentSecurityPolicy: {
@@ -53,35 +48,23 @@ app.use(helmet({
     }
 }));
 
-
 app.use(compression());
 
-
 app.use(cors);
-
 
 app.use((req, res, next) => {
     req.cookies = parseCookies(req.headers.cookie);
     next();
 });
 
-
 app.use((req, res, next) => {
     logger.info(`${req.method} ${req.originalUrl} - IP: ${req.ip}`);
     next();
 });
 
-
 app.use('/api', apiLimiter);
 
-
 app.use(express.json());
-
-
-
-
-
-
 
 const routes = [
     { path: '/api/auth', route: './routes/auth' },
@@ -94,19 +77,18 @@ routes.forEach(({ path, route }) => {
     app.use(path, require(route));
 });
 
-
-
-
-
-
-
+/**
+ * Connects to MongoDB, initializes Socket.IO on the shared HTTP server,
+ * and starts listening for HTTP requests.
+ *
+ * @returns {Promise<void>}
+ */
 const startServer = async () => {
     try {
         await connectDB();
 
         initSocket(server);
         logger.info('Socket.io initialized');
-
 
         const PORT = env.PORT || 5001;
 

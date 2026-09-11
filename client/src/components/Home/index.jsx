@@ -1,6 +1,7 @@
 /**
- * Preview: client/src/components/Home/index.jsx
- * Description: Frontend application module.
+ * Alternate Home page variant built around a single-room token/roomId auth
+ * model. Superseded by `Home.jsx`, which `index.js` resolves ahead of this
+ * file's `.jsx` extension.
  */
 
 import React from 'react';
@@ -10,7 +11,11 @@ import BackgroundDecorations from './common/BackgroundDecorations';
 import GradientButton from './common/GradientButton';
 import styles from './Home.module.css';
 
-
+/**
+ * Renders the alternate home/landing page content.
+ *
+ * @returns {JSX.Element} The home page content.
+ */
 const Home = () => {
     const { token, roomId } = useAuth();
 

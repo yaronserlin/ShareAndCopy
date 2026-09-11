@@ -1,6 +1,6 @@
 /**
- * Preview: client/src/features/Auth/index.jsx
- * Description: Frontend application module.
+ * Auth screen: switches between login, registration, and device-pairing
+ * modes based on the current route and query string.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -10,6 +10,12 @@ import LoginForm from './components/LoginForm/LoginForm';
 import RegisterForm from './components/RegisterForm/RegisterForm';
 import PairingLogin from '../../components/PairingLogin';
 
+/**
+ * Renders the login, register, or device-pairing form inside the shared
+ * {@link module:features/Auth/components/AuthLayout}.
+ *
+ * @returns {JSX.Element} The auth screen.
+ */
 const Auth = () => {
     const location = useLocation();
     const navigate = useNavigate();
@@ -19,15 +25,15 @@ const Auth = () => {
     useEffect(() => {
         setIsLogin(location.pathname !== '/register');
 
-        
         const params = new URLSearchParams(location.search);
         if (params.get('pairingCode')) {
             setIsPairing(true);
         } else {
-            setIsPairing(false); 
+            setIsPairing(false);
         }
     }, [location]);
 
+    /** Toggles between login and register, or exits pairing mode. */
     const handleSwitchMode = () => {
         if (isPairing) {
             setIsPairing(false);

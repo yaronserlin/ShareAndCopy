@@ -1,6 +1,6 @@
 /**
- * Preview: client/src/features/Auth/hooks/useRegisterForm.js
- * Description: Frontend application module.
+ * Hook backing {@link module:features/Auth/components/RegisterForm}:
+ * field validation state plus the account-creation submit handler.
  */
 
 import { useState } from 'react';
@@ -10,7 +10,13 @@ import api from '../../../utils/api';
 import { useAuth } from '../../../context/AuthContext';
 import { useAuthForm } from '../../../hooks/useAuthForm';
 
-
+/**
+ * Manages the registration form's fields and submits a new account to
+ * `POST /auth/register`, logging the user in and navigating to the
+ * dashboard on success.
+ *
+ * @returns {Object} Form field state/handlers plus `isValid`, `isLoading`, `showPassword`, and `setShowPassword`.
+ */
 export const useRegisterForm = () => {
     const navigate = useNavigate();
     const { login } = useAuth();
@@ -40,7 +46,6 @@ export const useRegisterForm = () => {
 
         setIsLoading(true);
         try {
-            
             const payload = { ...formData };
             delete payload.confirmPassword;
 

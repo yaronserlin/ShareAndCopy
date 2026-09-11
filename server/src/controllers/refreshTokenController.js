@@ -1,13 +1,17 @@
 /**
- * Preview: server/src/controllers/refreshTokenController.js
- * Description: Server controller handling requests.
+ * Controller for exchanging a refresh token cookie for a new access
+ * token.
  */
 
 const { refreshAccessToken } = require('../services/refreshTokenService');
 const logger = require('../utils/logger');
 const { setAuthCookies } = require('../utils/cookies');
 
-
+/**
+ * POST /auth/refresh-token
+ * Issues a new access/refresh token pair from the request's
+ * `refreshToken` cookie and sets them as cookies on the response.
+ */
 exports.refreshToken = async (req, res) => {
     try {
         const refreshToken = req.cookies?.refreshToken;

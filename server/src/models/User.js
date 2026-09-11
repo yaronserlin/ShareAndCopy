@@ -1,12 +1,12 @@
 /**
- * Preview: server/src/models/User.js
- * Description: Mongoose model definition.
+ * A registered account: credentials, usage stats, and the list of
+ * devices authorized to sign in as this user via pairing.
  */
 
 const mongoose = require('mongoose');
 
-
 const UserSchema = new mongoose.Schema({
+    /** Devices this user has paired, each tied to a refresh token JTI for revocation. */
     authorizedDevices: [{
         deviceId: {
             type: String,
@@ -80,12 +80,11 @@ const UserSchema = new mongoose.Schema({
         default: false
     }
 }, {
-    timestamps: true 
+    timestamps: true
 });
 
-
-
-UserSchema.index({ 'authorizedDevices.jti': 1 }); 
-UserSchema.index({ 'authorizedDevices.deviceId': 1 }); 
+/** Speeds up looking up a user by one of their devices' JTI or device ID. */
+UserSchema.index({ 'authorizedDevices.jti': 1 });
+UserSchema.index({ 'authorizedDevices.deviceId': 1 });
 
 module.exports = mongoose.model('User', UserSchema);

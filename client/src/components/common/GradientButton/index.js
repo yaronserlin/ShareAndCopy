@@ -1,6 +1,6 @@
 /**
- * Preview: client/src/components/common/GradientButton/index.js
- * Description: Frontend application module.
+ * Re-exports the GradientButton component as the public entry point for
+ * the `GradientButton` component directory.
  */
 
 export { default } from './GradientButton';

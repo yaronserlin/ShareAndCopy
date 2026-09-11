@@ -1,12 +1,11 @@
 /**
- * Preview: client/src/utils/api.js
- * Description: Frontend application module.
+ * Shared axios instance for all REST calls to the backend. Sends
+ * credentials (cookies) with every request and broadcasts a
+ * `rate-limit-exceeded` window event on HTTP 429 responses.
  */
 
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
-// import API_BASE_URL from '../config';
-
 
 const api = axios.create({
     baseURL: API_BASE_URL,
@@ -16,15 +15,12 @@ const api = axios.create({
     }
 });
 
-
 api.interceptors.response.use((response) => {
     return response;
 }, (error) => {
-
     if (error.response && error.response.status === 429) {
         window.dispatchEvent(new Event('rate-limit-exceeded'));
     }
-
 
     return Promise.reject(error);
 });

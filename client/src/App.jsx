@@ -1,6 +1,10 @@
 /**
- * Preview: client/src/App.jsx
- * Description: Frontend application module.
+ * Root application component.
+ *
+ * Defines the top-level layout (background decorations, navbar, toast
+ * container, footer) and the client-side route table, and listens for the
+ * global `rate-limit-exceeded` event dispatched by the API client so the
+ * whole app can be swapped out for a rate-limit notice.
  */
 
 import Home from './components/Home';
@@ -20,6 +24,12 @@ import RateLimitError from './components/RateLimitError';
 import { useState, useEffect } from 'react';
 import BackgroundDecorations from './components/common/BackgroundDecorations';
 
+/**
+ * Renders the app shell and route outlet, or a full-screen rate-limit
+ * notice when the client has been throttled by the server.
+ *
+ * @returns {JSX.Element} The application root element.
+ */
 function App() {
   const [isRateLimited, setIsRateLimited] = useState(false);
 

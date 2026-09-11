@@ -1,6 +1,10 @@
 /**
- * Preview: client/src/hooks/useP2P.js
- * Description: Frontend application module.
+ * Core peer-to-peer file transfer hook. Manages the WebRTC signaling
+ * handshake over the shared socket (using a "perfect negotiation" pattern
+ * to resolve offer/answer glare between two equal peers), tracks which
+ * devices are online, and streams files directly between devices over
+ * RTCDataChannels in fixed-size chunks with backpressure-aware flow
+ * control.
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -12,21 +16,27 @@ import { APP_CONSTANTS } from '../constants';
 import API_BASE_URL from '../config';
 import { debugLog, debugWarn } from '../utils/logger';
 
-
+/** Fallback STUN servers used until the server-provided ICE config loads. */
 const DEFAULT_ICE_SERVERS = [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' }
 ];
 
-const CHUNK_SIZE = 16 * 1024; 
-const MAX_FILE_SIZE = 500 * 1024 * 1024; 
+/** Size, in bytes, of each chunk streamed over the data channel. */
+const CHUNK_SIZE = 16 * 1024;
+/** Largest file, in bytes, that a transfer will accept. */
+const MAX_FILE_SIZE = 500 * 1024 * 1024;
 
-
+/**
+ * Generates a UUID, preferring `crypto.randomUUID` and falling back to a
+ * `Math.random`-based v4 UUID where that API is unavailable.
+ *
+ * @returns {string} A UUID string.
+ */
 const generateUUID = () => {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
         return crypto.randomUUID();
     }
-    
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
         const r = Math.random() * 16 | 0;
         const v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -34,30 +44,51 @@ const generateUUID = () => {
     });
 };
 
+/**
+ * Sets up peer-to-peer device discovery and file transfer over the
+ * shared socket connection.
+ *
+ * @returns {{
+ *   onlineDevices: Array<Object>,
+ *   transferProgress: Object<string, number>,
+ *   pendingTransfers: Object<string, Object>,
+ *   acceptTransfer: (deviceId: string) => void,
+ *   rejectTransfer: (deviceId: string) => void,
+ *   sendFile: (file: File, targetDeviceId: string) => Promise<void>,
+ *   connectionStatus: Object<string, string>,
+ *   transferStats: Object<string, {speed: string, eta: string}>,
+ *   removeDevice: (deviceId: string) => void
+ * }}
+ */
 export const useP2P = () => {
     const socket = useSocket();
     const [onlineDevices, setOnlineDevices] = useState([]);
-    const [transferProgress, setTransferProgress] = useState({}); 
-    const [transferStats, setTransferStats] = useState({}); 
-    const [pendingTransfers, setPendingTransfers] = useState({}); 
-    const [connectionStatus, setConnectionStatus] = useState({}); 
+    /** Per-device receive/send progress percentage. */
+    const [transferProgress, setTransferProgress] = useState({});
+    /** Per-device transfer speed/ETA, updated while sending. */
+    const [transferStats, setTransferStats] = useState({});
+    /** Per-device incoming transfer awaiting accept/reject. */
+    const [pendingTransfers, setPendingTransfers] = useState({});
+    /** Per-device ICE connection status. */
+    const [connectionStatus, setConnectionStatus] = useState({});
 
-    
     const progressUpdateScheduled = useRef(false);
     const pendingProgressUpdates = useRef({});
 
-    
+    /** Object URLs created for received files, revoked after download. */
     const objectURLsRef = useRef(new Set());
 
-
+    /** Active RTCPeerConnections, keyed by remote device ID. */
     const peersRef = useRef({});
 
+    /** ICE candidates buffered until the remote description is set. */
     const candidatesBufferRef = useRef({});
 
     const iceServersRef = useRef({ iceServers: DEFAULT_ICE_SERVERS });
 
     const onlineDevicesRef = useRef([]);
 
+    /** Perfect-negotiation state per remote device; see {@link getOrCreatePeer}. */
     const negotiationStateRef = useRef({});
 
     const myDeviceIdRef = useRef(getDeviceId());
@@ -66,7 +97,13 @@ export const useP2P = () => {
         onlineDevicesRef.current = onlineDevices;
     }, [onlineDevices]);
 
-
+    /**
+     * Tears down all connection state associated with a device: closes
+     * its peer connection and clears its buffered candidates, negotiation
+     * state, and per-device transfer/progress/status entries.
+     *
+     * @param {string} deviceId
+     */
     const cleanupDeviceState = useCallback((deviceId) => {
         if (peersRef.current[deviceId]) {
             peersRef.current[deviceId].close();
@@ -88,7 +125,13 @@ export const useP2P = () => {
         setConnectionStatus(dropKey);
     }, []);
 
-
+    /**
+     * Batches per-device progress updates into a single state update per
+     * animation frame, avoiding a re-render for every chunk received.
+     *
+     * @param {string} deviceId
+     * @param {number} progress - Percentage complete (0-100).
+     */
     const updateProgress = useCallback((deviceId, progress) => {
         pendingProgressUpdates.current[deviceId] = progress;
 
@@ -105,7 +148,7 @@ export const useP2P = () => {
         }
     }, []);
 
-    
+    /** Fetches the server-configured ICE (STUN/TURN) servers once on mount. */
     useEffect(() => {
         const fetchConfig = async () => {
             try {
@@ -121,12 +164,17 @@ export const useP2P = () => {
         fetchConfig();
     }, []);
 
+    /**
+     * Wires up all socket event listeners for device presence and WebRTC
+     * signaling ("perfect negotiation": each peer decides whether it is
+     * "polite" or "impolite" based on device ID ordering, so offer/answer
+     * glare between two simultaneous offers resolves deterministically),
+     * and cleans up peers, buffered candidates, and object URLs on
+     * unmount or socket change.
+     */
     useEffect(() => {
         if (!socket) return;
 
-        
-
-        
         socket.on('initial-device-list', (devices) => {
             debugLog('Received initial device list:', devices);
             setOnlineDevices(devices);
@@ -149,7 +197,6 @@ export const useP2P = () => {
         socket.on('signal', async ({ senderSocketId, senderDeviceId, type, signalData }) => {
             debugLog(`Received Signal from ${senderDeviceId} (${type})`);
 
-            
             const peer = getOrCreatePeer(senderDeviceId, senderSocketId);
 
             try {
@@ -171,7 +218,6 @@ export const useP2P = () => {
                     await peer.setRemoteDescription(new RTCSessionDescription(signalData));
                     debugLog('Remote Description Set (Offer)');
 
-                    
                     if (candidatesBufferRef.current[senderDeviceId]) {
                         debugLog(`Processing ${candidatesBufferRef.current[senderDeviceId].length} buffered candidates for ${senderDeviceId}`);
                         for (const candidate of candidatesBufferRef.current[senderDeviceId]) {
@@ -193,7 +239,6 @@ export const useP2P = () => {
                     await peer.setRemoteDescription(new RTCSessionDescription(signalData));
                     debugLog('Remote Description Set (Answer)');
 
-                    
                     if (candidatesBufferRef.current[senderDeviceId]) {
                         debugLog(`Processing ${candidatesBufferRef.current[senderDeviceId].length} buffered candidates for ${senderDeviceId}`);
                         for (const candidate of candidatesBufferRef.current[senderDeviceId]) {
@@ -207,7 +252,6 @@ export const useP2P = () => {
                         await peer.addIceCandidate(candidate);
                         debugLog('Added ICE Candidate immediately');
                     } else {
-                        
                         debugLog('Buffering ICE Candidate (Remote Desc not ready)');
                         if (!candidatesBufferRef.current[senderDeviceId]) {
                             candidatesBufferRef.current[senderDeviceId] = [];
@@ -220,7 +264,6 @@ export const useP2P = () => {
             }
         });
 
-        
         socket.emit('request-device-list');
 
         return () => {
@@ -229,7 +272,6 @@ export const useP2P = () => {
             socket.off('device-offline');
             socket.off('signal');
 
-            
             Object.keys(peersRef.current).forEach(deviceId => {
                 const peer = peersRef.current[deviceId];
                 if (peer) {
@@ -238,12 +280,10 @@ export const useP2P = () => {
                 }
             });
 
-            
             Object.keys(candidatesBufferRef.current).forEach(deviceId => {
                 delete candidatesBufferRef.current[deviceId];
             });
 
-            
             objectURLsRef.current.forEach(url => {
                 URL.revokeObjectURL(url);
             });
@@ -251,7 +291,16 @@ export const useP2P = () => {
         };
     }, [socket]);
 
-    
+    /**
+     * Returns the existing peer connection for a device, or creates one
+     * and wires up its ICE candidate, data channel, and renegotiation
+     * handlers. Each side's "polite"/"impolite" role for perfect
+     * negotiation is derived deterministically by comparing device IDs.
+     *
+     * @param {string} targetDeviceId
+     * @param {string} targetSocketId
+     * @returns {RTCPeerConnection}
+     */
     const getOrCreatePeer = (targetDeviceId, targetSocketId) => {
         if (peersRef.current[targetDeviceId]) {
             const p = peersRef.current[targetDeviceId];
@@ -268,7 +317,6 @@ export const useP2P = () => {
             ignoreOffer: false,
             polite: myDeviceIdRef.current > targetDeviceId
         };
-
 
         setConnectionStatus(prev => ({ ...prev, [targetDeviceId]: 'checking' }));
 
@@ -289,7 +337,6 @@ export const useP2P = () => {
             debugLog(`Peer Connection State Change (${targetDeviceId}):`, peer.connectionState);
         };
 
-        
         peer.onicecandidate = (event) => {
             if (event.candidate && socket) {
                 socket.emit('signal', {
@@ -300,13 +347,11 @@ export const useP2P = () => {
             }
         };
 
-
         peer.ondatachannel = (event) => {
             debugLog(`Received Data Channel from ${targetDeviceId}`);
             const channel = event.channel;
             setupReceiveChannel(channel, targetDeviceId);
         };
-
 
         peer.onnegotiationneeded = async () => {
             debugLog('Negotiation Needed for', targetDeviceId);
@@ -331,10 +376,18 @@ export const useP2P = () => {
         return peer;
     };
 
-    
+    /**
+     * Attaches handlers to an incoming RTCDataChannel: parses the JSON
+     * control messages (`METADATA`, `FINISH`) and raw binary chunks that
+     * make up a receive-side file transfer, reassembling the file and
+     * triggering a browser download once all chunks have arrived.
+     *
+     * @param {RTCDataChannel} channel
+     * @param {string} deviceId - ID of the sending device.
+     */
     const setupReceiveChannel = (channel, deviceId) => {
-        
-        const activeTransfers = new Map(); 
+        /** Transfers in flight on this channel, keyed by transfer ID. */
+        const activeTransfers = new Map();
         let currentTransferId = null;
 
         const abortActiveTransfer = () => {
@@ -368,40 +421,35 @@ export const useP2P = () => {
         channel.onmessage = async (event) => {
             const data = event.data;
 
-            
             if (typeof data === 'string') {
                 try {
                     const message = JSON.parse(data);
                     if (message.type === 'METADATA') {
-                        
                         if (!message.fileSize || message.fileSize <= 0 || message.fileSize > MAX_FILE_SIZE) {
                             console.error(`Invalid file size in metadata: ${message.fileSize}`);
                             toast.error('Invalid file metadata received');
                             return;
                         }
 
-                        
                         const transferId = message.transferId || crypto.randomUUID();
                         currentTransferId = transferId;
 
                         debugLog(`Receiving file offer [${transferId}]: ${message.fileName} (${message.fileSize} bytes)`);
 
-                        
                         activeTransfers.set(transferId, {
                             fileMeta: message,
                             receivedBuffers: [],
                             receivedSize: 0
                         });
 
-                        
                         setPendingTransfers(prev => ({
                             ...prev,
                             [deviceId]: {
                                 fileName: message.fileName,
                                 fileSize: message.fileSize,
                                 deviceName: onlineDevicesRef.current.find(d => d.deviceId === deviceId)?.deviceName || 'Unknown Device',
-                                channel, 
-                                transferId 
+                                channel,
+                                transferId
                             }
                         }));
                     } else if (message.type === 'FINISH') {
@@ -417,16 +465,13 @@ export const useP2P = () => {
                         const blob = new Blob(transfer.receivedBuffers);
                         const url = URL.createObjectURL(blob);
 
-                        
                         objectURLsRef.current.add(url);
 
-                        
                         const a = document.createElement('a');
                         a.href = url;
                         a.download = transfer.fileMeta.fileName;
                         a.click();
 
-                        
                         if (socket) {
                             socket.emit('report-transfer', { size: transfer.fileMeta.fileSize, type: 'download' });
                         }
@@ -437,7 +482,6 @@ export const useP2P = () => {
                             return newState;
                         });
 
-                        
                         setTimeout(() => {
                             URL.revokeObjectURL(url);
                             objectURLsRef.current.delete(url);
@@ -447,9 +491,7 @@ export const useP2P = () => {
                 } catch (e) {
                     console.error('Error parsing signaling message', e);
                 }
-            }
-            else {
-                
+            } else {
                 const transfer = activeTransfers.get(currentTransferId);
 
                 if (!transfer) {
@@ -457,13 +499,12 @@ export const useP2P = () => {
                     return;
                 }
 
-                
                 if (transfer.receivedSize + data.byteLength > MAX_FILE_SIZE) {
                     console.error('Transfer exceeded max limits during reception.');
                     channel.close();
                     setTransferProgress(prev => {
                         const newState = { ...prev };
-                        delete newState[deviceId]; 
+                        delete newState[deviceId];
                         return newState;
                     });
                     toast.error('Transfer aborted: Limit exceeded.');
@@ -476,20 +517,29 @@ export const useP2P = () => {
 
                 if (transfer.fileMeta) {
                     const progress = Math.round((transfer.receivedSize / transfer.fileMeta.fileSize) * 100);
-                    
                     updateProgress(deviceId, progress);
                 }
             }
         };
     };
 
-    
+    /**
+     * Streams a file across an open RTCDataChannel in fixed-size chunks,
+     * pausing whenever the channel's send buffer exceeds a threshold
+     * (backpressure) and resuming once it drains, while periodically
+     * reporting transfer speed and ETA.
+     *
+     * @param {RTCDataChannel} channel
+     * @param {File} file
+     * @param {string} targetDeviceId
+     * @returns {Promise<void>}
+     */
     const sendChunks = async (channel, file, targetDeviceId) => {
-        const MAX_BUFFERED_AMOUNT = 64 * 1024; 
+        const MAX_BUFFERED_AMOUNT = 64 * 1024;
         channel.bufferedAmountLowThreshold = MAX_BUFFERED_AMOUNT / 2;
 
         let offset = 0;
-        const CHUNK_SIZE_FIXED = 16 * 1024; 
+        const CHUNK_SIZE_FIXED = 16 * 1024;
 
         const startTime = Date.now();
         let lastStatTime = startTime;
@@ -497,10 +547,8 @@ export const useP2P = () => {
         let logCounter = 0;
 
         while (offset < file.size) {
-            
             if (channel.bufferedAmount > MAX_BUFFERED_AMOUNT) {
                 debugLog(`[Send] Buffer full (${channel.bufferedAmount}). Waiting...`);
-                
                 await new Promise(resolve => {
                     let resolved = false;
                     const finish = () => {
@@ -533,7 +581,6 @@ export const useP2P = () => {
                 break;
             }
 
-            
             const currentChunkSize = Math.min(CHUNK_SIZE_FIXED, file.size - offset);
             const chunk = file.slice(offset, offset + currentChunkSize);
             const buffer = await chunk.arrayBuffer();
@@ -551,17 +598,15 @@ export const useP2P = () => {
 
             offset += chunk.size;
 
-            
             const now = Date.now();
             if (now - lastStatTime >= 1000 || offset >= file.size) {
-                const timeDiff = (now - lastStatTime) / 1000; 
+                const timeDiff = (now - lastStatTime) / 1000;
                 const bytesDiff = offset - lastByteCount;
                 const speedBytes = bytesDiff / (timeDiff || 1);
                 const speedMB = (speedBytes / (1024 * 1024)).toFixed(2);
 
                 const remainingBytes = file.size - offset;
                 const etaSeconds = speedBytes > 0 ? Math.ceil(remainingBytes / speedBytes) : 0;
-
 
                 setTransferStats(prev => ({
                     ...prev,
@@ -576,7 +621,6 @@ export const useP2P = () => {
             }
         }
 
-        
         setTransferStats(prev => {
             const n = { ...prev };
             delete n[targetDeviceId];
@@ -584,9 +628,17 @@ export const useP2P = () => {
         });
     };
 
-    
+    /**
+     * Initiates a file transfer to an online device: opens a new
+     * RTCDataChannel, sends file metadata, waits for the receiver's
+     * accept/reject response, and streams the file on acceptance.
+     * Rejects files with a forbidden extension before any connection is made.
+     *
+     * @param {File} file
+     * @param {string} targetDeviceId
+     * @returns {Promise<void>}
+     */
     const sendFile = async (file, targetDeviceId) => {
-        
         if (!socket || !socket.connected) {
             console.error('Cannot send file: Socket not connected');
             toast.error('Connection lost. Please refresh.');
@@ -612,33 +664,24 @@ export const useP2P = () => {
         const targetSocketId = targetDevice.socketId;
         debugLog(`Initiating File Transfer to ${targetDeviceId} (Socket: ${targetSocketId})`);
 
-        
-        
-        
         const peer = getOrCreatePeer(targetDeviceId, targetSocketId);
-
-        
-        
         const channel = peer.createDataChannel('file-transfer');
 
         channel.onopen = async () => {
             debugLog(`Data Channel Opened (Sender) for ${targetDeviceId}. Starting Transfer...`);
 
-            
             const transferId = generateUUID();
 
-            
             const metadata = {
                 type: 'METADATA',
                 fileName: file.name,
                 fileSize: file.size,
                 chunkCount: Math.ceil(file.size / CHUNK_SIZE),
-                transferId 
+                transferId
             };
             channel.send(JSON.stringify(metadata));
             debugLog(`Metadata sent with transfer ID: ${transferId}. Waiting for acceptance...`);
 
-            
             channel.onmessage = async (event) => {
                 const data = event.data;
                 if (typeof data === 'string') {
@@ -646,15 +689,12 @@ export const useP2P = () => {
                         const message = JSON.parse(data);
                         if (message.type === 'ACCEPT') {
                             debugLog('Transfer Accepted by receiver. Starting Send...');
-                            
                             await sendChunks(channel, file, targetDeviceId);
 
-                            
                             if (channel.readyState === 'open') {
                                 channel.send(JSON.stringify({ type: 'FINISH', transferId }));
                                 debugLog(`File Transfer Finished (Sender side) [${transferId}]`);
 
-                                
                                 socket.emit('report-transfer', { size: file.size, type: 'upload' });
                             }
                         } else if (message.type === 'REJECT') {
@@ -667,7 +707,6 @@ export const useP2P = () => {
                     }
                 }
             };
-
         };
 
         channel.onclose = () => {
@@ -697,7 +736,12 @@ export const useP2P = () => {
         };
     };
 
-    
+    /**
+     * Accepts a pending incoming transfer, signaling the sender to begin
+     * streaming chunks.
+     *
+     * @param {string} deviceId - Device the pending transfer is from.
+     */
     const acceptTransfer = (deviceId) => {
         const transfer = pendingTransfers[deviceId];
         if (!transfer) return;
@@ -705,25 +749,26 @@ export const useP2P = () => {
         debugLog(`Accepting transfer from ${deviceId}`);
         transfer.channel.send(JSON.stringify({ type: 'ACCEPT' }));
 
-        
         setPendingTransfers(prev => {
             const newState = { ...prev };
             delete newState[deviceId];
             return newState;
         });
 
-        
         setTransferProgress(prev => ({ ...prev, [deviceId]: 0 }));
     };
 
-    
+    /**
+     * Declines a pending incoming transfer, signaling the sender to stop.
+     *
+     * @param {string} deviceId - Device the pending transfer is from.
+     */
     const rejectTransfer = (deviceId) => {
         const transfer = pendingTransfers[deviceId];
         if (!transfer) return;
 
         debugLog(`Rejecting transfer from ${deviceId}`);
         transfer.channel.send(JSON.stringify({ type: 'REJECT' }));
-        
         setPendingTransfers(prev => {
             const newState = { ...prev };
             delete newState[deviceId];
@@ -731,7 +776,12 @@ export const useP2P = () => {
         });
     };
 
-
+    /**
+     * Removes a device from the online list and tears down its
+     * connection state, e.g. after the user revokes its access.
+     *
+     * @param {string} deviceId
+     */
     const removeDevice = (deviceId) => {
         setOnlineDevices(prev => prev.filter(d => d.deviceId !== deviceId));
         cleanupDeviceState(deviceId);
@@ -749,5 +799,4 @@ export const useP2P = () => {
         removeDevice
     };
 };
-
 

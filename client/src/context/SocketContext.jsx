@@ -1,6 +1,7 @@
 /**
- * Preview: client/src/context/SocketContext.jsx
- * Description: Frontend application module.
+ * Socket.IO connection context: opens an authenticated socket while the
+ * user is signed in, tears it down on sign-out, and forces a logout if
+ * the server reports the session's token as invalid or revoked.
  */
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -11,8 +12,17 @@ import { getFriendlyDeviceName, getDeviceId } from '../utils/deviceUtils';
 
 const SocketContext = createContext();
 
+/** @returns {import('socket.io-client').Socket|null} The shared socket, or `null` if not connected. */
 export const useSocket = () => useContext(SocketContext);
 
+/**
+ * Provides a single shared Socket.IO connection to descendant components,
+ * keyed to the current authentication state.
+ *
+ * @param {Object} props
+ * @param {React.ReactNode} props.children
+ * @returns {JSX.Element} The context provider wrapping `children`.
+ */
 export const SocketProvider = ({ children }) => {
     const [socket, setSocket] = useState(null);
     const { user, isAuthenticated, logout } = useAuth();
@@ -25,7 +35,6 @@ export const SocketProvider = ({ children }) => {
             }
             return;
         }
-
 
         const newSocket = io(SERVER_URL, {
             withCredentials: true,
@@ -69,6 +78,13 @@ export const SocketProvider = ({ children }) => {
 };
 
 
+/**
+ * Resolves a human-friendly device name for the socket handshake,
+ * preferring a locally stored override.
+ *
+ * @param {Object} [user] - The current user, if any.
+ * @returns {string} A display name for this device.
+ */
 const getDeviceName = (user) => {
     const username = user?.username || user?.email?.split('@')[0] || 'My';
     return localStorage.getItem('device_name') || getFriendlyDeviceName(username);

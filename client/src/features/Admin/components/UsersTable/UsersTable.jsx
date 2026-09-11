@@ -1,6 +1,6 @@
 /**
- * Preview: client/src/features/Admin/components/UsersTable/UsersTable.jsx
- * Description: Frontend application module.
+ * Leaderboard table of the most active users, shown on the admin
+ * dashboard.
  */
 
 import React from 'react';
@@ -9,7 +9,11 @@ import { useTheme } from '../../../../context/ThemeContext';
 import styles from './UsersTable.module.css';
 import { formatBytes } from '../../../../utils/format';
 
-
+/**
+ * @param {Object} props
+ * @param {Array<Object>} props.users - Users to display, ranked by activity.
+ * @returns {JSX.Element} The users leaderboard table.
+ */
 const UsersTable = ({ users }) => {
     const { theme } = useTheme();
 

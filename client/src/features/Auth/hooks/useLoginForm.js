@@ -1,6 +1,6 @@
 /**
- * Preview: client/src/features/Auth/hooks/useLoginForm.js
- * Description: Frontend application module.
+ * Hook backing {@link module:features/Auth/components/LoginForm}: field
+ * validation state plus the login submit handler.
  */
 
 import { useState } from 'react';
@@ -11,7 +11,13 @@ import { useAuth } from '../../../context/AuthContext';
 import { useAuthForm } from '../../../hooks/useAuthForm';
 import { getDeviceId, getDeviceName } from '../../../utils/deviceUtils';
 
-
+/**
+ * Manages the login form's fields and submits credentials to
+ * `POST /auth/login`, logging the user in and navigating to the
+ * dashboard on success.
+ *
+ * @returns {Object} Form field state/handlers plus `isLoading`, `showPassword`, and `setShowPassword`.
+ */
 export const useLoginForm = () => {
     const navigate = useNavigate();
     const { login } = useAuth();

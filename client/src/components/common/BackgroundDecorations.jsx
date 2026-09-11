@@ -1,10 +1,15 @@
 /**
- * Preview: client/src/components/common/BackgroundDecorations.jsx
- * Description: Frontend application module.
+ * Purely decorative, fixed-position blurred color blobs used as an
+ * ambient background layer behind page content.
  */
 
 import React from 'react';
 
+/**
+ * Renders two fixed, non-interactive gradient blobs behind page content.
+ *
+ * @returns {JSX.Element} The decorative background elements.
+ */
 const BackgroundDecorations = () => {
     return (
         <>

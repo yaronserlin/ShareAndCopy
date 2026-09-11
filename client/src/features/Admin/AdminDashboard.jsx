@@ -1,6 +1,6 @@
 /**
- * Preview: client/src/features/Admin/AdminDashboard.jsx
- * Description: Frontend application module.
+ * Admin-only dashboard summarizing system usage: user/guest counts, total
+ * data transferred, and a leaderboard of the most active users.
  */
 
 import React from 'react';
@@ -11,7 +11,12 @@ import AdminDashboardSkeleton from './components/AdminSkeleton/AdminDashboardSke
 import { useAdminDashboard } from './hooks/useAdminDashboard';
 import styles from './AdminDashboard.module.css';
 
-
+/**
+ * Renders the admin dashboard, showing a loading skeleton until stats
+ * have been fetched.
+ *
+ * @returns {JSX.Element} The admin dashboard page.
+ */
 const AdminDashboard = () => {
     const { stats, loading } = useAdminDashboard();
     const { theme } = useTheme();

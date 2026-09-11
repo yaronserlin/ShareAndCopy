@@ -1,6 +1,6 @@
 /**
- * Preview: client/src/components/NotFound/index.js
- * Description: Frontend application module.
+ * Re-exports the NotFound component as the public entry point for the
+ * `NotFound` component directory.
  */
 
 import NotFound from './NotFound';

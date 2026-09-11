@@ -1,6 +1,5 @@
 /**
- * Preview: client/src/components/NotFound/NotFound.jsx
- * Description: Frontend application module.
+ * Fallback page for unmatched routes and explicit "not found" states.
  */
 
 import React from 'react';
@@ -11,7 +10,16 @@ import GlassCard from '../common/GlassCard';
 import GradientButton from '../common/GradientButton';
 import styles from './NotFound.module.css';
 
-
+/**
+ * Renders a 404 page. The title and message may be supplied via props or
+ * via `location.state` (e.g. when redirected here programmatically), and
+ * fall back to generic copy otherwise.
+ *
+ * @param {Object} props
+ * @param {string} [props.title] - Overrides the displayed heading.
+ * @param {string} [props.message] - Overrides the displayed body text.
+ * @returns {JSX.Element} The not-found page content.
+ */
 const NotFound = ({ title: propTitle, message: propMessage }) => {
     const location = useLocation();
     const { title, message } = location.state || {};

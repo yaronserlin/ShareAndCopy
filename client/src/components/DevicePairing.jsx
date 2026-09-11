@@ -1,6 +1,8 @@
 /**
- * Preview: client/src/components/DevicePairing.jsx
- * Description: Frontend application module.
+ * Modal that walks a signed-in user through pairing a new device: it
+ * requests a one-time pairing code, displays it as a QR code, and listens
+ * on the shared socket for the new device's confirmation request so the
+ * user can approve or deny it.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -9,27 +11,28 @@ import api from '../utils/api';
 import { useSocket } from '../context/SocketContext';
 import { Modal, Button, Spinner, Alert } from 'react-bootstrap';
 
+/**
+ * @param {Object} props
+ * @param {boolean} props.show - Whether the modal is visible.
+ * @param {() => void} props.onHide - Called to close the modal.
+ * @returns {JSX.Element} The device pairing modal.
+ */
 const DevicePairing = ({ show, onHide }) => {
     const socket = useSocket();
-    const [step, setStep] = useState('loading'); 
+    const [step, setStep] = useState('loading');
     const [pairingCode, setPairingCode] = useState(null);
     const [requestedDevice, setRequestedDevice] = useState(null);
     const [error, setError] = useState(null);
 
-    
     useEffect(() => {
         if (show) {
             setStep('loading');
             setError(null);
             setRequestedDevice(null);
             generatePairingCode();
-        } else {
-            
-            
         }
     }, [show]);
 
-    
     useEffect(() => {
         if (!socket || !pairingCode) return;
 
@@ -46,6 +49,12 @@ const DevicePairing = ({ show, onHide }) => {
         };
     }, [socket, pairingCode]);
 
+    /**
+     * Requests a new pairing code from the server and joins its socket
+     * room so this device can receive the pairing confirmation request.
+     *
+     * @returns {Promise<void>}
+     */
     const generatePairingCode = async () => {
         try {
             const res = await api.post('/auth/pairing-code', {});
@@ -53,7 +62,6 @@ const DevicePairing = ({ show, onHide }) => {
             setPairingCode(res.data.code);
             setStep('show-qr');
 
-            
             if (socket) {
                 socket.emit('join-pairing', res.data.code);
             }
@@ -65,6 +73,10 @@ const DevicePairing = ({ show, onHide }) => {
         }
     };
 
+    /**
+     * Approves the pending device's pairing request and closes the modal
+     * shortly after showing a success message.
+     */
     const approvePairing = () => {
         if (!requestedDevice) return;
 
@@ -74,7 +86,7 @@ const DevicePairing = ({ show, onHide }) => {
         });
 
         setStep('success');
-        setTimeout(onHide, 2000); 
+        setTimeout(onHide, 2000);
     };
 
     return (

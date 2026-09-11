@@ -1,10 +1,13 @@
 /**
- * Preview: server/src/models/RevokedToken.js
- * Description: Mongoose model definition.
+ * Denylist of revoked JWT IDs (`jti`), consulted by the auth middleware
+ * to reject tokens for logged-out sessions or revoked devices.
+ *
+ * `expireAt` carries a MongoDB TTL index (`expires: 0`), so documents are
+ * automatically deleted once `expireAt` is reached — no manual cleanup
+ * job is needed.
  */
 
 const mongoose = require('mongoose');
-
 
 const RevokedTokenSchema = new mongoose.Schema({
     jti: {
@@ -21,10 +24,11 @@ const RevokedTokenSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     },
+    /** When this record should be purged; backed by a MongoDB TTL index. */
     expireAt: {
         type: Date,
         required: true,
-        index: { expires: 0 } 
+        index: { expires: 0 }
     }
 });
 
