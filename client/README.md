@@ -13,13 +13,16 @@ npm install
 
 ## Environment
 
+<!-- AUTO-GENERATED: from client/.env.example -->
 Create `.env` or `.env.local` in the `client` folder to override the backend URL:
 
 ```env
 VITE_SERVER_URL=http://localhost:5001
+VITE_API_BASE_URL=http://localhost:5001/api
 ```
 
-If `VITE_SERVER_URL` is not provided, the client uses `window.SERVER_URL` if available.
+If `VITE_SERVER_URL` is not provided, the client uses `window.SERVER_URL` (injected by `startup.sh`) if available.
+<!-- /AUTO-GENERATED -->
 
 ## Development
 

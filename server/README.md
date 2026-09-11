@@ -1,6 +1,6 @@
 # ShareAndCopy Server
 
-The backend for ShareAndCopy, built with Express, Socket.IO, MongoDB, and optional Redis support.
+The backend for ShareAndCopy, built with Express, Socket.IO, and MongoDB.
 
 ## Setup
 
@@ -13,21 +13,38 @@ npm install
 
 ## Environment variables
 
-Create `server/.env` with the following values:
+<!-- AUTO-GENERATED: from server/.env.example -->
+Copy `server/.env.example` to `server/.env` and fill in the required values:
 
 ```env
-PORT=5001
+# Required
 MONGO_URI=mongodb://localhost:27017/shareandcopy
-JWT_SECRET=your_jwt_secret
-JWT_REFRESH_SECRET=your_refresh_secret
+JWT_SECRET=replace-with-a-long-random-string
+JWT_REFRESH_SECRET=replace-with-a-different-long-random-string
+
+# Optional
+PORT=5000
 NODE_ENV=development
-PUBLIC_URL=http://localhost:5173
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=
+PUBLIC_URL=
+
+# Rate limiting
+RATE_LIMIT_WINDOW_MS=60000
+RATE_LIMIT_MAX_REQUESTS=100
+
+# TURN (WebRTC relay). TURN_SECRET becomes required if TURN_URL is set.
+TURN_URL=
+TURN_SECRET=
+TURN_USER=user
+
+# Prometheus /metrics scrape auth. Endpoint 404s if unset.
+METRICS_TOKEN=
+
+# seeder.js only; refuses to run in production regardless.
+SEED_PASSWORD=
 ```
 
-`PUBLIC_URL` should point to the frontend host used for CORS in production.
+`PUBLIC_URL` should point to the frontend host used for CORS in production. For local development, set `PORT=5001` to match `startup.sh` and the client's default `VITE_SERVER_URL`.
+<!-- /AUTO-GENERATED -->
 
 ## Development
 
@@ -47,15 +64,24 @@ npm start
 
 ## API endpoints
 
-* `POST /api/auth/register`
-* `POST /api/auth/login`
-* `GET /api/auth/verify`
-* `GET /api/admin/stats`
-* `GET /api/system/status`
-* `GET /metrics`
+<!-- AUTO-GENERATED: from server/src/routes -->
+* `POST /api/auth/register` — create an account
+* `POST /api/auth/login` — sign in
+* `POST /api/auth/pairing-code` — auth required; issue a short-lived code to pair another device
+* `POST /api/auth/verify-pairing` — exchange a pairing code for a pairing token
+* `POST /api/auth/adopt-token` — exchange a guest/pairing token for auth cookies
+* `POST /api/auth/logout` — auth required
+* `POST /api/auth/revoke` — auth required; revoke a device/session
+* `GET /api/auth/verify` — auth required
+* `POST /api/auth/refresh` — refresh the access token
+* `GET /api/admin/stats` — auth + admin required
+* `GET /api/system/ip` — server IP info
+* `GET /api/system/webrtc-config` — ICE/TURN server config for WebRTC
+* `GET /metrics` — Prometheus metrics; requires `Authorization: Bearer <METRICS_TOKEN>` if `METRICS_TOKEN` is set, otherwise 404s
+<!-- /AUTO-GENERATED -->
 
 ## Notes
 
-* The server connects to MongoDB and initializes Redis if configured.
+* The server connects to MongoDB; there is no Redis dependency.
 * CORS is restricted to trusted origins.
 * The API is designed for secure deployment with rate limiting and helmet headers.

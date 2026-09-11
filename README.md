@@ -1,81 +1,33 @@
-# ShareAndCopy
+# Share & Copy
 
-ShareAndCopy is a secure file-sharing platform built with React, Bootstrap, Node.js, Express, MongoDB, Redis, and Socket.IO.
+Send files directly between your own devices — no uploads, no shareable links, no waiting around.
 
-## Overview
+![Share & Copy](media/demo.png)
 
-The application is split into two deployable modules:
+## What it is
 
-* **Client** — React + Vite frontend with Bootstrap styling.
-* **Server** — Express backend with REST APIs, Socket.IO, and MongoDB persistence.
+Share & Copy lets you move files straight from one of your devices to another over a private, direct connection. Sign in on each device you own, and your files travel device-to-device — they're never uploaded to or stored on a server in between.
 
-## Local development
+## Features
 
-1. Install dependencies for both modules:
+* **Direct, private transfers** — files move peer-to-peer between your devices; the server only helps them find each other, it never sees file contents.
+* **Simple device pairing** — add a new device to your account by scanning a QR code or entering a short one-time pairing code, no need to type your password on a new device.
+* **See your devices online** — your dashboard shows which of your devices are online right now and ready to receive a file.
+* **Automatic safety checks** — potentially unsafe file types (executables, scripts, and similar) are blocked automatically.
+* **Revoke access anytime** — lost a device or don't use it anymore? Remove it from your account instantly.
 
-```bash
-cd client && npm install
-cd ../server && npm install
-```
+## Getting started
 
-2. Start the application from the repository root:
+1. **Create an account** with your email and a password.
+2. **Add your other devices** — open Share & Copy on them and either sign in, or use "Add Device" to pair them by scanning a QR code or entering a pairing code.
+3. **Send a file** — go to your dashboard, pick a device that's online, choose a file, and send. It transfers directly to that device.
 
-```bash
-npm start
-```
+## Privacy & security
 
-This runs `startup.sh --localnet`, starting the backend and frontend together.
+* Files are transferred directly between your devices — the server never stores or has access to file contents.
+* Passwords are hashed before being stored; sign-ins use short-lived access tokens with refresh rotation.
+* You can revoke any device's access to your account at any time.
 
-## Available start modes
+## For developers
 
-* `npm start` or `bash ./startup.sh --localnet` — start both services on the local network.
-* `bash ./startup.sh --local` — start both services locally.
-* `bash ./startup.sh --net` — start with a Cloudflare tunnel when `cloudflared` is installed.
-
-## Deployment
-
-### Client
-
-Build the frontend for production:
-
-```bash
-cd client
-npm run build
-```
-
-The build output is published to `client/dist`.
-
-### Server
-
-Prepare the backend for production:
-
-```bash
-cd server
-npm install
-npm start
-```
-
-### Environment variables
-
-Required backend variables:
-
-* `PORT` — server port, default `5001`
-* `MONGO_URI` — MongoDB connection string
-* `JWT_SECRET` — JWT signing secret
-* `JWT_REFRESH_SECRET` — refresh token secret
-* `PUBLIC_URL` — public client URL for CORS and app links
-* `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` — optional Redis connection
-
-Required frontend variables:
-
-* `VITE_SERVER_URL` — server base URL used by the client
-
-## Project structure
-
-* `client/` — frontend React application
-* `server/` — backend API and socket service
-* `startup.sh` — development orchestration script
-
-## Notes
-
-The repository now uses a clean root package entrypoint and no unnecessary root dependencies. All React and Node source files were cleaned of stale comments and are annotated with new file-level preview headers.
+Looking to run Share & Copy locally or contribute? See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
