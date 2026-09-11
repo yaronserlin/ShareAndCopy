@@ -30,21 +30,28 @@ const connectDB = async () => {
 };
 
 const seedData = async () => {
+    if (process.env.NODE_ENV === 'production') {
+        console.error('Refusing to run seeder against a production environment.');
+        process.exit(1);
+    }
+
     const conn = await connectDB();
 
     try {
-        
+
         console.log('--- Wiping Database ---');
         await User.deleteMany({});
         console.log('Users deleted');
 
-        
+
         await DailyStat.deleteMany({});
         console.log('Daily Stats deleted');
 
-        
+
         console.log('--- Seeding Users ---');
-        const hashedPassword = await bcrypt.hash('123456Aa', 10);
+        const seedPassword = process.env.SEED_PASSWORD || crypto.randomBytes(12).toString('base64url');
+        const hashedPassword = await bcrypt.hash(seedPassword, 10);
+        console.log(`Seed users password: ${seedPassword}`);
 
         const users = [];
         const userConfigs = [

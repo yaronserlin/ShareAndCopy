@@ -7,6 +7,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useSocket } from '../context/SocketContext';
+import { getDeviceId } from '../utils/deviceUtils';
+import { APP_CONSTANTS } from '../constants';
 import API_BASE_URL from '../config';
 
 
@@ -46,14 +48,46 @@ export const useP2P = () => {
     
     const objectURLsRef = useRef(new Set());
 
-    
+
     const peersRef = useRef({});
-    
+
     const candidatesBufferRef = useRef({});
-    
+
     const iceServersRef = useRef({ iceServers: DEFAULT_ICE_SERVERS });
 
-    
+    const onlineDevicesRef = useRef([]);
+
+    const negotiationStateRef = useRef({});
+
+    const myDeviceIdRef = useRef(getDeviceId());
+
+    useEffect(() => {
+        onlineDevicesRef.current = onlineDevices;
+    }, [onlineDevices]);
+
+
+    const cleanupDeviceState = useCallback((deviceId) => {
+        if (peersRef.current[deviceId]) {
+            peersRef.current[deviceId].close();
+            delete peersRef.current[deviceId];
+        }
+        delete candidatesBufferRef.current[deviceId];
+        delete negotiationStateRef.current[deviceId];
+
+        const dropKey = (prev) => {
+            if (!(deviceId in prev)) return prev;
+            const next = { ...prev };
+            delete next[deviceId];
+            return next;
+        };
+
+        setTransferProgress(dropKey);
+        setTransferStats(dropKey);
+        setPendingTransfers(dropKey);
+        setConnectionStatus(dropKey);
+    }, []);
+
+
     const updateProgress = useCallback((deviceId, progress) => {
         pendingProgressUpdates.current[deviceId] = progress;
 
@@ -108,11 +142,7 @@ export const useP2P = () => {
         socket.on('device-offline', ({ deviceId }) => {
             console.log('Device Offline:', deviceId);
             setOnlineDevices(prev => prev.filter(d => d.deviceId !== deviceId));
-            
-            if (peersRef.current[deviceId]) {
-                peersRef.current[deviceId].close();
-                delete peersRef.current[deviceId];
-            }
+            cleanupDeviceState(deviceId);
         });
 
         socket.on('signal', async ({ senderSocketId, senderDeviceId, type, signalData }) => {
@@ -123,9 +153,18 @@ export const useP2P = () => {
 
             try {
                 if (type === 'offer') {
-                    if (peer.signalingState !== 'stable') {
-                        console.warn('Received offer but signaling state is:', peer.signalingState);
-                        
+                    const state = negotiationStateRef.current[senderDeviceId];
+                    const offerCollision = state.making || peer.signalingState !== 'stable';
+
+                    state.ignoreOffer = !state.polite && offerCollision;
+                    if (state.ignoreOffer) {
+                        console.warn(`Glare detected with ${senderDeviceId}; ignoring offer (impolite peer)`);
+                        return;
+                    }
+
+                    if (offerCollision) {
+                        console.warn(`Glare detected with ${senderDeviceId}; rolling back local offer (polite peer)`);
+                        await peer.setLocalDescription({ type: 'rollback' });
                     }
 
                     await peer.setRemoteDescription(new RTCSessionDescription(signalData));
@@ -223,7 +262,13 @@ export const useP2P = () => {
         const peer = new RTCPeerConnection(iceServersRef.current);
         peersRef.current[targetDeviceId] = peer;
 
-        
+        negotiationStateRef.current[targetDeviceId] = {
+            making: false,
+            ignoreOffer: false,
+            polite: myDeviceIdRef.current > targetDeviceId
+        };
+
+
         setConnectionStatus(prev => ({ ...prev, [targetDeviceId]: 'checking' }));
 
         peer.oniceconnectionstatechange = () => {
@@ -254,11 +299,32 @@ export const useP2P = () => {
             }
         };
 
-        
+
         peer.ondatachannel = (event) => {
             console.log(`Received Data Channel from ${targetDeviceId}`);
             const channel = event.channel;
             setupReceiveChannel(channel, targetDeviceId);
+        };
+
+
+        peer.onnegotiationneeded = async () => {
+            console.log('Negotiation Needed for', targetDeviceId);
+            const state = negotiationStateRef.current[targetDeviceId];
+            try {
+                state.making = true;
+                const offer = await peer.createOffer();
+                await peer.setLocalDescription(offer);
+                console.log('Sending Offer...');
+                socket.emit('signal', {
+                    targetSocketId,
+                    type: 'offer',
+                    signalData: offer
+                });
+            } catch (err) {
+                console.error('Error during negotiation:', err);
+            } finally {
+                state.making = false;
+            }
         };
 
         return peer;
@@ -270,8 +336,33 @@ export const useP2P = () => {
         const activeTransfers = new Map(); 
         let currentTransferId = null;
 
+        const abortActiveTransfer = () => {
+            if (activeTransfers.size === 0) return;
+            activeTransfers.clear();
+            setTransferProgress(prev => {
+                if (!(deviceId in prev)) return prev;
+                const next = { ...prev };
+                delete next[deviceId];
+                return next;
+            });
+            setPendingTransfers(prev => {
+                if (!(deviceId in prev)) return prev;
+                const next = { ...prev };
+                delete next[deviceId];
+                return next;
+            });
+        };
+
         channel.onopen = () => console.log(`Data Channel Opened (Receiver) for ${deviceId}`);
-        channel.onclose = () => console.log(`Data Channel Closed (Receiver) for ${deviceId}`);
+        channel.onclose = () => {
+            console.log(`Data Channel Closed (Receiver) for ${deviceId}`);
+            abortActiveTransfer();
+        };
+        channel.onerror = (e) => {
+            console.error(`Data Channel Error (Receiver) for ${deviceId}:`, e);
+            toast.error('File transfer connection error.');
+            abortActiveTransfer();
+        };
 
         channel.onmessage = async (event) => {
             const data = event.data;
@@ -307,7 +398,7 @@ export const useP2P = () => {
                             [deviceId]: {
                                 fileName: message.fileName,
                                 fileSize: message.fileSize,
-                                deviceName: onlineDevices.find(d => d.deviceId === deviceId)?.deviceName || 'Unknown Device',
+                                deviceName: onlineDevicesRef.current.find(d => d.deviceId === deviceId)?.deviceName || 'Unknown Device',
                                 channel, 
                                 transferId 
                             }
@@ -411,26 +502,25 @@ export const useP2P = () => {
                 
                 await new Promise(resolve => {
                     let resolved = false;
-                    const cleanup = () => {
+                    const finish = () => {
+                        if (resolved) return;
                         resolved = true;
                         channel.removeEventListener('bufferedamountlow', onLowBuffer);
+                        channel.removeEventListener('close', finish);
+                        channel.removeEventListener('error', finish);
                         clearInterval(polling);
+                        resolve();
                     };
 
-                    const onLowBuffer = () => {
-                        if (!resolved) {
-                            cleanup();
-                            resolve();
-                        }
-                    };
+                    const onLowBuffer = () => finish();
 
-                    
                     channel.addEventListener('bufferedamountlow', onLowBuffer);
+                    channel.addEventListener('close', finish);
+                    channel.addEventListener('error', finish);
 
-                    
                     const polling = setInterval(() => {
-                        if (channel.bufferedAmount <= channel.bufferedAmountLowThreshold) {
-                            onLowBuffer();
+                        if (channel.readyState !== 'open' || channel.bufferedAmount <= channel.bufferedAmountLowThreshold) {
+                            finish();
                         }
                     }, 200);
                 });
@@ -510,6 +600,14 @@ export const useP2P = () => {
             return;
         }
 
+        const dotIndex = file.name.lastIndexOf('.');
+        const extension = dotIndex >= 0 ? file.name.slice(dotIndex).toLowerCase() : '';
+        if (APP_CONSTANTS.FORBIDDEN_EXTENSIONS.includes(extension)) {
+            console.error(`Blocked forbidden file extension: ${extension}`);
+            toast.error(`Files of type "${extension}" are not allowed.`);
+            return;
+        }
+
         const targetSocketId = targetDevice.socketId;
         console.log(`Initiating File Transfer to ${targetDeviceId} (Socket: ${targetSocketId})`);
 
@@ -571,27 +669,31 @@ export const useP2P = () => {
 
         };
 
-        channel.onclose = () => console.log('Data Channel Closed (Sender)');
-        channel.onerror = (e) => console.error('Data Channel Error:', e);
-
-        
-        
-        peer.onnegotiationneeded = async () => {
-            console.log('Negotiation Needed');
-            try {
-                const offer = await peer.createOffer();
-                await peer.setLocalDescription(offer);
-                console.log('Sending Offer...');
-                socket.emit('signal', {
-                    targetSocketId,
-                    type: 'offer',
-                    signalData: offer
-                });
-            } catch (err) {
-                console.error('Error during negotiation:', err);
-            }
+        channel.onclose = () => {
+            console.log('Data Channel Closed (Sender)');
+            setTransferStats(prev => {
+                if (!(targetDeviceId in prev)) return prev;
+                const next = { ...prev };
+                delete next[targetDeviceId];
+                return next;
+            });
         };
-
+        channel.onerror = (e) => {
+            console.error('Data Channel Error:', e);
+            toast.error('File transfer connection error.');
+            setTransferProgress(prev => {
+                if (!(targetDeviceId in prev)) return prev;
+                const next = { ...prev };
+                delete next[targetDeviceId];
+                return next;
+            });
+            setTransferStats(prev => {
+                if (!(targetDeviceId in prev)) return prev;
+                const next = { ...prev };
+                delete next[targetDeviceId];
+                return next;
+            });
+        };
     };
 
     
@@ -628,14 +730,10 @@ export const useP2P = () => {
         });
     };
 
-    
+
     const removeDevice = (deviceId) => {
         setOnlineDevices(prev => prev.filter(d => d.deviceId !== deviceId));
-        
-        if (peersRef.current[deviceId]) {
-            peersRef.current[deviceId].close();
-            delete peersRef.current[deviceId];
-        }
+        cleanupDeviceState(deviceId);
     };
 
     return {

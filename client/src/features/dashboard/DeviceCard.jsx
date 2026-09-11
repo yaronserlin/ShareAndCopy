@@ -21,7 +21,11 @@ const DeviceCard = ({ device, selectedFile, onFileChange, onSend, transferProgre
 
                 {}
                 <div className="mb-3">
+                    <label htmlFor={`file-input-${device.deviceId}`} className="visually-hidden">
+                        Select a file to send to {device.deviceName}
+                    </label>
                     <input
+                        id={`file-input-${device.deviceId}`}
                         type="file"
                         className="form-control form-control-sm"
                         onChange={(e) => onFileChange(e, device.deviceId)}

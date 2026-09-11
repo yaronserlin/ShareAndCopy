@@ -48,9 +48,10 @@ const PasswordInput = ({
                     className="btn btn-outline-secondary"
                     onClick={() => setShowPassword(!showPassword)}
                     style={{ zIndex: 0 }}
-                    tabIndex="-1"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-pressed={showPassword}
                 >
-                    <i className={`bi ${showPassword ? 'bi-eye-slash-fill' : 'bi-eye-fill'}`}></i>
+                    <i className={`bi ${showPassword ? 'bi-eye-slash-fill' : 'bi-eye-fill'}`} aria-hidden="true"></i>
                 </button>
                 {isInvalid && <div className="invalid-feedback">{error}</div>}
             </div>

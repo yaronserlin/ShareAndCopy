@@ -5,14 +5,39 @@
 
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const { register } = require('../utils/metrics');
 const logger = require('../utils/logger');
+const env = require('../config/env');
 
 
-router.get('/', async (req, res) => {
+const metricsLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+
+const requireMetricsToken = (req, res, next) => {
+    if (!env.METRICS_TOKEN) {
+        return res.status(404).end();
+    }
+
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+    if (token !== env.METRICS_TOKEN) {
+        return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    next();
+};
+
+
+router.get('/', metricsLimiter, requireMetricsToken, async (req, res) => {
     try {
         res.set('Content-Type', register.contentType);
-        console.log('Metrics Scraped');
         res.end(await register.metrics());
     } catch (err) {
         logger.error(`Metrics Error: ${err.message}`);

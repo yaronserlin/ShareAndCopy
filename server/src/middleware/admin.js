@@ -8,11 +8,11 @@ const logger = require('../utils/logger');
 
 const isAdmin = (req, res, next) => {
 
-    if (req.user && req.user.isAdmin) {
-        logger.debug(`Admin access granted for user ID: ${req.user.id}`);
+    if (req.currentUser && req.currentUser.isAdmin) {
+        logger.debug(`Admin access granted for user ID: ${req.currentUser._id}`);
         next();
     } else {
-        logger.warn(`Admin access denied for user ID: ${req.user ? req.user.id : 'unknown'}`);
+        logger.warn(`Admin access denied for user ID: ${req.currentUser ? req.currentUser._id : 'unknown'}`);
         responseHandler.error(res, 'Access denied. Admins only.', null, 403);
     }
 };

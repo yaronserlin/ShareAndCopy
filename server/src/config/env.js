@@ -14,6 +14,9 @@ const requiredEnvVars = [
     'JWT_SECRET'
 ];
 
+if (process.env.TURN_URL) {
+    requiredEnvVars.push('TURN_SECRET');
+}
 
 const missingVars = requiredEnvVars.filter(key => !process.env[key]);
 if (missingVars.length > 0) {
@@ -47,9 +50,11 @@ module.exports = {
     NODE_ENV: process.env.NODE_ENV || 'development',
 
 
-    TURN_SECRET: process.env.TURN_SECRET || 'dev_secret',
+    TURN_SECRET: process.env.TURN_SECRET,
     TURN_URL: process.env.TURN_URL,
     TURN_USER: process.env.TURN_USER || 'user',
 
+
+    METRICS_TOKEN: process.env.METRICS_TOKEN,
 
 };

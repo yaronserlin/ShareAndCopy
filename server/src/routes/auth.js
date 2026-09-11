@@ -12,6 +12,7 @@ const authController = require('../controllers/authController');
 
 const validate = require('../middleware/validate');
 const auth = require('../middleware/auth');
+const { authLimiter } = require('../middleware/rateLimiter');
 
 
 const { registerSchema, loginSchema, revokeSchema } = require('../utils/validationSchemas');
@@ -19,6 +20,7 @@ const { registerSchema, loginSchema, revokeSchema } = require('../utils/validati
 
 router.post(
     '/register',
+    authLimiter,
     validate(registerSchema),
     authController.register
 );
@@ -26,6 +28,7 @@ router.post(
 
 router.post(
     '/login',
+    authLimiter,
     validate(loginSchema),
     authController.login
 );
@@ -38,7 +41,7 @@ const pairingStore = require('../utils/pairingStore');
 const { setAuthCookies } = require('../utils/cookies');
 
 
-router.post('/pairing-code', auth, async (req, res) => {
+router.post('/pairing-code', authLimiter, auth, async (req, res) => {
     try {
 
         const code = crypto.randomBytes(3).toString('hex').toUpperCase().substring(0, 6);
@@ -64,6 +67,7 @@ router.post('/pairing-code', auth, async (req, res) => {
 
 router.post(
     '/verify-pairing',
+    authLimiter,
     async (req, res) => {
         const { code } = req.body;
 
