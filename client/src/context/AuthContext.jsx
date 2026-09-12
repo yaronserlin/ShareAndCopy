@@ -1,7 +1,8 @@
 /**
  * Authentication context: tracks the signed-in user, verifies the
- * session cookie on mount, and installs an axios interceptor that logs
- * the user out on a 401 response from any endpoint other than login/verify.
+ * session cookie on mount (exposing `isLoading` until that check
+ * settles), and installs an axios interceptor that logs the user out on
+ * a 401 response from any endpoint other than login/verify/logout/refresh.
  */
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -20,16 +21,24 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
     const [roomId, setRoomId] = useState(localStorage.getItem('roomId'));
     const navigate = useNavigate();
 
+    const loggingOutRef = React.useRef(false);
+
     /**
      * Logs the current user out: notifies the server, clears local auth
-     * state, and redirects to the home page.
+     * state, and redirects to the home page. Reentrant calls (e.g. a
+     * logout button click racing a 401-triggered auto-logout) are
+     * ignored while one is already in flight.
      *
      * @returns {Promise<void>}
      */
     const logout = React.useCallback(async () => {
+        if (loggingOutRef.current) return;
+        loggingOutRef.current = true;
+
         try {
             await api.post('/auth/logout');
         } catch (error) {
@@ -40,6 +49,7 @@ export const AuthProvider = ({ children }) => {
         setRoomId(null);
         setUser(null);
         navigate('/', { replace: true });
+        loggingOutRef.current = false;
     }, [navigate]);
 
     /**
@@ -74,6 +84,8 @@ export const AuthProvider = ({ children }) => {
                 }
                 setIsAuthenticated(false);
                 setUser(null);
+            } finally {
+                setIsLoading(false);
             }
         };
 
@@ -85,7 +97,13 @@ export const AuthProvider = ({ children }) => {
             (response) => response,
             (error) => {
                 if (error.response && error.response.status === 401) {
-                    if (!error.config.url.includes('/auth/login') && !error.config.url.includes('/auth/verify')) {
+                    const url = error.config?.url || '';
+                    const isExemptEndpoint = url.includes('/auth/login') ||
+                        url.includes('/auth/verify') ||
+                        url.includes('/auth/logout') ||
+                        url.includes('/auth/refresh');
+
+                    if (!isExemptEndpoint) {
                         logout();
                     }
                 }
@@ -99,7 +117,7 @@ export const AuthProvider = ({ children }) => {
     }, [logout]);
 
     return (
-        <AuthContext.Provider value={{ user, isAuthenticated, roomId, login, logout }}>
+        <AuthContext.Provider value={{ user, isAuthenticated, isLoading, roomId, login, logout }}>
             {children}
         </AuthContext.Provider>
     );
