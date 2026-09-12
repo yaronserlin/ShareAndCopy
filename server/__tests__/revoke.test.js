@@ -6,11 +6,13 @@
 
 const request = require('supertest');
 const { createServer } = require('http');
+const jwt = require('jsonwebtoken');
 
 const app = require('../src/index');
 const testDb = require('./testDb');
 const User = require('../src/models/User');
 const initSocket = require('../src/socket');
+const env = require('../src/config/env');
 
 // Each test file spins up its own mongodb-memory-server instance; under
 // Jest's parallel workers plus bcrypt's cost-10 hashing on every
@@ -169,5 +171,44 @@ describe('GET /api/auth/revoked-devices and POST /api/auth/reactivate-device', (
     it('requires authentication to list revoked devices', async () => {
         const res = await request(app).get('/api/auth/revoked-devices');
         expect(res.statusCode).toBe(401);
+    });
+});
+
+describe('Guest sessions and device-management endpoints', () => {
+    // A guest (paired-device) session gets a plain object as
+    // `req.currentUser`, not a real Mongoose User document — it has no
+    // `authorizedDevices`/`revokedDevices` arrays at all. These
+    // endpoints must reject guests cleanly rather than crash trying to
+    // iterate a field that doesn't exist on that object.
+    const guestToken = () => jwt.sign(
+        { id: 'guest_test', roomId: 'some-room-id', isGuest: true, scope: 'guest', name: 'Guest Device', jti: 'guest-jti' },
+        env.JWT_SECRET,
+        { expiresIn: '24h' }
+    );
+
+    it('rejects a guest session on GET /api/auth/revoked-devices instead of crashing', async () => {
+        const res = await request(app)
+            .get('/api/auth/revoked-devices')
+            .set('Authorization', `Bearer ${guestToken()}`);
+
+        expect(res.statusCode).toBe(403);
+    });
+
+    it('rejects a guest session on POST /api/auth/revoke instead of crashing', async () => {
+        const res = await request(app)
+            .post('/api/auth/revoke')
+            .set('Authorization', `Bearer ${guestToken()}`)
+            .send({ deviceId: 'some-device' });
+
+        expect(res.statusCode).toBe(403);
+    });
+
+    it('rejects a guest session on POST /api/auth/reactivate-device instead of crashing', async () => {
+        const res = await request(app)
+            .post('/api/auth/reactivate-device')
+            .set('Authorization', `Bearer ${guestToken()}`)
+            .send({ deviceId: 'some-device' });
+
+        expect(res.statusCode).toBe(403);
     });
 });

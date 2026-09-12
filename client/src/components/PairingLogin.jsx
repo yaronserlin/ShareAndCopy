@@ -110,7 +110,7 @@ const PairingLogin = ({ onCancel }) => {
             socket.on('pairing-success', async ({ token, user }) => {
                 try {
                     await axios.post(`${API_BASE_URL}/auth/adopt-token`, { token }, { withCredentials: true });
-                    login(user.roomId, user.isAdmin || false, token);
+                    login(user.roomId, user.isAdmin || false, token, undefined, user.isGuest || false);
                     navigate('/dashboard');
                 } catch (err) {
                     console.error('Failed to adopt pairing session', err);

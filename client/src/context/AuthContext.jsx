@@ -69,14 +69,15 @@ export const AuthProvider = ({ children }) => {
      * @param {boolean} isAdmin - Whether the user has admin privileges.
      * @param {string} [accessToken] - Access token issued for this session.
      * @param {string} [refreshToken] - Refresh token issued for this session, if any (guest sessions have none).
+     * @param {boolean} [isGuest] - Whether this is an ephemeral paired-device guest session, not a full account.
      */
-    const login = (newRoomId, isAdmin, accessToken, refreshToken) => {
+    const login = (newRoomId, isAdmin, accessToken, refreshToken, isGuest = false) => {
         localStorage.setItem('roomId', newRoomId);
         if (accessToken) setAccessToken(accessToken);
         if (refreshToken) setRefreshToken(refreshToken);
         setRoomId(newRoomId);
         setIsAuthenticated(true);
-        setUser({ isAuthenticated: true, isAdmin: isAdmin });
+        setUser({ isAuthenticated: true, isAdmin: isAdmin, isGuest });
     };
 
     useEffect(() => {

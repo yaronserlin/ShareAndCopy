@@ -130,6 +130,10 @@ exports.revokeDevice = async (req, res) => {
         return responseHandler.error(res, 'DeviceID required', null, 400);
     }
 
+    if (req.currentUser.isGuest) {
+        return responseHandler.error(res, 'Not available for guest sessions', null, 403);
+    }
+
     try {
         const user = req.currentUser;
         let deviceFound = false;
@@ -201,6 +205,10 @@ exports.revokeDevice = async (req, res) => {
  * Lists the current user's revoked devices, most recently revoked first.
  */
 exports.listRevokedDevices = (req, res) => {
+    if (req.currentUser.isGuest) {
+        return responseHandler.error(res, 'Not available for guest sessions', null, 403);
+    }
+
     const devices = [...req.currentUser.revokedDevices]
         .sort((a, b) => b.revokedAt - a.revokedAt);
 
@@ -218,6 +226,10 @@ exports.reactivateDevice = async (req, res) => {
 
     if (!deviceId) {
         return responseHandler.error(res, 'DeviceID required', null, 400);
+    }
+
+    if (req.currentUser.isGuest) {
+        return responseHandler.error(res, 'Not available for guest sessions', null, 403);
     }
 
     try {
