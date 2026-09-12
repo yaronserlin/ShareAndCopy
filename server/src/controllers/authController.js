@@ -26,7 +26,7 @@ exports.register = async (req, res) => {
         logger.info(`New user registered: ${maskEmail(email)} (Room: ${maskRoomId(result.roomId)})`);
 
         setAuthCookies(res, { accessToken: result.accessToken, refreshToken: result.refreshToken });
-        const { token, accessToken, refreshToken, ...body } = result;
+        const { token, ...body } = result;
 
         responseHandler.success(res, body, 'User registered successfully', 201);
     } catch (err) {
@@ -54,7 +54,7 @@ exports.login = async (req, res) => {
         logger.info(`User logged in: ${maskEmail(email)}`);
 
         setAuthCookies(res, { accessToken: result.accessToken, refreshToken: result.refreshToken });
-        const { token, accessToken, refreshToken, ...body } = result;
+        const { token, ...body } = result;
 
         responseHandler.success(res, body, 'Login successful');
     } catch (err) {

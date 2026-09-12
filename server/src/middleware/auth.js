@@ -1,8 +1,13 @@
 /**
- * Authentication middleware: verifies the access token cookie and
- * populates `req.currentUser` for downstream handlers. Supports full
- * user accounts, guest sessions, and a `pairing`-scoped token type that
- * is rejected here (it's only valid for the pairing handshake).
+ * Authentication middleware: verifies the access token — from an
+ * `Authorization: Bearer` header if present, falling back to the `token`
+ * cookie — and populates `req.currentUser` for downstream handlers. The
+ * header takes priority since the client holds its access token in
+ * memory and sends it explicitly; the cookie remains a fallback for
+ * contexts where it's actually deliverable (same-site/local dev).
+ * Supports full user accounts, guest sessions, and a `pairing`-scoped
+ * token type that is rejected here (it's only valid for the pairing
+ * handshake).
  */
 
 const jwt = require('jsonwebtoken');
@@ -19,7 +24,9 @@ const { maskEmail } = require('../utils/logSanitize');
  * token is missing, invalid, revoked, or not a valid session scope.
  */
 const auth = async (req, res, next) => {
-    const token = req.cookies?.token;
+    const authHeader = req.headers.authorization;
+    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const token = bearerToken || req.cookies?.token;
 
     if (!token) {
         return responseHandler.error(res, 'No token, authorization denied', null, 401);

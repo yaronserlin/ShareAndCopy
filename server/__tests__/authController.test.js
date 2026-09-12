@@ -47,7 +47,12 @@ describe('AuthController', () => {
             expect(res.status).toHaveBeenCalledWith(201);
             expect(res.setHeader).toHaveBeenCalledWith('Set-Cookie', expect.any(Array));
             expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-                data: { roomId: 'room123', user: { id: 'userId', email: 'test@test.com' } }
+                data: {
+                    accessToken: 'token',
+                    refreshToken: 'refresh-token',
+                    roomId: 'room123',
+                    user: { id: 'userId', email: 'test@test.com' }
+                }
             }));
         });
 

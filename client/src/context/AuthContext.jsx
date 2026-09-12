@@ -1,13 +1,20 @@
 /**
- * Authentication context: tracks the signed-in user, verifies the
- * session cookie on mount (exposing `isLoading` until that check
- * settles), and installs an axios interceptor that logs the user out on
- * a 401 response from any endpoint other than login/verify/logout/refresh.
+ * Authentication context: tracks the signed-in user, re-establishes the
+ * session on mount (exposing `isLoading` until that settles), and
+ * installs an axios interceptor that logs the user out on a 401
+ * response from any endpoint other than login/verify/logout/refresh.
+ *
+ * Session bootstrap uses the persisted refresh token rather than the
+ * `token`/`refreshToken` cookies alone: client and server are separate
+ * origins here, and browsers that block third-party cookies won't
+ * reliably keep or return a `SameSite=None` cookie across a reload, even
+ * though it's set correctly server-side.
  */
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../utils/api';
+import api, { refreshAccessToken } from '../utils/api';
+import { getAccessToken, getRefreshToken, setAccessToken, setRefreshToken, clearTokens } from '../utils/tokenStore';
 
 const AuthContext = createContext(null);
 
@@ -45,6 +52,7 @@ export const AuthProvider = ({ children }) => {
             console.error('Logout request failed', error);
         }
         localStorage.removeItem('roomId');
+        clearTokens();
         setIsAuthenticated(false);
         setRoomId(null);
         setUser(null);
@@ -53,13 +61,19 @@ export const AuthProvider = ({ children }) => {
     }, [navigate]);
 
     /**
-     * Marks the user as authenticated and persists their room ID.
+     * Marks the user as authenticated, persists their room ID, and
+     * stores the issued tokens (access token in memory, refresh token in
+     * `localStorage`) so the session survives a reload.
      *
      * @param {string} newRoomId - Room ID assigned to the authenticated user.
      * @param {boolean} isAdmin - Whether the user has admin privileges.
+     * @param {string} [accessToken] - Access token issued for this session.
+     * @param {string} [refreshToken] - Refresh token issued for this session, if any (guest sessions have none).
      */
-    const login = (newRoomId, isAdmin) => {
+    const login = (newRoomId, isAdmin, accessToken, refreshToken) => {
         localStorage.setItem('roomId', newRoomId);
+        if (accessToken) setAccessToken(accessToken);
+        if (refreshToken) setRefreshToken(refreshToken);
         setRoomId(newRoomId);
         setIsAuthenticated(true);
         setUser({ isAuthenticated: true, isAdmin: isAdmin });
@@ -68,6 +82,14 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         const verifyToken = async () => {
             try {
+                if (!getAccessToken() && getRefreshToken()) {
+                    try {
+                        await refreshAccessToken();
+                    } catch {
+                        clearTokens();
+                    }
+                }
+
                 const res = await api.get('/auth/verify');
 
                 if (res.status === 200 && res.data.success) {

@@ -50,7 +50,7 @@ export const useRegisterForm = () => {
             delete payload.confirmPassword;
 
             const res = await api.post('/auth/register', payload);
-            login(res.data.data.roomId, res.data.data.user?.isAdmin || false);
+            login(res.data.data.roomId, res.data.data.user?.isAdmin || false, res.data.data.accessToken, res.data.data.refreshToken);
             toast.success('Account created!');
             navigate('/dashboard');
         } catch (err) {

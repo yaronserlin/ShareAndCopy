@@ -14,7 +14,7 @@ const { setAuthCookies } = require('../utils/cookies');
  */
 exports.refreshToken = async (req, res) => {
     try {
-        const refreshToken = req.cookies?.refreshToken;
+        const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
 
         if (!refreshToken) {
             return res.status(400).json({ message: 'Refresh token is required' });
@@ -24,7 +24,7 @@ exports.refreshToken = async (req, res) => {
 
         setAuthCookies(res, { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken });
 
-        res.json({ success: true });
+        res.json({ success: true, accessToken: tokens.accessToken, refreshToken: tokens.refreshToken });
     } catch (err) {
         logger.error(`Refresh token error: ${err.message}`);
         res.status(401).json({ message: err.message });
