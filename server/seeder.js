@@ -16,6 +16,7 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 
 const User = require('./src/models/User');
 const DailyStat = require('./src/models/DailyStat');
+const logger = require('./src/utils/logger');
 
 /**
  * Connects to MongoDB using `MONGO_URI`, exiting the process on failure.
@@ -25,10 +26,10 @@ const DailyStat = require('./src/models/DailyStat');
 const connectDB = async () => {
     try {
         const conn = await mongoose.connect(process.env.MONGO_URI);
-        console.log(`MongoDB Connected: ${conn.connection.host}`);
+        logger.info(`MongoDB Connected: ${conn.connection.host}`);
         return conn;
     } catch (err) {
-        console.error(`Error: ${err.message}`);
+        logger.error('MongoDB connection error', err);
         process.exit(1);
     }
 };
@@ -42,24 +43,24 @@ const connectDB = async () => {
  */
 const seedData = async () => {
     if (process.env.NODE_ENV === 'production') {
-        console.error('Refusing to run seeder against a production environment.');
+        logger.error('Refusing to run seeder against a production environment.');
         process.exit(1);
     }
 
     const conn = await connectDB();
 
     try {
-        console.log('--- Wiping Database ---');
+        logger.info('--- Wiping Database ---');
         await User.deleteMany({});
-        console.log('Users deleted');
+        logger.info('Users deleted');
 
         await DailyStat.deleteMany({});
-        console.log('Daily Stats deleted');
+        logger.info('Daily Stats deleted');
 
-        console.log('--- Seeding Users ---');
+        logger.info('--- Seeding Users ---');
         const seedPassword = process.env.SEED_PASSWORD || crypto.randomBytes(12).toString('base64url');
         const hashedPassword = await bcrypt.hash(seedPassword, 10);
-        console.log(`Seed users password: ${seedPassword}`);
+        logger.info(`Seed users password: ${seedPassword}`);
 
         const users = [];
         const userConfigs = [
@@ -100,10 +101,10 @@ const seedData = async () => {
                 authorizedDevices: devices
             });
             users.push(user);
-            console.log(`Created user: ${config.email} (Room: ${roomId})`);
+            logger.info(`Created user: ${config.email} (Room: ${roomId})`);
         }
 
-        console.log('--- Seeding Daily Stats ---');
+        logger.info('--- Seeding Daily Stats ---');
         const today = new Date();
         for (let i = 13; i >= 0; i--) {
             const date = new Date(today);
@@ -117,13 +118,13 @@ const seedData = async () => {
                 guestSessions: Math.floor(Math.random() * 50),
                 activeUsers: Math.floor(Math.random() * 20) + 1
             });
-            console.log(`Seeded stats for ${dateString}`);
+            logger.info(`Seeded stats for ${dateString}`);
         }
 
-        console.log('--- Data Imported Successfully ---');
+        logger.info('--- Data Imported Successfully ---');
         process.exit();
     } catch (err) {
-        console.error(`${err}`);
+        logger.error('Seeding failed', err);
         process.exit(1);
     }
 };

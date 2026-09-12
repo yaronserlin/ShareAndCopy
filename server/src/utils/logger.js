@@ -1,6 +1,7 @@
 /**
- * Winston logger configured for colorized console output, with a
- * verbosity level that scales with the environment.
+ * Winston logger configured for colorized console output in
+ * development/test and structured JSON in production, with a verbosity
+ * level that scales with the environment (overridable via `LOG_LEVEL`).
  */
 
 const winston = require('winston');
@@ -13,8 +14,17 @@ const levels = {
     debug: 4,
 };
 
-/** Uses `debug` verbosity in development/test, `warn` otherwise. */
+/**
+ * Resolves the active log level: an explicit `LOG_LEVEL` env var wins if
+ * it names a known level, otherwise `debug` in development/test and
+ * `warn` otherwise.
+ */
 const level = () => {
+    const requested = process.env.LOG_LEVEL;
+    if (requested && Object.prototype.hasOwnProperty.call(levels, requested)) {
+        return requested;
+    }
+
     const env = process.env.NODE_ENV || 'development';
     const isDevelopment = env === 'development' || env === 'test';
     return isDevelopment ? 'debug' : 'warn';
@@ -30,12 +40,22 @@ const colors = {
 
 winston.addColors(colors);
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const format = winston.format.combine(
+    winston.format.errors({ stack: true }),
     winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-    winston.format.colorize({ all: true }),
-    winston.format.printf(
-        (info) => `${info.timestamp} ${info.level}: ${info.message}`,
-    ),
+    winston.format.splat(),
+    isProduction
+        ? winston.format.json()
+        : winston.format.combine(
+            winston.format.colorize({ all: true }),
+            winston.format.printf(({ timestamp, level: lvl, message, stack, requestId, socketId }) => {
+                const id = requestId || socketId;
+                const line = `${timestamp} ${lvl}: ${id ? `[${id}] ` : ''}${message}`;
+                return stack ? `${line}\n${stack}` : line;
+            }),
+        ),
 );
 
 const transports = [

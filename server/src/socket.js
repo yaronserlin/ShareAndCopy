@@ -14,6 +14,7 @@ const User = require('./models/User');
 const DailyStat = require('./models/DailyStat');
 const RevokedToken = require('./models/RevokedToken');
 const logger = require('./utils/logger');
+const { maskRoomId, maskPairingCode } = require('./utils/logSanitize');
 const { connectedSockets, dataTransferred } = require('./utils/metrics');
 const pairingStore = require('./utils/pairingStore');
 const { parseCookies } = require('./utils/cookies');
@@ -137,7 +138,7 @@ const initSocket = (server) => {
             socket.user = user;
             next();
         } catch (err) {
-            logger.error(`Socket Auth Error: ${err.message}`);
+            logger.child({ socketId: socket.id }).error('Socket auth error', err);
             return next(new Error('Authentication error: Invalid token'));
         }
     });
@@ -151,6 +152,8 @@ const initSocket = (server) => {
     io.on('connection', async (socket) => {
         const userId = socket.user._id.toString();
         const isGuest = socket.user.isGuest;
+        const displayUserId = isGuest ? maskRoomId(userId) : userId;
+        const log = logger.child({ socketId: socket.id, userId: displayUserId, isGuest });
         const { deviceId, deviceName } = socket.handshake.query;
 
         const sanitizedDeviceId = validator.escape(deviceId || '');
@@ -163,7 +166,7 @@ const initSocket = (server) => {
 
         connectedSockets.inc();
 
-        logger.info(`Socket connected: ${socket.id} (User/Room: ${userId}, Device: ${deviceId}, Guest: ${isGuest})`);
+        log.info(`Socket connected (User/Room: ${displayUserId}, Device: ${deviceId}, Guest: ${isGuest})`);
 
         if (!socket.user.isPairing) {
             socket.join(userId);
@@ -196,13 +199,17 @@ const initSocket = (server) => {
 
                 socket.emit('initial-device-list', deviceList);
             } catch (err) {
-                logger.error(`Error fetching device list: ${err.message}`);
+                log.error('Error fetching device list', err);
             }
         }
 
         socket.on('register-device', async (data) => {
-            const cleanDeviceId = validator.escape(data.deviceId || '');
-            logger.info(`Device registered: ${cleanDeviceId}`);
+            try {
+                const cleanDeviceId = validator.escape(data.deviceId || '');
+                log.debug(`Device registered: ${cleanDeviceId}`);
+            } catch (err) {
+                log.error('Error registering device', err);
+            }
         });
 
         socket.on('request-device-list', async () => {
@@ -218,7 +225,7 @@ const initSocket = (server) => {
 
                 socket.emit('initial-device-list', deviceList);
             } catch (err) {
-                logger.error(`Error fetching device list: ${err.message}`);
+                log.error('Error fetching device list', err);
             }
         });
 
@@ -230,27 +237,31 @@ const initSocket = (server) => {
          */
         socket.on('signal', async (data) => {
             if (!checkSocketRateLimit(socket.id, 'signal', 100, 60000)) {
-                logger.warn(`Rate limit exceeded for socket ${socket.id} on 'signal' event`);
+                log.warn(`Rate limit exceeded on 'signal' event`);
                 return socket.emit('error', { message: 'Too many requests. Please slow down.' });
             }
 
-            const { targetSocketId, signalData, type } = data;
+            try {
+                const { targetSocketId, signalData, type } = data || {};
 
-            if (targetSocketId) {
-                const roomSockets = await io.in(userId).fetchSockets();
-                const isTargetInRoom = roomSockets.some(s => s.id === targetSocketId);
+                if (targetSocketId) {
+                    const roomSockets = await io.in(userId).fetchSockets();
+                    const isTargetInRoom = roomSockets.some(s => s.id === targetSocketId);
 
-                if (isTargetInRoom) {
-                    io.to(targetSocketId).emit('signal', {
-                        senderSocketId: socket.id,
-                        senderDeviceId: sanitizedDeviceId,
-                        type,
-                        signalData
-                    });
-                    logger.debug(`Signal (${type}) sent from ${socket.id} to ${targetSocketId}`);
-                } else {
-                    logger.warn(`Security Alert: Socket ${socket.id} attempted to signal socket ${targetSocketId} not in room ${userId}`);
+                    if (isTargetInRoom) {
+                        io.to(targetSocketId).emit('signal', {
+                            senderSocketId: socket.id,
+                            senderDeviceId: sanitizedDeviceId,
+                            type,
+                            signalData
+                        });
+                        log.debug(`Signal (${type}) sent to ${targetSocketId}`);
+                    } else {
+                        log.warn(`Security alert: attempted to signal socket ${targetSocketId} not in room ${displayUserId}`);
+                    }
                 }
+            } catch (err) {
+                log.error('Error relaying signal', err);
             }
         });
 
@@ -260,13 +271,17 @@ const initSocket = (server) => {
          * routed only to the device that generated the code.
          */
         socket.on('join-pairing', (code) => {
-            if (socket.user.isGuest || socket.user.isPairing || !pairingStore.isOwner(code, userId)) {
-                logger.warn(`Socket ${socket.id} denied joining pairing room: pairing-${code}`);
-                return;
-            }
+            try {
+                if (socket.user.isGuest || socket.user.isPairing || !pairingStore.isOwner(code, userId)) {
+                    log.warn(`Denied joining pairing room for code ${maskPairingCode(code)}`);
+                    return;
+                }
 
-            socket.join(`pairing-${code}`);
-            logger.info(`Socket ${socket.id} joined pairing room: pairing-${code}`);
+                socket.join(`pairing-${code}`);
+                log.info(`Joined pairing room for code ${maskPairingCode(code)}`);
+            } catch (err) {
+                log.error('Error joining pairing room', err);
+            }
         });
 
 
@@ -275,17 +290,21 @@ const initSocket = (server) => {
          * code's room, prompting the owning device to approve or deny it.
          */
         socket.on('request-pairing', (data) => {
-            if (!checkSocketRateLimit(socket.id, 'request-pairing', 10, 60000)) {
-                logger.warn(`Rate limit exceeded for socket ${socket.id} on 'request-pairing' event`);
-                return;
+            try {
+                if (!checkSocketRateLimit(socket.id, 'request-pairing', 10, 60000)) {
+                    log.warn(`Rate limit exceeded on 'request-pairing' event`);
+                    return;
+                }
+
+                const { code, deviceInfo } = data;
+
+                io.to(`pairing-${code}`).emit('confirmation-request', {
+                    socketId: socket.id,
+                    deviceInfo
+                });
+            } catch (err) {
+                log.error('Error handling pairing request', err);
             }
-
-            const { code, deviceInfo } = data;
-
-            io.to(`pairing-${code}`).emit('confirmation-request', {
-                socketId: socket.id,
-                deviceInfo
-            });
         });
 
         /**
@@ -294,53 +313,57 @@ const initSocket = (server) => {
          * device, subject to a per-host guest-device cap.
          */
         socket.on('approve-pairing', async (data) => {
-            const { targetSocketId, code } = data;
+            try {
+                const { targetSocketId, code } = data;
 
-            if (socket.user.isGuest || socket.user.isPairing || !pairingStore.isOwner(code, userId)) {
-                logger.warn(`Socket ${socket.id} denied approve-pairing for code ${code}`);
-                return socket.emit('pairing-error', { message: 'Not authorized to approve this pairing request' });
-            }
+                if (socket.user.isGuest || socket.user.isPairing || !pairingStore.isOwner(code, userId)) {
+                    log.warn(`Denied approve-pairing for code ${maskPairingCode(code)}`);
+                    return socket.emit('pairing-error', { message: 'Not authorized to approve this pairing request' });
+                }
 
-            const MAX_GUESTS_PER_HOST = 10;
-            const roomSockets = await io.in(userId).fetchSockets();
-            const guestCount = roomSockets.filter(s => s.user && s.user.isGuest).length;
+                const MAX_GUESTS_PER_HOST = 10;
+                const roomSockets = await io.in(userId).fetchSockets();
+                const guestCount = roomSockets.filter(s => s.user && s.user.isGuest).length;
 
-            if (guestCount >= MAX_GUESTS_PER_HOST) {
-                logger.warn(`Guest limit reached for user ${userId}`);
-                return socket.emit('pairing-error', {
-                    message: `Maximum guest limit (${MAX_GUESTS_PER_HOST}) reached`
+                if (guestCount >= MAX_GUESTS_PER_HOST) {
+                    log.warn(`Guest limit reached for user ${displayUserId}`);
+                    return socket.emit('pairing-error', {
+                        message: `Maximum guest limit (${MAX_GUESTS_PER_HOST}) reached`
+                    });
+                }
+
+                const guestId = `guest_${crypto.randomUUID()}`;
+
+                const jti = crypto.randomUUID();
+                const newToken = jwt.sign(
+                    {
+                        id: guestId,
+                        roomId: userId,
+                        isGuest: true,
+                        scope: 'guest',
+                        name: 'Guest Device',
+                        jti
+                    },
+                    env.JWT_SECRET,
+                    { expiresIn: '24h' }
+                );
+
+                io.to(targetSocketId).emit('pairing-success', {
+                    token: newToken,
+                    user: { isGuest: true, roomId: userId }
                 });
+
+                const today = new Date().toISOString().split('T')[0];
+                DailyStat.findOneAndUpdate(
+                    { date: today },
+                    { $inc: { guestSessions: 1 } },
+                    { upsert: true }
+                ).catch(e => log.error('Error updating guest stats', e));
+
+                log.info(`Pairing approved for target socket ${targetSocketId}`);
+            } catch (err) {
+                log.error('Error approving pairing', err);
             }
-
-            const guestId = `guest_${crypto.randomUUID()}`;
-
-            const jti = crypto.randomUUID();
-            const newToken = jwt.sign(
-                {
-                    id: guestId,
-                    roomId: userId,
-                    isGuest: true,
-                    scope: 'guest',
-                    name: 'Guest Device',
-                    jti
-                },
-                env.JWT_SECRET,
-                { expiresIn: '24h' }
-            );
-
-            io.to(targetSocketId).emit('pairing-success', {
-                token: newToken,
-                user: { isGuest: true, roomId: userId }
-            });
-
-            const today = new Date().toISOString().split('T')[0];
-            DailyStat.findOneAndUpdate(
-                { date: today },
-                { $inc: { guestSessions: 1 } },
-                { upsert: true }
-            ).catch(e => logger.error('Error updating guest stats', e));
-
-            logger.info(`Pairing approved by ${userId} for target socket ${targetSocketId}`);
         });
 
         /**
@@ -350,7 +373,7 @@ const initSocket = (server) => {
          */
         socket.on('report-transfer', async (data) => {
             if (!checkSocketRateLimit(socket.id, 'report-transfer', 200, 60000)) {
-                logger.warn(`Rate limit exceeded for socket ${socket.id} on 'report-transfer' event`);
+                log.warn(`Rate limit exceeded on 'report-transfer' event`);
                 return;
             }
 
@@ -358,7 +381,7 @@ const initSocket = (server) => {
             const type = data.type || 'upload';
             const today = new Date().toISOString().split('T')[0];
 
-            logger.info(`REPORT-TRANSFER (${type}): Received from ${socket.id} (User: ${userId}, Guest: ${socket.user.isGuest}). Size: ${size}`);
+            log.debug(`Report-transfer (${type}) received. Size: ${size}`);
 
             dataTransferred.inc(size);
 
@@ -374,7 +397,7 @@ const initSocket = (server) => {
                         },
                         { upsert: true, new: true }
                     );
-                    logger.info(`REPORT-TRANSFER: DailyStat updated. Total: ${dailyRes.totalDataTransferred}`);
+                    log.debug(`DailyStat updated. Total: ${dailyRes.totalDataTransferred}`);
                 }
 
                 if (!socket.user.isGuest) {
@@ -389,18 +412,18 @@ const initSocket = (server) => {
                         { _id: userId },
                         { $inc: incUpdate }
                     );
-                    logger.info(`REPORT-TRANSFER: User updated (${userId}). Modified: ${userRes.modifiedCount}`);
-                } else {
-                    logger.info(`REPORT-TRANSFER: User update skipped (Guest).`);
+                    log.debug(`User stats updated. Modified: ${userRes.modifiedCount}`);
                 }
+
+                log.info(`Report-transfer (${type}) processed. Size: ${size}`);
             } catch (err) {
-                logger.error(`Stats update error: ${err.message}`);
+                log.error('Stats update error', err);
             }
         });
 
         /** Decrements connection metrics and clears per-socket rate limit state. */
-        socket.on('disconnect', () => {
-            logger.info(`Socket disconnected: ${socket.id}`);
+        socket.on('disconnect', (reason) => {
+            log.info(`Socket disconnected: ${reason}`);
             connectedSockets.dec();
 
             socketRateLimits.delete(socket.id);

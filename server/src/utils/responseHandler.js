@@ -31,9 +31,14 @@ exports.success = (res, data, message = 'Success', statusCode = 200) => {
     sendResponse(res, statusCode, true, message, data);
 };
 
-/** Sends an error (`success: false`) JSON response, logging 500s. */
-exports.error = (res, message, error = null, statusCode = 500) => {
-    if (statusCode === 500) {
+/**
+ * Sends an error (`success: false`) JSON response, logging 500s unless
+ * the caller has already logged this error itself (`log: false`) —
+ * used by the centralized error handler, which logs with richer
+ * request context before delegating here.
+ */
+exports.error = (res, message, error = null, statusCode = 500, { log: shouldLog = true } = {}) => {
+    if (statusCode === 500 && shouldLog) {
         logger.error(`Server Error: ${message} - ${error ? error.message || error : ''}`);
     }
 

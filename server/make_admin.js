@@ -39,7 +39,7 @@ const makeAdmin = async () => {
 
         process.exit();
     } catch (err) {
-        logger.error(err);
+        logger.error('make_admin failed', err);
         process.exit(1);
     }
 };

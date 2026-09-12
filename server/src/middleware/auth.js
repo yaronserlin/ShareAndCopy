@@ -11,6 +11,7 @@ const responseHandler = require('../utils/responseHandler');
 const User = require('../models/User');
 const RevokedToken = require('../models/RevokedToken');
 const logger = require('../utils/logger');
+const { maskEmail } = require('../utils/logSanitize');
 
 /**
  * Verifies the `token` cookie and attaches the authenticated user (or
@@ -58,7 +59,7 @@ const auth = async (req, res, next) => {
         }
 
         req.currentUser = user;
-        logger.debug(`Authenticated user: ${user.email} (ID: ${user._id})`);
+        logger.debug(`Authenticated user: ${maskEmail(user.email)} (ID: ${user._id})`);
         next();
     } catch (err) {
         logger.warn(`Authentication failed: ${err.message}`);

@@ -16,11 +16,16 @@ const { apiLimiter } = require('./middleware/rateLimiter');
 const cors = require('./middleware/cors');
 const connectDB = require('./config/db');
 const { parseCookies } = require('./utils/cookies');
+const requestId = require('./middleware/requestId');
+const errorHandler = require('./middleware/error');
+const { registerProcessErrorHandlers } = require('./utils/processHandlers');
 
 const app = express();
 const server = http.createServer(app);
 
 app.set('trust proxy', 1);
+
+app.use(requestId);
 
 app.use(helmet({
     contentSecurityPolicy: {
@@ -58,7 +63,13 @@ app.use((req, res, next) => {
 });
 
 app.use((req, res, next) => {
-    logger.info(`${req.method} ${req.originalUrl} - IP: ${req.ip}`);
+    const startedAt = process.hrtime.bigint();
+
+    res.on('finish', () => {
+        const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
+        req.log.http(`${req.method} ${req.originalUrl} - IP: ${req.ip} - ${res.statusCode} - ${durationMs.toFixed(1)}ms`);
+    });
+
     next();
 });
 
@@ -76,6 +87,8 @@ const routes = [
 routes.forEach(({ path, route }) => {
     app.use(path, require(route));
 });
+
+app.use(errorHandler);
 
 /**
  * Connects to MongoDB, initializes Socket.IO on the shared HTTP server,
@@ -100,6 +113,7 @@ const startServer = async () => {
 };
 
 if (require.main === module) {
+    registerProcessErrorHandlers();
     startServer();
 }
 

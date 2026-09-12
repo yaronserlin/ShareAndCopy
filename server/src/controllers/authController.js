@@ -5,6 +5,7 @@
 
 const authService = require('../services/authService');
 const logger = require('../utils/logger');
+const { maskEmail, maskRoomId } = require('../utils/logSanitize');
 const responseHandler = require('../utils/responseHandler');
 const RevokedToken = require('../models/RevokedToken');
 const { getIO } = require('../socket');
@@ -22,7 +23,7 @@ exports.register = async (req, res) => {
 
         const result = await authService.register({ email, password, firstName, lastName });
 
-        logger.info(`New user registered: ${email} with room ID: ${result.roomId}`);
+        logger.info(`New user registered: ${maskEmail(email)} (Room: ${maskRoomId(result.roomId)})`);
 
         setAuthCookies(res, { accessToken: result.accessToken, refreshToken: result.refreshToken });
         const { token, accessToken, refreshToken, ...body } = result;
@@ -30,10 +31,10 @@ exports.register = async (req, res) => {
         responseHandler.success(res, body, 'User registered successfully', 201);
     } catch (err) {
         if (err.message === 'Email already exists' || err.code === 11000) {
-            logger.warn(`Registration failed: Email already exists - ${email}`);
+            logger.warn(`Registration failed: Email already exists - ${maskEmail(email)}`);
             return responseHandler.error(res, 'Email already exists', null, 400);
         }
-        logger.error(`Registration error for ${email}: ${err.message}`, err);
+        logger.error(`Registration error for ${maskEmail(email)}`, err);
         responseHandler.error(res, 'Registration failed', err.message);
     }
 };
@@ -50,18 +51,18 @@ exports.login = async (req, res) => {
     try {
         const result = await authService.login(email, password, deviceId, deviceName);
 
-        logger.info(`User logged in: ${email.replace(/(.{2})(.*)(@.*)/, '$1***$3')}`);
+        logger.info(`User logged in: ${maskEmail(email)}`);
 
         setAuthCookies(res, { accessToken: result.accessToken, refreshToken: result.refreshToken });
         const { token, accessToken, refreshToken, ...body } = result;
 
         responseHandler.success(res, body, 'Login successful');
     } catch (err) {
-        logger.warn(`Login failed for ${email}: ${err.message}`);
+        logger.warn(`Login failed for ${maskEmail(email)}: ${err.message}`);
         if (err.message.includes('Invalid credentials')) {
             return responseHandler.error(res, 'Invalid credentials', null, 401);
         }
-        logger.error(`Login error for ${email}: ${err.message}`, err);
+        logger.error(`Login error for ${maskEmail(email)}`, err);
         responseHandler.error(res, 'Login failed', err.message);
     }
 };
@@ -73,7 +74,7 @@ exports.login = async (req, res) => {
  * populated `req.currentUser`.
  */
 exports.verify = (req, res) => {
-    logger.debug(`Token verified for user: ${req.currentUser.email}`);
+    logger.debug(`Token verified for user: ${maskEmail(req.currentUser.email)}`);
 
     responseHandler.success(res, {
         valid: true,
@@ -106,7 +107,7 @@ exports.logout = async (req, res) => {
             }
         }
     } catch (err) {
-        logger.error(`Logout revocation failed: ${err.message}`);
+        logger.error('Logout revocation failed', err);
     }
 
     clearAuthCookies(res);
@@ -177,7 +178,7 @@ exports.revokeDevice = async (req, res) => {
         responseHandler.success(res, null, 'Device revoked successfully');
 
     } catch (err) {
-        logger.error(`Revocation failed: ${err.message}`);
+        logger.error('Revocation failed', err);
         responseHandler.error(res, 'Revocation failed', err.message);
     }
 };
