@@ -2,6 +2,12 @@
  * Socket.IO connection context: opens an authenticated socket while the
  * user is signed in, tears it down on sign-out, and forces a logout if
  * the server reports the session's token as invalid or revoked.
+ *
+ * Authenticates via `auth.token` (the in-memory access token) rather
+ * than `withCredentials`/cookies alone: client and server are separate
+ * origins here, and a browser blocking third-party cookies would never
+ * deliver the `token` cookie to the socket handshake, even though the
+ * server's `io.use` middleware already accepts it as a fallback.
  */
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -9,6 +15,7 @@ import io from 'socket.io-client';
 import { useAuth } from './AuthContext';
 import { SERVER_URL } from '../config';
 import { getFriendlyDeviceName, getDeviceId } from '../utils/deviceUtils';
+import { getAccessToken } from '../utils/tokenStore';
 
 const SocketContext = createContext();
 
@@ -38,6 +45,9 @@ export const SocketProvider = ({ children }) => {
 
         const newSocket = io(SERVER_URL, {
             withCredentials: true,
+            auth: {
+                token: getAccessToken()
+            },
             query: {
                 deviceId: getDeviceId(),
                 deviceName: getDeviceName(user)
