@@ -1,6 +1,10 @@
 /**
  * Helpers for reading and writing the httpOnly auth cookies (`token` and
- * `refreshToken`).
+ * `refreshToken`). Uses `SameSite=None` over HTTPS so the cookies still
+ * reach the API when the client and server are deployed as separate
+ * sites (e.g. two different Render services) rather than behind a
+ * shared reverse-proxy domain — `SameSite=Lax` is never sent back on a
+ * cross-site fetch/XHR, only on a top-level navigation.
  */
 
 const cookie = require('cookie');
@@ -9,13 +13,20 @@ const env = require('../config/env');
 /** Whether cookies should be marked `secure`, based on `PUBLIC_URL`'s scheme. */
 const isSecureDeployment = () => typeof env.PUBLIC_URL === 'string' && env.PUBLIC_URL.startsWith('https://');
 
-/** Shared cookie attributes for both auth cookies. */
-const baseOptions = () => ({
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: isSecureDeployment(),
-    path: '/'
-});
+/**
+ * Shared cookie attributes for both auth cookies. `SameSite=None`
+ * requires `Secure`, so it's only used once we know the deployment is
+ * HTTPS; local HTTP dev falls back to `Lax`, which is sufficient there.
+ */
+const baseOptions = () => {
+    const secure = isSecureDeployment();
+    return {
+        httpOnly: true,
+        sameSite: secure ? 'none' : 'lax',
+        secure,
+        path: '/'
+    };
+};
 
 /**
  * Parses a `Cookie` header into a plain object.

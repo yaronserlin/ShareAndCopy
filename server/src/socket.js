@@ -442,8 +442,13 @@ const initSocket = (server) => {
 
 /**
  * Periodically flushes buffered `lastActive`/`deviceName` updates for
- * authorized devices in one bulk write, instead of writing to MongoDB on
- * every socket connection.
+ * already-authorized devices in one bulk write, instead of writing to
+ * MongoDB on every socket connection. A socket whose deviceId has no
+ * matching `authorizedDevices` entry (never completed a real login) is
+ * silently skipped rather than inserted — a fabricated entry would need
+ * a placeholder `jti`, which fails the schema's own validator and would
+ * corrupt the document, breaking every later `save()` on that user
+ * (login, revoke, admin promotion) with a `ValidationError`.
  */
 const deviceActivityInterval = setInterval(async () => {
     if (deviceActivityBuffer.size === 0) return;
@@ -470,23 +475,6 @@ const deviceActivityInterval = setInterval(async () => {
         if (bulkOps.length > 0) {
             const result = await User.bulkWrite(bulkOps, { ordered: false });
             logger.debug(`Device activity bulk update complete: ${result.modifiedCount} modified`);
-
-            const notFoundUpdates = updates.filter((update, index) => {
-                return bulkOps[index] && !result.modifiedCount;
-            });
-
-            for (const { userId, deviceId, deviceName, timestamp } of notFoundUpdates) {
-                await User.findByIdAndUpdate(userId, {
-                    $addToSet: {
-                        authorizedDevices: {
-                            deviceId,
-                            deviceName,
-                            lastActive: timestamp,
-                            jti: ''
-                        }
-                    }
-                }).catch(err => logger.error(`Failed to add device: ${err.message}`));
-            }
         }
     } catch (err) {
         logger.error(`Bulk device activity update failed: ${err.message}`);
