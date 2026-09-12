@@ -4,7 +4,7 @@
  * transfer requests and device-revocation confirmations as modals.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { useP2P } from '../../hooks/useP2P';
 import { useAuth } from '../../context/AuthContext';
@@ -24,6 +24,35 @@ const Dashboard = () => {
     const [selectedFiles, setSelectedFiles] = useState({});
     const [showPairingModal, setShowPairingModal] = useState(false);
     const [deviceToRevoke, setDeviceToRevoke] = useState(null);
+    const [revokedDevices, setRevokedDevices] = useState([]);
+
+    /** Refetches the current user's revoked-devices list. */
+    const fetchRevokedDevices = useCallback(async () => {
+        try {
+            const res = await api.get('/auth/revoked-devices');
+            setRevokedDevices(res.data.data.devices);
+        } catch (err) {
+            console.error('Failed to load revoked devices', err);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!user?.isGuest) {
+            fetchRevokedDevices();
+        }
+    }, [user, fetchRevokedDevices]);
+
+    /** Reactivates a revoked device, letting it log in again. */
+    const handleReactivate = async (deviceId) => {
+        try {
+            await api.post('/auth/reactivate-device', { deviceId });
+            setRevokedDevices((prev) => prev.filter((d) => d.deviceId !== deviceId));
+            toast.success('Device reactivated. It can log in again.');
+        } catch (err) {
+            console.error('Reactivation failed', err);
+            toast.error('Failed to reactivate device');
+        }
+    };
 
     /** Stores the file chosen for a given target device. */
     const handleFileChange = (e, deviceId) => {
@@ -53,6 +82,7 @@ const Dashboard = () => {
         try {
             removeDevice(deviceId);
             await api.post('/auth/revoke', { deviceId });
+            fetchRevokedDevices();
         } catch (err) {
             console.error('Revocation failed', err);
             toast.error('Failed to revoke device');
@@ -114,6 +144,34 @@ const Dashboard = () => {
                     ))
                 )}
             </div>
+
+            {!user?.isGuest && revokedDevices.length > 0 && (
+                <div className="mt-5">
+                    <h2 className="h4 fw-bold mb-3">Revoked Devices</h2>
+                    <div className="list-group shadow-sm">
+                        {revokedDevices.map((device) => (
+                            <div
+                                key={device.deviceId}
+                                className="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2 py-3"
+                            >
+                                <div>
+                                    <div className="fw-semibold">{device.deviceName}</div>
+                                    <div className="text-muted small">
+                                        Revoked {new Date(device.revokedAt).toLocaleString()}
+                                    </div>
+                                </div>
+                                <button
+                                    className="btn btn-outline-success btn-sm rounded-pill"
+                                    onClick={() => handleReactivate(device.deviceId)}
+                                >
+                                    <i className="bi bi-arrow-counterclockwise me-1"></i>
+                                    Reactivate
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {Object.entries(pendingTransfers).map(([deviceId, transfer]) => (
                 <div className="modal show d-block" tabIndex="-1" key={deviceId} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>

@@ -62,6 +62,9 @@ exports.login = async (req, res) => {
         if (err.message.includes('Invalid credentials')) {
             return responseHandler.error(res, 'Invalid credentials', null, 401);
         }
+        if (err.message === 'Device revoked') {
+            return responseHandler.error(res, 'This device has been revoked. Please pair it again from an authorized device.', null, 403);
+        }
         logger.error(`Login error for ${maskEmail(email)}`, err);
         responseHandler.error(res, 'Login failed', err.message);
     }
@@ -117,7 +120,8 @@ exports.logout = async (req, res) => {
 /**
  * POST /auth/revoke
  * Removes a device from the user's authorized devices, revokes its
- * refresh token JTI, and force-disconnects any of its active sockets.
+ * access-token JTI, blocklists its device ID against future logins (see
+ * `authService.login`), and force-disconnects any of its active sockets.
  */
 exports.revokeDevice = async (req, res) => {
     const { deviceId } = req.body;
@@ -149,6 +153,15 @@ exports.revokeDevice = async (req, res) => {
             }
 
             user.authorizedDevices.splice(deviceIndex, 1);
+
+            const revokedIndex = user.revokedDevices.findIndex(d => d.deviceId === deviceId);
+            const revokedEntry = { deviceId, deviceName: device.deviceName, revokedAt: new Date() };
+            if (revokedIndex !== -1) {
+                user.revokedDevices[revokedIndex] = revokedEntry;
+            } else {
+                user.revokedDevices.push(revokedEntry);
+            }
+
             await user.save();
         }
 
@@ -180,5 +193,48 @@ exports.revokeDevice = async (req, res) => {
     } catch (err) {
         logger.error('Revocation failed', err);
         responseHandler.error(res, 'Revocation failed', err.message);
+    }
+};
+
+/**
+ * GET /auth/revoked-devices
+ * Lists the current user's revoked devices, most recently revoked first.
+ */
+exports.listRevokedDevices = (req, res) => {
+    const devices = [...req.currentUser.revokedDevices]
+        .sort((a, b) => b.revokedAt - a.revokedAt);
+
+    responseHandler.success(res, { devices }, 'Revoked devices retrieved successfully');
+};
+
+/**
+ * POST /auth/reactivate-device
+ * Removes a device from the revoked-devices blocklist, letting it log
+ * in again with the account's normal credentials. Its next successful
+ * login re-adds it to `authorizedDevices` as usual.
+ */
+exports.reactivateDevice = async (req, res) => {
+    const { deviceId } = req.body;
+
+    if (!deviceId) {
+        return responseHandler.error(res, 'DeviceID required', null, 400);
+    }
+
+    try {
+        const user = req.currentUser;
+        const revokedIndex = user.revokedDevices.findIndex(d => d.deviceId === deviceId);
+
+        if (revokedIndex === -1) {
+            return responseHandler.error(res, 'Device not found in revoked list', null, 404);
+        }
+
+        user.revokedDevices.splice(revokedIndex, 1);
+        await user.save();
+
+        logger.info(`Device reactivated: ${deviceId}`);
+        responseHandler.success(res, null, 'Device reactivated successfully');
+    } catch (err) {
+        logger.error('Device reactivation failed', err);
+        responseHandler.error(res, 'Reactivation failed', err.message);
     }
 };

@@ -31,6 +31,26 @@ const UserSchema = new mongoose.Schema({
             }
         }
     }],
+    /**
+     * Devices removed via `/auth/revoke`. Checked at login/refresh so a
+     * revoked device can't simply sign back in with the account's normal
+     * credentials and get silently re-added to `authorizedDevices` — until
+     * the user reactivates it via `/auth/reactivate-device`.
+     */
+    revokedDevices: [{
+        deviceId: {
+            type: String,
+            required: true
+        },
+        deviceName: {
+            type: String,
+            default: 'Unknown Device'
+        },
+        revokedAt: {
+            type: Date,
+            default: Date.now
+        }
+    }],
     email: {
         type: String,
         required: [true, 'Email is required'],

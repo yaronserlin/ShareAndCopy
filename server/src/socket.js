@@ -321,6 +321,13 @@ const initSocket = (server) => {
                     return socket.emit('pairing-error', { message: 'Not authorized to approve this pairing request' });
                 }
 
+                // Finalize the code immediately after authorizing, rather
+                // than after the async guest-count/token-issuance work
+                // below, so a duplicate approve-pairing for the same code
+                // (a double-click, a client retry) can't also pass the
+                // isOwner check and mint a second guest session.
+                pairingStore.remove(code);
+
                 const MAX_GUESTS_PER_HOST = 10;
                 const roomSockets = await io.in(userId).fetchSockets();
                 const guestCount = roomSockets.filter(s => s.user && s.user.isGuest).length;

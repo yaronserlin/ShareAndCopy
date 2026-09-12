@@ -86,7 +86,7 @@ exports.register = async (userData) => {
  * @param {string} [deviceId]
  * @param {string} [deviceName]
  * @returns {Promise<Object>} Tokens, room ID, admin flag, and the public user profile.
- * @throws {Error} If the credentials are invalid.
+ * @throws {Error} If the credentials are invalid, or `deviceId` was previously revoked via `/auth/revoke`.
  */
 exports.login = async (email, password, deviceId, deviceName) => {
     const user = await User.findOne({ email });
@@ -98,6 +98,10 @@ exports.login = async (email, password, deviceId, deviceName) => {
         throw new Error('Invalid credentials');
     }
 
+    if (deviceId && user.revokedDevices?.some(d => d.deviceId === deviceId)) {
+        throw new Error('Device revoked');
+    }
+
     const jti = crypto.randomUUID();
     const accessToken = jwt.sign(
         { id: user._id, isAdmin: user.isAdmin, jti },
@@ -106,7 +110,7 @@ exports.login = async (email, password, deviceId, deviceName) => {
     );
 
     const refreshToken = jwt.sign(
-        { id: user._id, type: 'refresh' },
+        { id: user._id, type: 'refresh', ...(deviceId && { deviceId }) },
         env.JWT_REFRESH_SECRET,
         { expiresIn: '7d' }
     );

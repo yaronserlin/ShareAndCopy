@@ -8,13 +8,13 @@ const request = require('supertest');
 
 
 
-const app = require('../src/index'); 
+const app = require('../src/index');
 const testDb = require('./testDb');
 const User = require('../src/models/User');
 
 beforeAll(async () => {
     await testDb.connect();
-}, 30000); 
+}, 30000);
 
 afterEach(async () => {
     await testDb.clear();
@@ -113,6 +113,7 @@ describe('Auth Routes', () => {
             expect(res.statusCode).toBe(401);
         });
     });
+
 
     describe('GET /api/auth/verify', () => {
         it('should return user data for authenticated user', async () => {

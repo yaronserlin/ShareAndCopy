@@ -16,7 +16,8 @@ const User = require('../models/User');
  * @param {string} refreshToken
  * @returns {Promise<{accessToken: string, refreshToken: string}>}
  * @throws {Error} If the token is missing, invalid, expired, of the
- *   wrong type, or its user no longer exists.
+ *   wrong type, its user no longer exists, or it was issued to a device
+ *   since revoked via `/auth/revoke`.
  */
 exports.refreshAccessToken = async (refreshToken) => {
     try {
@@ -26,9 +27,13 @@ exports.refreshAccessToken = async (refreshToken) => {
             throw new Error('Invalid token type');
         }
 
-        const user = await User.findById(decoded.id).select('isAdmin');
+        const user = await User.findById(decoded.id).select('isAdmin revokedDevices');
         if (!user) {
             throw new Error('User not found');
+        }
+
+        if (decoded.deviceId && user.revokedDevices?.some(d => d.deviceId === decoded.deviceId)) {
+            throw new Error('Device revoked');
         }
 
         const payload = {
@@ -39,7 +44,7 @@ exports.refreshAccessToken = async (refreshToken) => {
 
         const newAccessToken = jwt.sign(payload, env.JWT_SECRET, { expiresIn: '1h' });
         const newRefreshToken = jwt.sign(
-            { id: decoded.id, type: 'refresh' },
+            { id: decoded.id, type: 'refresh', ...(decoded.deviceId && { deviceId: decoded.deviceId }) },
             env.JWT_REFRESH_SECRET,
             { expiresIn: '7d' }
         );

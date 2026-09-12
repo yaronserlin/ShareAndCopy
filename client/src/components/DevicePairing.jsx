@@ -5,7 +5,7 @@
  * user can approve or deny it.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'react-qr-code';
 import api from '../utils/api';
 import { useSocket } from '../context/SocketContext';
@@ -23,6 +23,7 @@ const DevicePairing = ({ show, onHide }) => {
     const [pairingCode, setPairingCode] = useState(null);
     const [requestedDevice, setRequestedDevice] = useState(null);
     const [error, setError] = useState(null);
+    const closeTimeoutRef = useRef(null);
 
     useEffect(() => {
         if (show) {
@@ -31,6 +32,8 @@ const DevicePairing = ({ show, onHide }) => {
             setRequestedDevice(null);
             generatePairingCode();
         }
+
+        return () => clearTimeout(closeTimeoutRef.current);
     }, [show]);
 
     useEffect(() => {
@@ -42,10 +45,19 @@ const DevicePairing = ({ show, onHide }) => {
             setStep('confirm');
         };
 
+        const onPairingError = ({ message }) => {
+            console.error('Pairing Error:', message);
+            clearTimeout(closeTimeoutRef.current);
+            setError(message || 'Failed to approve device.');
+            setStep('error');
+        };
+
         socket.on('confirmation-request', onConfirmationRequest);
+        socket.on('pairing-error', onPairingError);
 
         return () => {
             socket.off('confirmation-request', onConfirmationRequest);
+            socket.off('pairing-error', onPairingError);
         };
     }, [socket, pairingCode]);
 
@@ -86,7 +98,7 @@ const DevicePairing = ({ show, onHide }) => {
         });
 
         setStep('success');
-        setTimeout(onHide, 2000);
+        closeTimeoutRef.current = setTimeout(onHide, 2000);
     };
 
     return (

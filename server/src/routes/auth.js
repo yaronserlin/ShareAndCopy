@@ -112,6 +112,10 @@ router.post('/logout', auth, authController.logout);
 
 router.post('/revoke', auth, validate(revokeSchema), authController.revokeDevice);
 
+router.get('/revoked-devices', auth, authController.listRevokedDevices);
+
+router.post('/reactivate-device', auth, validate(revokeSchema), authController.reactivateDevice);
+
 router.get(
     '/verify',
     auth,
