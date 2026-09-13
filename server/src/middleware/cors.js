@@ -22,7 +22,13 @@ const LOCAL_ORIGINS = [
  */
 const getAllowedOrigins = () => {
     const origins = [...LOCAL_ORIGINS];
-    if (env.PUBLIC_URL) {
+
+    // `env.PUBLIC_URL` defaults to the sentinel `'*'` when unset (see
+    // config/env.js). Unlike Helmet's CSP, a wildcard has no meaning for
+    // this origin-matching regex, so we deliberately skip building a
+    // pattern from it rather than relying on it regex-escaping into a
+    // literal `\*` that coincidentally never matches a real Origin header.
+    if (env.PUBLIC_URL && env.PUBLIC_URL !== '*') {
         const safeUrl = env.PUBLIC_URL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         origins.push(new RegExp(`^${safeUrl}(/.*)?(/.*)?(/.*)?$`));
     }
@@ -51,3 +57,4 @@ const corsOptions = {
 };
 
 module.exports = cors(corsOptions);
+module.exports.getAllowedOrigins = getAllowedOrigins;

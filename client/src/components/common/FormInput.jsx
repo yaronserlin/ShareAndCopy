@@ -52,7 +52,7 @@ const FormInput = ({
             )}
             <input
                 id={name}
-                className={`form-control ${styles.authInput} ${touched ? (isInvalid ? 'is-invalid' : 'is-valid') : ''}`}
+                className={`form-control ${styles.authInput} ${isInvalid ? 'is-invalid' : isValid ? 'is-valid' : ''}`}
                 type={type}
                 name={name}
                 placeholder={placeholder}

@@ -75,11 +75,11 @@ const PairingLogin = ({ onCancel }) => {
         try {
             const res = await axios.post(`${API_BASE_URL}/auth/verify-pairing`, { code: code.toUpperCase() });
 
-            if (!res.data.valid || !res.data.pairingToken) {
+            if (!res.data.data?.valid || !res.data.data?.pairingToken) {
                 throw new Error('Invalid code');
             }
 
-            const pairingToken = res.data.pairingToken;
+            const pairingToken = res.data.data.pairingToken;
 
             const socket = io(SERVER_URL, {
                 auth: { token: pairingToken }
@@ -137,13 +137,24 @@ const PairingLogin = ({ onCancel }) => {
         }
     };
 
+    /**
+     * Cancels a pending pairing attempt: tears down the temporary socket
+     * and returns the form to the code-entry state.
+     */
+    const handleCancelPairing = () => {
+        if (tempSocket) {
+            tempSocket.disconnect();
+        }
+        setStatus('input');
+    };
+
     return (
         <div className="card shadow-sm p-4 border-0" style={{ maxWidth: '400px', margin: '0 auto' }}>
             <h3 className="text-center mb-4">Pair New Device</h3>
 
             {status === 'input' && (
                 <Form onSubmit={handlePairingRequest}>
-                    <Form.Group className="mb-3">
+                    <Form.Group className="mb-3" controlId="pairingCode">
                         <Form.Label>Enter Pairing Code</Form.Label>
                         <Form.Control
                             type="text"
@@ -176,6 +187,9 @@ const PairingLogin = ({ onCancel }) => {
                     <Spinner animation="border" variant="primary" className="mb-3" />
                     <h5>{status === 'connecting' ? 'Connecting...' : 'Waiting for approval...'}</h5>
                     <p className="text-muted">Check your logged-in device to approve this connection.</p>
+                    <Button variant="outline-secondary" onClick={handleCancelPairing}>
+                        Cancel
+                    </Button>
                 </div>
             )}
         </div>

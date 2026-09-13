@@ -27,6 +27,6 @@ exports.refreshToken = async (req, res) => {
         res.json({ success: true, accessToken: tokens.accessToken, refreshToken: tokens.refreshToken });
     } catch (err) {
         logger.error(`Refresh token error: ${err.message}`);
-        res.status(401).json({ message: err.message });
+        res.status(401).json({ success: false, message: err.message });
     }
 };

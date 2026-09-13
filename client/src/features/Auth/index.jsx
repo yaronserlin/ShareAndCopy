@@ -3,7 +3,7 @@
  * modes based on the current route and query string.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import AuthLayout from './components/AuthLayout/AuthLayout';
 import LoginForm from './components/LoginForm/LoginForm';
@@ -19,19 +19,11 @@ import PairingLogin from '../../components/PairingLogin';
 const Auth = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const [isLogin, setIsLogin] = useState(location.pathname !== '/register');
-    const [isPairing, setIsPairing] = useState(false);
-
-    useEffect(() => {
-        setIsLogin(location.pathname !== '/register');
-
+    const isLogin = location.pathname !== '/register';
+    const [isPairing, setIsPairing] = useState(() => {
         const params = new URLSearchParams(location.search);
-        if (params.get('pairingCode')) {
-            setIsPairing(true);
-        } else {
-            setIsPairing(false);
-        }
-    }, [location]);
+        return Boolean(params.get('pairingCode'));
+    });
 
     /** Toggles between login and register, or exits pairing mode. */
     const handleSwitchMode = () => {

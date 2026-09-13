@@ -16,21 +16,29 @@ export const useAdminDashboard = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        let cancelled = false;
+
         const fetchStats = async () => {
             try {
                 const res = await api.get('/admin/stats');
+                if (cancelled) return;
                 if (res.data.success) {
                     setStats(res.data.data);
                 }
             } catch (error) {
+                if (cancelled) return;
                 console.error('Failed to fetch admin stats', error);
                 toast.error('Failed to load dashboard statistics');
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         };
 
         fetchStats();
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     return { stats, loading };

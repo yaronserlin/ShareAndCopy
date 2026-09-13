@@ -5,7 +5,7 @@
  * choice via {@link toggleTheme}.
  */
 
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 
 const ThemeContext = createContext();
 
@@ -40,13 +40,18 @@ export const ThemeProvider = ({ children }) => {
     }, []);
 
     /** Flips the theme between "light" and "dark", marking the choice as explicit (stops following OS changes). */
-    const toggleTheme = () => {
+    const toggleTheme = useCallback(() => {
         hasExplicitPreference.current = true;
         setTheme(prev => prev === 'dark' ? 'light' : 'dark');
-    };
+    }, []);
+
+    const value = useMemo(
+        () => ({ theme, setTheme, toggleTheme }),
+        [theme, toggleTheme]
+    );
 
     return (
-        <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
+        <ThemeContext.Provider value={value}>
             {children}
         </ThemeContext.Provider>
     );

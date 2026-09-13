@@ -11,6 +11,8 @@ const RevokedToken = require('../models/RevokedToken');
 const { getIO } = require('../socket');
 const { setAuthCookies, clearAuthCookies } = require('../utils/cookies');
 
+const REVOKED_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+
 /**
  * POST /auth/register
  * Creates a new user account and sets access/refresh token cookies.
@@ -101,12 +103,13 @@ exports.verify = (req, res) => {
 exports.logout = async (req, res) => {
     try {
         if (req.user?.jti) {
-            const exists = await RevokedToken.exists({ jti: req.user.jti });
-            if (!exists) {
+            try {
                 await RevokedToken.create({
                     jti: req.user.jti,
-                    expireAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+                    expireAt: new Date(Date.now() + REVOKED_TOKEN_TTL_MS)
                 });
+            } catch (err) {
+                if (err.code !== 11000) throw err;
             }
         }
     } catch (err) {
@@ -146,13 +149,15 @@ exports.revokeDevice = async (req, res) => {
             const jti = device.jti;
 
             if (jti) {
-                const exists = await RevokedToken.exists({ jti });
-                if (!exists) {
+                try {
                     await RevokedToken.create({
                         jti,
-                        expireAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+                        expireAt: new Date(Date.now() + REVOKED_TOKEN_TTL_MS)
                     });
                     logger.info(`Token revoked for device ${deviceId} (JTI: ${jti})`);
+                } catch (err) {
+                    if (err.code !== 11000) throw err;
+                    logger.info(`Token already revoked for device ${deviceId} (JTI: ${jti})`);
                 }
             }
 

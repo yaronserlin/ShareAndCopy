@@ -17,7 +17,7 @@ import PropTypes from 'prop-types';
  * @param {Function} [props.onRevoke] - Called with the device ID to revoke its access; omit to hide the action.
  * @returns {JSX.Element} The device card.
  */
-const DeviceCard = ({ device, selectedFile, onFileChange, onSend, transferProgress, transferStats, onRevoke }) => {
+const DeviceCard = React.memo(({ device, selectedFile, onFileChange, onSend, transferProgress, transferStats, onRevoke }) => {
     const isTransferred = transferProgress === 100;
     const isTransferring = transferProgress !== undefined && transferProgress < 100;
 
@@ -90,7 +90,9 @@ const DeviceCard = ({ device, selectedFile, onFileChange, onSend, transferProgre
             </div>
         </div>
     );
-};
+});
+
+DeviceCard.displayName = 'DeviceCard';
 
 DeviceCard.propTypes = {
     device: PropTypes.shape({

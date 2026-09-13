@@ -36,7 +36,7 @@ describe('DevicePairing Component', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         
-        axios.post.mockResolvedValue({ data: { code: '123456' } });
+        axios.post.mockResolvedValue({ data: { data: { code: '123456' } } });
         useSocket.mockReturnValue(mockSocket);
     });
 

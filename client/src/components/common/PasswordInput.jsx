@@ -52,7 +52,7 @@ const PasswordInput = ({
             <div className="input-group">
                 <input
                     id={name}
-                    className={`form-control ${styles.authInput} ${touched ? (isInvalid ? 'is-invalid' : 'is-valid') : ''}`}
+                    className={`form-control ${styles.authInput} ${isInvalid ? 'is-invalid' : isValid ? 'is-valid' : ''}`}
                     type={showPassword ? "text" : "password"}
                     name={name}
                     placeholder={placeholder}

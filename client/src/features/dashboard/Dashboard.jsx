@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { Modal, Button } from 'react-bootstrap';
 import toast from 'react-hot-toast';
 import { useP2P } from '../../hooks/useP2P';
 import { useAuth } from '../../context/AuthContext';
@@ -27,19 +28,22 @@ const Dashboard = () => {
     const [revokedDevices, setRevokedDevices] = useState([]);
 
     /** Refetches the current user's revoked-devices list. */
-    const fetchRevokedDevices = useCallback(async () => {
+    const fetchRevokedDevices = useCallback(async (signal) => {
         try {
-            const res = await api.get('/auth/revoked-devices');
+            const res = await api.get('/auth/revoked-devices', { signal });
             setRevokedDevices(res.data.data.devices);
         } catch (err) {
+            if (err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
             console.error('Failed to load revoked devices', err);
         }
     }, []);
 
     useEffect(() => {
-        if (!user?.isGuest) {
-            fetchRevokedDevices();
-        }
+        if (user?.isGuest) return undefined;
+
+        const controller = new AbortController();
+        fetchRevokedDevices(controller.signal);
+        return () => controller.abort();
     }, [user, fetchRevokedDevices]);
 
     /** Reactivates a revoked device, letting it log in again. */
@@ -55,24 +59,24 @@ const Dashboard = () => {
     };
 
     /** Stores the file chosen for a given target device. */
-    const handleFileChange = (e, deviceId) => {
+    const handleFileChange = useCallback((e, deviceId) => {
         if (e.target.files[0]) {
             setSelectedFiles(prev => ({ ...prev, [deviceId]: e.target.files[0] }));
         }
-    };
+    }, []);
 
     /** Sends the file currently selected for a device, if any. */
-    const handleSend = (deviceId) => {
+    const handleSend = useCallback((deviceId) => {
         const file = selectedFiles[deviceId];
         if (file) {
             sendFile(file, deviceId);
         }
-    };
+    }, [selectedFiles, sendFile]);
 
     /** Opens the revoke-device confirmation modal for a device. */
-    const handleRevoke = (deviceId) => {
+    const handleRevoke = useCallback((deviceId) => {
         setDeviceToRevoke(deviceId);
-    };
+    }, []);
 
     /** Revokes the pending device's access after user confirmation. */
     const confirmRevoke = async () => {
@@ -80,8 +84,8 @@ const Dashboard = () => {
         setDeviceToRevoke(null);
 
         try {
-            removeDevice(deviceId);
             await api.post('/auth/revoke', { deviceId });
+            removeDevice(deviceId);
             fetchRevokedDevices();
         } catch (err) {
             console.error('Revocation failed', err);
@@ -174,63 +178,53 @@ const Dashboard = () => {
             )}
 
             {Object.entries(pendingTransfers).map(([deviceId, transfer]) => (
-                <div className="modal show d-block" tabIndex="-1" key={deviceId} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                    <div className="modal-dialog modal-dialog-centered">
-                        <div className="modal-content border-0 shadow-lg">
-                            <div className="modal-header bg-primary text-white border-bottom-0">
-                                <h5 className="modal-title fw-bold">
-                                    <i className="bi bi-cloud-download me-2"></i>
-                                    Incoming File Request
-                                </h5>
-                            </div>
-                            <div className="modal-body p-4 text-center">
-                                <div className="mb-3">
-                                    <i className="bi bi-file-earmark-text display-1 text-primary"></i>
-                                </div>
-                                <h6 className="fw-bold mb-1">{transfer.fileName}</h6>
-                                <p className="text-muted small mb-3">{(transfer.fileSize / 1024 / 1024).toFixed(2)} MB</p>
-                                <p className="mb-0">
-                                    From <strong>{transfer.deviceName}</strong>
-                                </p>
-                            </div>
-                            <div className="modal-footer border-top-0 justify-content-center pb-4">
-                                <button className="btn btn-outline-secondary rounded-pill px-4" onClick={() => rejectTransfer(deviceId)}>
-                                    Decline
-                                </button>
-                                <button className="btn btn-primary rounded-pill px-4 fw-bold" onClick={() => acceptTransfer(deviceId)}>
-                                    Accept & Download
-                                </button>
-                            </div>
+                <Modal show onHide={() => rejectTransfer(deviceId)} centered key={deviceId} contentClassName="border-0 shadow-lg">
+                    <Modal.Header closeButton closeVariant="white" className="bg-primary text-white border-bottom-0">
+                        <Modal.Title className="fw-bold">
+                            <i className="bi bi-cloud-download me-2"></i>
+                            Incoming File Request
+                        </Modal.Title>
+                    </Modal.Header>
+                    <Modal.Body className="p-4 text-center">
+                        <div className="mb-3">
+                            <i className="bi bi-file-earmark-text display-1 text-primary"></i>
                         </div>
-                    </div>
-                </div>
+                        <h6 className="fw-bold mb-1">{transfer.fileName}</h6>
+                        <p className="text-muted small mb-3">{(transfer.fileSize / 1024 / 1024).toFixed(2)} MB</p>
+                        <p className="mb-0">
+                            From <strong>{transfer.deviceName}</strong>
+                        </p>
+                    </Modal.Body>
+                    <Modal.Footer className="border-top-0 justify-content-center pb-4">
+                        <Button variant="outline-secondary" className="rounded-pill px-4" onClick={() => rejectTransfer(deviceId)}>
+                            Decline
+                        </Button>
+                        <Button variant="primary" className="rounded-pill px-4 fw-bold" onClick={() => acceptTransfer(deviceId)}>
+                            Accept & Download
+                        </Button>
+                    </Modal.Footer>
+                </Modal>
             ))}
 
-            {deviceToRevoke && (
-                <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                    <div className="modal-dialog modal-dialog-centered">
-                        <div className="modal-content border-0 shadow-lg">
-                            <div className="modal-header bg-danger text-white border-bottom-0">
-                                <h5 className="modal-title fw-bold">
-                                    <i className="bi bi-exclamation-triangle me-2"></i>
-                                    Revoke Device
-                                </h5>
-                            </div>
-                            <div className="modal-body p-4 text-center">
-                                <p className="mb-0">Are you sure you want to revoke this device? It will be disconnected immediately.</p>
-                            </div>
-                            <div className="modal-footer border-top-0 justify-content-center pb-4">
-                                <button className="btn btn-outline-secondary rounded-pill px-4" onClick={() => setDeviceToRevoke(null)}>
-                                    Cancel
-                                </button>
-                                <button className="btn btn-danger rounded-pill px-4 fw-bold" onClick={confirmRevoke}>
-                                    Revoke
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <Modal show={!!deviceToRevoke} onHide={() => setDeviceToRevoke(null)} centered contentClassName="border-0 shadow-lg">
+                <Modal.Header closeButton closeVariant="white" className="bg-danger text-white border-bottom-0">
+                    <Modal.Title className="fw-bold">
+                        <i className="bi bi-exclamation-triangle me-2"></i>
+                        Revoke Device
+                    </Modal.Title>
+                </Modal.Header>
+                <Modal.Body className="p-4 text-center">
+                    <p className="mb-0">Are you sure you want to revoke this device? It will be disconnected immediately.</p>
+                </Modal.Body>
+                <Modal.Footer className="border-top-0 justify-content-center pb-4">
+                    <Button variant="outline-secondary" className="rounded-pill px-4" onClick={() => setDeviceToRevoke(null)}>
+                        Cancel
+                    </Button>
+                    <Button variant="danger" className="rounded-pill px-4 fw-bold" onClick={confirmRevoke}>
+                        Revoke
+                    </Button>
+                </Modal.Footer>
+            </Modal>
         </div>
     );
 };

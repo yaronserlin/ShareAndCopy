@@ -27,7 +27,7 @@ exports.refreshAccessToken = async (refreshToken) => {
             throw new Error('Invalid token type');
         }
 
-        const user = await User.findById(decoded.id).select('isAdmin revokedDevices');
+        const user = await User.findById(decoded.id).select('isAdmin revokedDevices authorizedDevices');
         if (!user) {
             throw new Error('User not found');
         }
@@ -48,6 +48,15 @@ exports.refreshAccessToken = async (refreshToken) => {
             env.JWT_REFRESH_SECRET,
             { expiresIn: '7d' }
         );
+
+        if (decoded.deviceId) {
+            const deviceIndex = user.authorizedDevices.findIndex(d => d.deviceId === decoded.deviceId);
+            if (deviceIndex > -1) {
+                user.authorizedDevices[deviceIndex].jti = payload.jti;
+                user.authorizedDevices[deviceIndex].lastActive = new Date();
+                await user.save();
+            }
+        }
 
         logger.info(`Access token refreshed for user ${decoded.id}`);
 

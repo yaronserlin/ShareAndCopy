@@ -150,9 +150,9 @@ describe('Auth Routes', () => {
             const res = await agent.post('/api/auth/pairing-code');
 
             expect(res.statusCode).toBe(200);
-            expect(res.body.code).toMatch(/^[0-9A-F]{6}$/);
-            expect(res.body.pairingToken).toEqual(expect.any(String));
-            expect(res.body.expiresIn).toBe(60 * 5);
+            expect(res.body.data.code).toMatch(/^[0-9A-F]{6}$/);
+            expect(res.body.data.pairingToken).toEqual(expect.any(String));
+            expect(res.body.data.expiresIn).toBe(60 * 5);
         });
 
         it('should return 401 for unauthenticated request', async () => {
@@ -166,15 +166,15 @@ describe('Auth Routes', () => {
             const mockUser = generateUser();
             const agent = request.agent(app);
             await agent.post('/api/auth/register').send(mockUser);
-            const { body: { code } } = await agent.post('/api/auth/pairing-code');
+            const { body: { data: { code } } } = await agent.post('/api/auth/pairing-code');
 
             const res = await request(app)
                 .post('/api/auth/verify-pairing')
                 .send({ code });
 
             expect(res.statusCode).toBe(200);
-            expect(res.body.valid).toBe(true);
-            expect(res.body.pairingToken).toEqual(expect.any(String));
+            expect(res.body.data.valid).toBe(true);
+            expect(res.body.data.pairingToken).toEqual(expect.any(String));
         });
 
         it('should reject an invalid or expired code', async () => {
@@ -183,14 +183,14 @@ describe('Auth Routes', () => {
                 .send({ code: 'NOTREAL' });
 
             expect(res.statusCode).toBe(400);
-            expect(res.body.valid).toBe(false);
+            expect(res.body.success).toBe(false);
         });
 
         it('should not allow the same code to be consumed twice', async () => {
             const mockUser = generateUser();
             const agent = request.agent(app);
             await agent.post('/api/auth/register').send(mockUser);
-            const { body: { code } } = await agent.post('/api/auth/pairing-code');
+            const { body: { data: { code } } } = await agent.post('/api/auth/pairing-code');
 
             await request(app).post('/api/auth/verify-pairing').send({ code });
             const res = await request(app).post('/api/auth/verify-pairing').send({ code });

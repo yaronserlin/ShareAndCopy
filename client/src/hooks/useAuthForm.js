@@ -3,7 +3,7 @@
  * tracks field values, touched state, and per-field validation errors.
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { validateField } from '../utils/validation';
 
 /**
@@ -24,7 +24,6 @@ export const useAuthForm = (initialState, validatePasswordMatch = false) => {
     const [formData, setFormData] = useState(initialState);
     const [errors, setErrors] = useState({});
     const [touched, setTouched] = useState({});
-    const [isValid, setIsValid] = useState(false);
 
     /** A form is valid when every field is non-empty and error-free. */
     const checkValidity = useCallback((currentData, currentErrors) => {
@@ -65,13 +64,13 @@ export const useAuthForm = (initialState, validatePasswordMatch = false) => {
     }, [validatePasswordMatch, formData.password]);
 
     /** Recomputes overall form validity whenever field values change. */
-    useEffect(() => {
+    const isValid = useMemo(() => {
         const currentErrors = {};
         Object.keys(formData).forEach(key => {
             currentErrors[key] = validateField(key, formData[key], !validatePasswordMatch, validatePasswordMatch && key === 'confirmPassword' ? formData.password : undefined);
         });
 
-        setIsValid(checkValidity(formData, currentErrors));
+        return checkValidity(formData, currentErrors);
     }, [formData, validatePasswordMatch, checkValidity]);
 
     /**

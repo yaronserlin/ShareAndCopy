@@ -36,6 +36,7 @@ const env = require('../config/env');
 const logger = require('../utils/logger');
 const pairingStore = require('../utils/pairingStore');
 const { setAuthCookies } = require('../utils/cookies');
+const responseHandler = require('../utils/responseHandler');
 
 /**
  * POST /auth/pairing-code
@@ -56,10 +57,10 @@ router.post('/pairing-code', authLimiter, auth, async (req, res) => {
 
         pairingStore.set(code, req.user.id, pairingToken, expiresIn * 1000);
 
-        res.json({ code, pairingToken, expiresIn });
+        responseHandler.success(res, { code, pairingToken, expiresIn }, 'Pairing code generated');
     } catch (err) {
         logger.error(`Pairing Code Error: ${err.message}`);
-        res.status(500).json({ message: 'Server error generating code' });
+        responseHandler.error(res, 'Server error generating code', err.message);
     }
 });
 
@@ -76,9 +77,9 @@ router.post(
 
         const entry = pairingStore.consume(code);
         if (entry) {
-            res.json({ valid: true, pairingToken: entry.token });
+            responseHandler.success(res, { valid: true, pairingToken: entry.token }, 'Pairing code verified');
         } else {
-            res.status(400).json({ valid: false, message: 'Invalid or expired code' });
+            responseHandler.error(res, 'Invalid or expired code', null, 400);
         }
     }
 );
@@ -92,19 +93,19 @@ router.post('/adopt-token', (req, res) => {
     const { token } = req.body;
 
     if (!token) {
-        return res.status(400).json({ message: 'Token is required' });
+        return responseHandler.error(res, 'Token is required', null, 400);
     }
 
     try {
         const decoded = jwt.verify(token, env.JWT_SECRET);
         if (decoded.scope !== 'guest' && !decoded.isGuest) {
-            return res.status(400).json({ message: 'Token is not adoptable' });
+            return responseHandler.error(res, 'Token is not adoptable', null, 400);
         }
         setAuthCookies(res, { accessToken: token });
-        res.json({ success: true });
+        responseHandler.success(res, null, 'Token adopted successfully');
     } catch (err) {
         logger.warn(`Adopt-token failed: ${err.message}`);
-        res.status(400).json({ message: 'Invalid token' });
+        responseHandler.error(res, 'Invalid token', null, 400);
     }
 });
 

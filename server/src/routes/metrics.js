@@ -5,6 +5,7 @@
 
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const { register } = require('../utils/metrics');
 const logger = require('../utils/logger');
@@ -26,7 +27,10 @@ const requireMetricsToken = (req, res, next) => {
     const authHeader = req.headers.authorization || '';
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
-    if (token !== env.METRICS_TOKEN) {
+    const expected = Buffer.from(env.METRICS_TOKEN);
+    const provided = token ? Buffer.from(token) : null;
+
+    if (!provided || provided.length !== expected.length || !crypto.timingSafeEqual(provided, expected)) {
         return res.status(401).json({ message: 'Unauthorized' });
     }
 

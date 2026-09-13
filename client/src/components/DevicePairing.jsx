@@ -26,14 +26,19 @@ const DevicePairing = ({ show, onHide }) => {
     const closeTimeoutRef = useRef(null);
 
     useEffect(() => {
+        let cancelled = false;
+
         if (show) {
             setStep('loading');
             setError(null);
             setRequestedDevice(null);
-            generatePairingCode();
+            generatePairingCode(() => cancelled);
         }
 
-        return () => clearTimeout(closeTimeoutRef.current);
+        return () => {
+            cancelled = true;
+            clearTimeout(closeTimeoutRef.current);
+        };
     }, [show]);
 
     useEffect(() => {
@@ -65,20 +70,26 @@ const DevicePairing = ({ show, onHide }) => {
      * Requests a new pairing code from the server and joins its socket
      * room so this device can receive the pairing confirmation request.
      *
+     * @param {() => boolean} [isCancelled] - Returns true if the owning
+     *   effect has since been cleaned up (e.g. the modal was hidden
+     *   again), so a stale response doesn't overwrite newer state.
      * @returns {Promise<void>}
      */
-    const generatePairingCode = async () => {
+    const generatePairingCode = async (isCancelled) => {
         try {
             const res = await api.post('/auth/pairing-code', {});
 
-            setPairingCode(res.data.code);
+            if (isCancelled?.()) return;
+
+            setPairingCode(res.data.data.code);
             setStep('show-qr');
 
             if (socket) {
-                socket.emit('join-pairing', res.data.code);
+                socket.emit('join-pairing', res.data.data.code);
             }
 
         } catch (err) {
+            if (isCancelled?.()) return;
             console.error('Error generating pairing code:', err);
             setError('Failed to generate pairing code');
             setStep('error');

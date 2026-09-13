@@ -59,7 +59,7 @@ describe('PairingLogin Component', () => {
     test('submits valid code and connects', async () => {
         
         axios.post.mockResolvedValue({
-            data: { valid: true, pairingToken: 'temp-token' }
+            data: { data: { valid: true, pairingToken: 'temp-token' } }
         });
 
         render(
@@ -100,7 +100,7 @@ describe('PairingLogin Component', () => {
 
     test('handles invalid code error', async () => {
         axios.post.mockResolvedValue({
-            data: { valid: false }
+            data: { data: { valid: false } }
         });
 
         render(

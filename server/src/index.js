@@ -18,7 +18,7 @@ const connectDB = require('./config/db');
 const { parseCookies } = require('./utils/cookies');
 const requestId = require('./middleware/requestId');
 const errorHandler = require('./middleware/error');
-const { registerProcessErrorHandlers } = require('./utils/processHandlers');
+const { registerProcessErrorHandlers, registerShutdownHandlers } = require('./utils/processHandlers');
 
 const app = express();
 const server = http.createServer(app);
@@ -34,8 +34,13 @@ app.use(helmet({
             styleSrc: ["'self'", "'unsafe-inline'"],
             scriptSrc: ["'self'"],
             imgSrc: ["'self'", 'data:', 'https:'],
+            // `env.PUBLIC_URL` defaults to the sentinel `'*'` when unset
+            // (see config/env.js). Here it's a real Helmet CSP wildcard,
+            // so unlike cors.js (where '*' is inert) we must not let it
+            // fall through: default to 'self'-only connect-src rather than
+            // allowing every origin.
             connectSrc: ["'self'",
-                env.PUBLIC_URL || ''
+                (env.PUBLIC_URL && env.PUBLIC_URL !== '*') ? env.PUBLIC_URL : ''
             ].filter(Boolean),
             fontSrc: ["'self'"],
             objectSrc: ["'none'"],
@@ -114,6 +119,7 @@ const startServer = async () => {
 
 if (require.main === module) {
     registerProcessErrorHandlers();
+    registerShutdownHandlers(server);
     startServer();
 }
 

@@ -3,6 +3,7 @@
  */
 
 const Joi = require('joi');
+const { APP_CONSTANTS } = require('./constants');
 
 /** Schema for `POST /auth/register`. */
 const registerSchema = Joi.object({
@@ -19,10 +20,10 @@ const registerSchema = Joi.object({
             'string.min': 'Password must be at least 8 characters long',
             'string.pattern.name': 'Password must contain at least one uppercase letter, one lowercase letter, and one number'
         }),
-    firstName: Joi.string().pattern(/^\p{L}+(?:[' -]\p{L}+)*$/u).required().messages({
+    firstName: Joi.string().pattern(APP_CONSTANTS.REGEX.NAME).required().messages({
         'string.pattern.base': 'First name must contain only letters'
     }),
-    lastName: Joi.string().pattern(/^\p{L}+(?:[' -]\p{L}+)*$/u).required().messages({
+    lastName: Joi.string().pattern(APP_CONSTANTS.REGEX.NAME).required().messages({
         'string.pattern.base': 'Last name must contain only letters'
     })
 });
@@ -31,7 +32,9 @@ const registerSchema = Joi.object({
 const loginSchema = Joi.object({
     email: Joi.string().email().required(),
     password: Joi.string().required(),
-    deviceId: Joi.string().optional(),
+    deviceId: Joi.string().pattern(/^[a-zA-Z0-9_-]+$/).optional().messages({
+        'string.pattern.base': 'DeviceID contains invalid characters'
+    }),
     deviceName: Joi.string().optional()
 });
 

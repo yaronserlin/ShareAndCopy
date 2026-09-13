@@ -10,6 +10,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const validator = require('validator');
 const env = require('./config/env');
+const { getAllowedOrigins } = require('./middleware/cors');
 const User = require('./models/User');
 const DailyStat = require('./models/DailyStat');
 const RevokedToken = require('./models/RevokedToken');
@@ -26,6 +27,9 @@ const deviceActivityBuffer = new Map();
 
 /** Per-socket, per-event rate limit counters. */
 const socketRateLimits = new Map();
+
+/** Maximum times a failed device-activity bulk update is requeued before being dropped. */
+const MAX_DEVICE_ACTIVITY_RETRIES = 3;
 
 /**
  * Simple fixed-window rate limiter for socket events.
@@ -68,9 +72,11 @@ const checkSocketRateLimit = (socketId, event, maxRequests = 100, windowMs = 600
 const initSocket = (server) => {
     const allowedOrigins = env.NODE_ENV === 'production'
         ? [env.PUBLIC_URL].filter(Boolean)
-        : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5001', 'http://127.0.0.1:5173', 'http://192.168.1.112:5173'];
+        : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5001', 'http://127.0.0.1:5173'];
 
-    const localOriginRegex = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(:\d+)?$/;
+    // Same LAN-origin patterns (10.x, 172.16-31.x, 192.168.x, localhost)
+    // used by the HTTP CORS middleware, so the two never drift apart.
+    const lanOriginPatterns = getAllowedOrigins();
 
     io = socketIo(server, {
         cors: {
@@ -79,7 +85,7 @@ const initSocket = (server) => {
                     return callback(null, true);
                 }
 
-                if (allowedOrigins.includes(origin) || (env.NODE_ENV !== 'production' && localOriginRegex.test(origin))) {
+                if (allowedOrigins.includes(origin) || (env.NODE_ENV !== 'production' && lanOriginPatterns.some(pattern => pattern.test(origin)))) {
                     callback(null, true);
                 } else {
                     logger.warn(`CORS blocked origin: ${origin}`);
@@ -129,7 +135,7 @@ const initSocket = (server) => {
                 return next();
             }
 
-            const user = await User.findById(decoded.id).select('-password');
+            const user = await User.findById(decoded.id).select('-password').lean();
 
             if (!user) {
                 return next(new Error('Authentication error: User not found'));
@@ -302,6 +308,13 @@ const initSocket = (server) => {
                     socketId: socket.id,
                     deviceInfo
                 });
+
+                // Join the pairing room *after* the broadcast above (so
+                // this socket doesn't receive its own confirmation-request)
+                // so a later `approve-pairing` can verify its targetSocketId
+                // is actually the device that requested this code, instead
+                // of trusting a caller-supplied socket ID outright.
+                socket.join(`pairing-${code}`);
             } catch (err) {
                 log.error('Error handling pairing request', err);
             }
@@ -319,6 +332,18 @@ const initSocket = (server) => {
                 if (socket.user.isGuest || socket.user.isPairing || !pairingStore.isOwner(code, userId)) {
                     log.warn(`Denied approve-pairing for code ${maskPairingCode(code)}`);
                     return socket.emit('pairing-error', { message: 'Not authorized to approve this pairing request' });
+                }
+
+                // Verify targetSocketId is actually a member of this
+                // pairing's room (joined in the `request-pairing` handler
+                // above), the same way the `signal` handler confirms a
+                // target is in the sender's own room before relaying to
+                // it — otherwise a caller could supply an arbitrary
+                // socket ID and have a guest token delivered to it.
+                const pairingRoom = io.sockets.adapter.rooms.get(`pairing-${code}`);
+                if (!targetSocketId || !pairingRoom || !pairingRoom.has(targetSocketId)) {
+                    log.warn(`Denied approve-pairing: target socket not in pairing room for code ${maskPairingCode(code)}`);
+                    return socket.emit('pairing-error', { message: 'Invalid pairing target' });
                 }
 
                 // Finalize the code immediately after authorizing, rather
@@ -487,8 +512,15 @@ const deviceActivityInterval = setInterval(async () => {
         logger.error(`Bulk device activity update failed: ${err.message}`);
 
         updates.forEach(update => {
+            const retryCount = (update.retryCount || 0) + 1;
+
+            if (retryCount > MAX_DEVICE_ACTIVITY_RETRIES) {
+                logger.error(`Dropping device activity update for ${update.userId}:${update.deviceId} after ${MAX_DEVICE_ACTIVITY_RETRIES} failed retries`);
+                return;
+            }
+
             const key = `${update.userId}:${update.deviceId}`;
-            deviceActivityBuffer.set(key, update);
+            deviceActivityBuffer.set(key, { ...update, retryCount });
         });
     }
 }, 30000);

@@ -34,3 +34,5 @@ env-config.js
 public/env-config.js
 server/.env
 client/public/env-config.js
+graphify-out/*
+.claude/*

@@ -26,6 +26,10 @@ const DEFAULT_ICE_SERVERS = [
 const CHUNK_SIZE = 16 * 1024;
 /** Largest file, in bytes, that a transfer will accept. */
 const MAX_FILE_SIZE = 500 * 1024 * 1024;
+/** Maximum number of in-flight receive transfers tracked per peer connection at once. */
+const MAX_CONCURRENT_TRANSFERS_PER_PEER = 5;
+/** How long to wait for a FINISH message before abandoning a tracked receive transfer. */
+const TRANSFER_TIMEOUT_MS = 60 * 1000;
 
 /**
  * Generates a UUID, preferring `crypto.randomUUID` and falling back to a
@@ -42,6 +46,19 @@ const generateUUID = () => {
         const v = c === 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
     });
+};
+
+/**
+ * Sanitizes a (potentially attacker-controlled) filename before it is used
+ * as a browser download name: strips path separators and control
+ * characters and caps the length.
+ *
+ * @param {string} name
+ * @returns {string}
+ */
+const sanitizeFileName = (name) => {
+    // eslint-disable-next-line no-control-regex -- intentionally stripping control characters
+    return name.replace(/[/\\]/g, '_').replace(/[\x00-\x1f]/g, '').slice(0, 255);
 };
 
 /**
@@ -163,6 +180,285 @@ export const useP2P = () => {
         };
         fetchConfig();
     }, []);
+
+    /**
+     * Attaches handlers to an incoming RTCDataChannel: parses the JSON
+     * control messages (`METADATA`, `FINISH`) and raw binary chunks that
+     * make up a receive-side file transfer, reassembling the file and
+     * triggering a browser download once all chunks have arrived.
+     *
+     * Wrapped in `useCallback` (rather than being a plain function) so it
+     * has a stable identity that `getOrCreatePeer` and the main signaling
+     * effect can safely depend on without re-running on every render.
+     *
+     * @param {RTCDataChannel} channel
+     * @param {string} deviceId - ID of the sending device.
+     */
+    const setupReceiveChannel = useCallback((channel, deviceId) => {
+        /** Transfers in flight on this channel, keyed by transfer ID. */
+        const activeTransfers = new Map();
+        let currentTransferId = null;
+
+        const clearTransferTimeout = (transfer) => {
+            if (transfer && transfer.timeoutId) {
+                clearTimeout(transfer.timeoutId);
+            }
+        };
+
+        const dropDeviceState = () => {
+            setTransferProgress(prev => {
+                if (!(deviceId in prev)) return prev;
+                const next = { ...prev };
+                delete next[deviceId];
+                return next;
+            });
+            setPendingTransfers(prev => {
+                if (!(deviceId in prev)) return prev;
+                const next = { ...prev };
+                delete next[deviceId];
+                return next;
+            });
+        };
+
+        const abortActiveTransfer = () => {
+            if (activeTransfers.size === 0) return;
+            activeTransfers.forEach(clearTransferTimeout);
+            activeTransfers.clear();
+            dropDeviceState();
+        };
+
+        channel.onopen = () => debugLog(`Data Channel Opened (Receiver) for ${deviceId}`);
+        channel.onclose = () => {
+            debugLog(`Data Channel Closed (Receiver) for ${deviceId}`);
+            abortActiveTransfer();
+        };
+        channel.onerror = (e) => {
+            console.error(`Data Channel Error (Receiver) for ${deviceId}:`, e);
+            toast.error('File transfer connection error.');
+            abortActiveTransfer();
+        };
+
+        channel.onmessage = async (event) => {
+            const data = event.data;
+
+            if (typeof data === 'string') {
+                try {
+                    const message = JSON.parse(data);
+                    if (message.type === 'METADATA') {
+                        if (!message.fileSize || message.fileSize <= 0 || message.fileSize > MAX_FILE_SIZE) {
+                            console.error(`Invalid file size in metadata: ${message.fileSize}`);
+                            toast.error('Invalid file metadata received');
+                            return;
+                        }
+
+                        const fileName = message.fileName || '';
+                        const dotIndex = fileName.lastIndexOf('.');
+                        const extension = dotIndex >= 0 ? fileName.slice(dotIndex).toLowerCase() : '';
+                        if (APP_CONSTANTS.FORBIDDEN_EXTENSIONS.includes(extension)) {
+                            console.error(`Blocked forbidden incoming file extension: ${extension}`);
+                            toast.error(`Files of type "${extension}" are not allowed.`);
+                            return;
+                        }
+
+                        if (activeTransfers.size >= MAX_CONCURRENT_TRANSFERS_PER_PEER) {
+                            console.error(`Too many concurrent transfers from ${deviceId}`);
+                            toast.error('Too many simultaneous transfers from this device.');
+                            return;
+                        }
+
+                        const transferId = message.transferId || crypto.randomUUID();
+                        currentTransferId = transferId;
+
+                        debugLog(`Receiving file offer [${transferId}]: ${message.fileName} (${message.fileSize} bytes)`);
+
+                        const timeoutId = setTimeout(() => {
+                            if (!activeTransfers.has(transferId)) return;
+                            console.error(`Transfer [${transferId}] timed out waiting for FINISH`);
+                            activeTransfers.delete(transferId);
+                            dropDeviceState();
+                            toast.error('File transfer timed out.');
+                        }, TRANSFER_TIMEOUT_MS);
+
+                        activeTransfers.set(transferId, {
+                            fileMeta: message,
+                            receivedBuffers: [],
+                            receivedSize: 0,
+                            timeoutId
+                        });
+
+                        setPendingTransfers(prev => ({
+                            ...prev,
+                            [deviceId]: {
+                                fileName: message.fileName,
+                                fileSize: message.fileSize,
+                                deviceName: onlineDevicesRef.current.find(d => d.deviceId === deviceId)?.deviceName || 'Unknown Device',
+                                channel,
+                                transferId
+                            }
+                        }));
+                    } else if (message.type === 'FINISH') {
+                        const transferId = message.transferId || currentTransferId;
+                        const transfer = activeTransfers.get(transferId);
+
+                        if (!transfer) {
+                            console.error(`FINISH received for unknown transfer: ${transferId}`);
+                            return;
+                        }
+
+                        clearTransferTimeout(transfer);
+
+                        debugLog(`File Transfer Complete [${transferId}]. Reassembling...`);
+                        const blob = new Blob(transfer.receivedBuffers);
+                        const url = URL.createObjectURL(blob);
+
+                        objectURLsRef.current.add(url);
+
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = sanitizeFileName(transfer.fileMeta.fileName);
+                        a.click();
+
+                        if (socket) {
+                            socket.emit('report-transfer', { size: transfer.fileMeta.fileSize, type: 'download' });
+                        }
+
+                        setTransferProgress(prev => {
+                            const newState = { ...prev };
+                            delete newState[deviceId];
+                            return newState;
+                        });
+
+                        setTimeout(() => {
+                            URL.revokeObjectURL(url);
+                            objectURLsRef.current.delete(url);
+                        }, 3000);
+                        activeTransfers.delete(transferId);
+                    }
+                } catch (e) {
+                    console.error('Error parsing signaling message', e);
+                }
+            } else {
+                const transfer = activeTransfers.get(currentTransferId);
+
+                if (!transfer) {
+                    console.error('Received chunk for unknown transfer');
+                    return;
+                }
+
+                if (transfer.receivedSize + data.byteLength > MAX_FILE_SIZE) {
+                    console.error('Transfer exceeded max limits during reception.');
+                    channel.close();
+                    clearTransferTimeout(transfer);
+                    setTransferProgress(prev => {
+                        const newState = { ...prev };
+                        delete newState[deviceId];
+                        return newState;
+                    });
+                    toast.error('Transfer aborted: Limit exceeded.');
+                    activeTransfers.delete(currentTransferId);
+                    return;
+                }
+
+                transfer.receivedBuffers.push(data);
+                transfer.receivedSize += data.byteLength;
+
+                if (transfer.fileMeta) {
+                    const progress = Math.round((transfer.receivedSize / transfer.fileMeta.fileSize) * 100);
+                    updateProgress(deviceId, progress);
+                }
+            }
+        };
+    }, [socket, updateProgress]);
+
+    /**
+     * Returns the existing peer connection for a device, or creates one
+     * and wires up its ICE candidate, data channel, and renegotiation
+     * handlers. Each side's "polite"/"impolite" role for perfect
+     * negotiation is derived deterministically by comparing device IDs.
+     *
+     * @param {string} targetDeviceId
+     * @param {string} targetSocketId
+     * @returns {RTCPeerConnection}
+     */
+    const getOrCreatePeer = useCallback((targetDeviceId, targetSocketId) => {
+        if (peersRef.current[targetDeviceId]) {
+            const p = peersRef.current[targetDeviceId];
+            debugLog(`Using existing peer for ${targetDeviceId}. ConnectionState: ${p.connectionState}`);
+            return p;
+        }
+
+        debugLog(`Creating new RTCPeerConnection for ${targetDeviceId}`);
+        const peer = new RTCPeerConnection(iceServersRef.current);
+        peersRef.current[targetDeviceId] = peer;
+
+        negotiationStateRef.current[targetDeviceId] = {
+            making: false,
+            ignoreOffer: false,
+            polite: myDeviceIdRef.current > targetDeviceId
+        };
+
+        setConnectionStatus(prev => ({ ...prev, [targetDeviceId]: 'checking' }));
+
+        peer.oniceconnectionstatechange = () => {
+            debugLog(`ICE Connection State Change (${targetDeviceId}):`, peer.iceConnectionState);
+            const state = peer.iceConnectionState;
+
+            if (state === 'failed' || state === 'closed') {
+                const deviceName = onlineDevicesRef.current.find(d => d.deviceId === targetDeviceId)?.deviceName || 'device';
+                toast.error(`Connection to ${deviceName} failed.`);
+                cleanupDeviceState(targetDeviceId);
+                return;
+            }
+
+            let status = 'checking';
+            if (state === 'connected' || state === 'completed') status = 'connected';
+            else if (state === 'disconnected') status = 'disconnected';
+
+            setConnectionStatus(prev => ({ ...prev, [targetDeviceId]: status }));
+        };
+
+        peer.onconnectionstatechange = () => {
+            debugLog(`Peer Connection State Change (${targetDeviceId}):`, peer.connectionState);
+        };
+
+        peer.onicecandidate = (event) => {
+            if (event.candidate && socket) {
+                socket.emit('signal', {
+                    targetSocketId,
+                    type: 'candidate',
+                    signalData: event.candidate
+                });
+            }
+        };
+
+        peer.ondatachannel = (event) => {
+            debugLog(`Received Data Channel from ${targetDeviceId}`);
+            const channel = event.channel;
+            setupReceiveChannel(channel, targetDeviceId);
+        };
+
+        peer.onnegotiationneeded = async () => {
+            debugLog('Negotiation Needed for', targetDeviceId);
+            const state = negotiationStateRef.current[targetDeviceId];
+            try {
+                state.making = true;
+                const offer = await peer.createOffer();
+                await peer.setLocalDescription(offer);
+                debugLog('Sending Offer...');
+                socket.emit('signal', {
+                    targetSocketId,
+                    type: 'offer',
+                    signalData: offer
+                });
+            } catch (err) {
+                console.error('Error during negotiation:', err);
+            } finally {
+                state.making = false;
+            }
+        };
+
+        return peer;
+    }, [socket, setupReceiveChannel, cleanupDeviceState]);
 
     /**
      * Wires up all socket event listeners for device presence and WebRTC
@@ -289,239 +585,7 @@ export const useP2P = () => {
             });
             objectURLsRef.current.clear();
         };
-    }, [socket]);
-
-    /**
-     * Returns the existing peer connection for a device, or creates one
-     * and wires up its ICE candidate, data channel, and renegotiation
-     * handlers. Each side's "polite"/"impolite" role for perfect
-     * negotiation is derived deterministically by comparing device IDs.
-     *
-     * @param {string} targetDeviceId
-     * @param {string} targetSocketId
-     * @returns {RTCPeerConnection}
-     */
-    const getOrCreatePeer = (targetDeviceId, targetSocketId) => {
-        if (peersRef.current[targetDeviceId]) {
-            const p = peersRef.current[targetDeviceId];
-            debugLog(`Using existing peer for ${targetDeviceId}. ConnectionState: ${p.connectionState}`);
-            return p;
-        }
-
-        debugLog(`Creating new RTCPeerConnection for ${targetDeviceId}`);
-        const peer = new RTCPeerConnection(iceServersRef.current);
-        peersRef.current[targetDeviceId] = peer;
-
-        negotiationStateRef.current[targetDeviceId] = {
-            making: false,
-            ignoreOffer: false,
-            polite: myDeviceIdRef.current > targetDeviceId
-        };
-
-        setConnectionStatus(prev => ({ ...prev, [targetDeviceId]: 'checking' }));
-
-        peer.oniceconnectionstatechange = () => {
-            debugLog(`ICE Connection State Change (${targetDeviceId}):`, peer.iceConnectionState);
-            const state = peer.iceConnectionState;
-
-            let status = 'checking';
-            if (state === 'connected' || state === 'completed') status = 'connected';
-            else if (state === 'failed') status = 'failed';
-            else if (state === 'disconnected') status = 'disconnected';
-            else if (state === 'closed') status = 'disconnected';
-
-            setConnectionStatus(prev => ({ ...prev, [targetDeviceId]: status }));
-        };
-
-        peer.onconnectionstatechange = () => {
-            debugLog(`Peer Connection State Change (${targetDeviceId}):`, peer.connectionState);
-        };
-
-        peer.onicecandidate = (event) => {
-            if (event.candidate && socket) {
-                socket.emit('signal', {
-                    targetSocketId,
-                    type: 'candidate',
-                    signalData: event.candidate
-                });
-            }
-        };
-
-        peer.ondatachannel = (event) => {
-            debugLog(`Received Data Channel from ${targetDeviceId}`);
-            const channel = event.channel;
-            setupReceiveChannel(channel, targetDeviceId);
-        };
-
-        peer.onnegotiationneeded = async () => {
-            debugLog('Negotiation Needed for', targetDeviceId);
-            const state = negotiationStateRef.current[targetDeviceId];
-            try {
-                state.making = true;
-                const offer = await peer.createOffer();
-                await peer.setLocalDescription(offer);
-                debugLog('Sending Offer...');
-                socket.emit('signal', {
-                    targetSocketId,
-                    type: 'offer',
-                    signalData: offer
-                });
-            } catch (err) {
-                console.error('Error during negotiation:', err);
-            } finally {
-                state.making = false;
-            }
-        };
-
-        return peer;
-    };
-
-    /**
-     * Attaches handlers to an incoming RTCDataChannel: parses the JSON
-     * control messages (`METADATA`, `FINISH`) and raw binary chunks that
-     * make up a receive-side file transfer, reassembling the file and
-     * triggering a browser download once all chunks have arrived.
-     *
-     * @param {RTCDataChannel} channel
-     * @param {string} deviceId - ID of the sending device.
-     */
-    const setupReceiveChannel = (channel, deviceId) => {
-        /** Transfers in flight on this channel, keyed by transfer ID. */
-        const activeTransfers = new Map();
-        let currentTransferId = null;
-
-        const abortActiveTransfer = () => {
-            if (activeTransfers.size === 0) return;
-            activeTransfers.clear();
-            setTransferProgress(prev => {
-                if (!(deviceId in prev)) return prev;
-                const next = { ...prev };
-                delete next[deviceId];
-                return next;
-            });
-            setPendingTransfers(prev => {
-                if (!(deviceId in prev)) return prev;
-                const next = { ...prev };
-                delete next[deviceId];
-                return next;
-            });
-        };
-
-        channel.onopen = () => debugLog(`Data Channel Opened (Receiver) for ${deviceId}`);
-        channel.onclose = () => {
-            debugLog(`Data Channel Closed (Receiver) for ${deviceId}`);
-            abortActiveTransfer();
-        };
-        channel.onerror = (e) => {
-            console.error(`Data Channel Error (Receiver) for ${deviceId}:`, e);
-            toast.error('File transfer connection error.');
-            abortActiveTransfer();
-        };
-
-        channel.onmessage = async (event) => {
-            const data = event.data;
-
-            if (typeof data === 'string') {
-                try {
-                    const message = JSON.parse(data);
-                    if (message.type === 'METADATA') {
-                        if (!message.fileSize || message.fileSize <= 0 || message.fileSize > MAX_FILE_SIZE) {
-                            console.error(`Invalid file size in metadata: ${message.fileSize}`);
-                            toast.error('Invalid file metadata received');
-                            return;
-                        }
-
-                        const transferId = message.transferId || crypto.randomUUID();
-                        currentTransferId = transferId;
-
-                        debugLog(`Receiving file offer [${transferId}]: ${message.fileName} (${message.fileSize} bytes)`);
-
-                        activeTransfers.set(transferId, {
-                            fileMeta: message,
-                            receivedBuffers: [],
-                            receivedSize: 0
-                        });
-
-                        setPendingTransfers(prev => ({
-                            ...prev,
-                            [deviceId]: {
-                                fileName: message.fileName,
-                                fileSize: message.fileSize,
-                                deviceName: onlineDevicesRef.current.find(d => d.deviceId === deviceId)?.deviceName || 'Unknown Device',
-                                channel,
-                                transferId
-                            }
-                        }));
-                    } else if (message.type === 'FINISH') {
-                        const transferId = message.transferId || currentTransferId;
-                        const transfer = activeTransfers.get(transferId);
-
-                        if (!transfer) {
-                            console.error(`FINISH received for unknown transfer: ${transferId}`);
-                            return;
-                        }
-
-                        debugLog(`File Transfer Complete [${transferId}]. Reassembling...`);
-                        const blob = new Blob(transfer.receivedBuffers);
-                        const url = URL.createObjectURL(blob);
-
-                        objectURLsRef.current.add(url);
-
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = transfer.fileMeta.fileName;
-                        a.click();
-
-                        if (socket) {
-                            socket.emit('report-transfer', { size: transfer.fileMeta.fileSize, type: 'download' });
-                        }
-
-                        setTransferProgress(prev => {
-                            const newState = { ...prev };
-                            delete newState[deviceId];
-                            return newState;
-                        });
-
-                        setTimeout(() => {
-                            URL.revokeObjectURL(url);
-                            objectURLsRef.current.delete(url);
-                        }, 3000);
-                        activeTransfers.delete(transferId);
-                    }
-                } catch (e) {
-                    console.error('Error parsing signaling message', e);
-                }
-            } else {
-                const transfer = activeTransfers.get(currentTransferId);
-
-                if (!transfer) {
-                    console.error('Received chunk for unknown transfer');
-                    return;
-                }
-
-                if (transfer.receivedSize + data.byteLength > MAX_FILE_SIZE) {
-                    console.error('Transfer exceeded max limits during reception.');
-                    channel.close();
-                    setTransferProgress(prev => {
-                        const newState = { ...prev };
-                        delete newState[deviceId];
-                        return newState;
-                    });
-                    toast.error('Transfer aborted: Limit exceeded.');
-                    activeTransfers.delete(currentTransferId);
-                    return;
-                }
-
-                transfer.receivedBuffers.push(data);
-                transfer.receivedSize += data.byteLength;
-
-                if (transfer.fileMeta) {
-                    const progress = Math.round((transfer.receivedSize / transfer.fileMeta.fileSize) * 100);
-                    updateProgress(deviceId, progress);
-                }
-            }
-        };
-    };
+    }, [socket, cleanupDeviceState, getOrCreatePeer]);
 
     /**
      * Streams a file across an open RTCDataChannel in fixed-size chunks,
@@ -539,7 +603,6 @@ export const useP2P = () => {
         channel.bufferedAmountLowThreshold = MAX_BUFFERED_AMOUNT / 2;
 
         let offset = 0;
-        const CHUNK_SIZE_FIXED = 16 * 1024;
 
         const startTime = Date.now();
         let lastStatTime = startTime;
@@ -581,7 +644,7 @@ export const useP2P = () => {
                 break;
             }
 
-            const currentChunkSize = Math.min(CHUNK_SIZE_FIXED, file.size - offset);
+            const currentChunkSize = Math.min(CHUNK_SIZE, file.size - offset);
             const chunk = file.slice(offset, offset + currentChunkSize);
             const buffer = await chunk.arrayBuffer();
 
@@ -625,6 +688,13 @@ export const useP2P = () => {
             const n = { ...prev };
             delete n[targetDeviceId];
             return n;
+        });
+
+        setTransferProgress(prev => {
+            if (!(targetDeviceId in prev)) return prev;
+            const next = { ...prev };
+            delete next[targetDeviceId];
+            return next;
         });
     };
 

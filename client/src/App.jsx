@@ -14,6 +14,7 @@ import Footer from './components/Footer';
 import NotFound from './components/NotFound';
 import About from './components/About';
 import AdminRoute from './components/AdminRoute';
+import RequireAuth from './components/RequireAuth';
 import AdminDashboard from './features/Admin/AdminDashboard';
 import Dashboard from './features/dashboard/Dashboard';
 import { Toaster } from 'react-hot-toast';
@@ -53,8 +54,10 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Auth />} />
           <Route path="/register" element={<Auth />} />
-          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/about" element={<About />} />
+          <Route element={<RequireAuth />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+          </Route>
           <Route element={<AdminRoute />}>
             <Route path="/admin" element={<AdminDashboard />} />
           </Route>

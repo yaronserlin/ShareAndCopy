@@ -11,7 +11,7 @@
  * though it's set correctly server-side.
  */
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api, { refreshAccessToken } from '../utils/api';
 import { getAccessToken, getRefreshToken, setAccessToken, setRefreshToken, clearTokens } from '../utils/tokenStore';
@@ -71,14 +71,14 @@ export const AuthProvider = ({ children }) => {
      * @param {string} [refreshToken] - Refresh token issued for this session, if any (guest sessions have none).
      * @param {boolean} [isGuest] - Whether this is an ephemeral paired-device guest session, not a full account.
      */
-    const login = (newRoomId, isAdmin, accessToken, refreshToken, isGuest = false) => {
+    const login = useCallback((newRoomId, isAdmin, accessToken, refreshToken, isGuest = false) => {
         localStorage.setItem('roomId', newRoomId);
         if (accessToken) setAccessToken(accessToken);
         if (refreshToken) setRefreshToken(refreshToken);
         setRoomId(newRoomId);
         setIsAuthenticated(true);
         setUser({ isAuthenticated: true, isAdmin: isAdmin, isGuest });
-    };
+    }, []);
 
     useEffect(() => {
         const verifyToken = async () => {
@@ -139,8 +139,13 @@ export const AuthProvider = ({ children }) => {
         };
     }, [logout]);
 
+    const value = useMemo(
+        () => ({ user, isAuthenticated, isLoading, roomId, login, logout }),
+        [user, isAuthenticated, isLoading, roomId, login, logout]
+    );
+
     return (
-        <AuthContext.Provider value={{ user, isAuthenticated, isLoading, roomId, login, logout }}>
+        <AuthContext.Provider value={value}>
             {children}
         </AuthContext.Provider>
     );
