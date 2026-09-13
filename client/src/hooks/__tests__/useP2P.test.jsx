@@ -13,7 +13,8 @@ const mockSocket = {
     on: vi.fn(),
     off: vi.fn(),
     emit: vi.fn(),
-    id: 'socket-123'
+    id: 'socket-123',
+    connected: true
 };
 
 

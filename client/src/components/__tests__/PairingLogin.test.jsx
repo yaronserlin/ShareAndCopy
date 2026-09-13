@@ -8,6 +8,7 @@ import { BrowserRouter } from 'react-router-dom';
 import PairingLogin from '../PairingLogin';
 import axios from 'axios';
 import io from 'socket.io-client';
+import { API_BASE_URL } from '../../config';
 
 import { AuthProvider } from '../../context/AuthContext';
 
@@ -73,7 +74,7 @@ describe('PairingLogin Component', () => {
         fireEvent.click(screen.getByText('Request Pairing'));
 
         await waitFor(() => {
-            expect(axios.post).toHaveBeenCalledWith('/api/auth/verify-pairing', { code: '123456' });
+            expect(axios.post).toHaveBeenCalledWith(`${API_BASE_URL}/auth/verify-pairing`, { code: '123456' });
         });
 
         expect(io).toHaveBeenCalled();
