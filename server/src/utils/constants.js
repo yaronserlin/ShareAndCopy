@@ -15,7 +15,7 @@ const APP_CONSTANTS = {
     REGEX: {
         EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
         NAME: /^\p{L}+(?:[' -]\p{L}+)*$/u,
-        PASSWORD_STRONG: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/
+        PASSWORD_STRONG: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d!@#$%^&*()]{8,}$/
     }
 };
 
