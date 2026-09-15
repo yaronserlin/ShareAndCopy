@@ -29,14 +29,14 @@ const auth = async (req, res, next) => {
     const token = bearerToken || req.cookies?.token;
 
     if (!token) {
-        return responseHandler.error(res, 'No token, authorization denied', null, 401);
+        return responseHandler.error(res, 'No token, authorization denied', null, 401, { code: 'no_token' });
     }
 
     try {
         const decoded = jwt.verify(token, env.JWT_SECRET);
 
         if (decoded.scope === 'pairing') {
-            return responseHandler.error(res, 'Token is not valid', null, 401);
+            return responseHandler.error(res, 'Token is not valid', null, 401, { code: 'token_invalid' });
         }
 
         req.user = decoded;
@@ -44,7 +44,7 @@ const auth = async (req, res, next) => {
         if (decoded.jti) {
             const isRevoked = await RevokedToken.exists({ jti: decoded.jti });
             if (isRevoked) {
-                return responseHandler.error(res, 'Token has been revoked', null, 401);
+                return responseHandler.error(res, 'Token has been revoked', null, 401, { code: 'token_revoked' });
             }
         }
 
@@ -62,7 +62,7 @@ const auth = async (req, res, next) => {
 
         const user = await User.findById(decoded.id).select('-password');
         if (!user) {
-            return responseHandler.error(res, 'User not found', null, 401);
+            return responseHandler.error(res, 'User not found', null, 401, { code: 'token_invalid' });
         }
 
         req.currentUser = user;
@@ -70,7 +70,16 @@ const auth = async (req, res, next) => {
         next();
     } catch (err) {
         logger.warn(`Authentication failed: ${err.message}`);
-        responseHandler.error(res, 'Token is not valid', null, 401);
+
+        // An expired access token is the normal, expected state for a
+        // client returning from the background: it just needs to refresh.
+        // Saying so explicitly keeps the client from treating it as a
+        // dead session and signing the user out.
+        if (err instanceof jwt.TokenExpiredError) {
+            return responseHandler.error(res, 'Access token expired', null, 401, { code: 'token_expired' });
+        }
+
+        responseHandler.error(res, 'Token is not valid', null, 401, { code: 'token_invalid' });
     }
 };
 

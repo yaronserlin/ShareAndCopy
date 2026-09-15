@@ -35,6 +35,33 @@ module.exports = {
     /** Secret used to sign refresh tokens. */
     JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
 
+    /**
+     * Access token lifetime. Short by design: the client refreshes it
+     * transparently, and a stolen access token stays useful only briefly.
+     */
+    ACCESS_TOKEN_TTL: process.env.ACCESS_TOKEN_TTL || '1h',
+
+    /**
+     * Refresh token lifetime, i.e. how long a device stays signed in
+     * without re-entering credentials. Long by design: an installed PWA
+     * is expected to stay signed in the way a native app does, and every
+     * refresh rotates the token.
+     */
+    REFRESH_TOKEN_TTL: process.env.REFRESH_TOKEN_TTL || '30d',
+
+    /** Refresh token lifetime for paired guest devices. */
+    GUEST_REFRESH_TOKEN_TTL: process.env.GUEST_REFRESH_TOKEN_TTL || '7d',
+
+    /**
+     * VAPID key pair and contact address for Web Push. Push is simply
+     * disabled (endpoints report `enabled: false`) when these are unset,
+     * so the app runs fine without them. Generate a pair with
+     * `npm run generate-vapid`.
+     */
+    VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY,
+    VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
+    VAPID_SUBJECT: process.env.VAPID_SUBJECT || 'mailto:admin@shareandcopy.app',
+
     /** Rate limiter window size, in ms. */
     RATE_LIMIT_WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 60000,
 

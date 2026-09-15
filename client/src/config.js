@@ -7,14 +7,41 @@
  * bundle be opened from another device on the LAN or over a tunnel (e.g.
  * a phone) and still reach the right server, instead of resolving
  * `localhost` to that device itself.
+ *
+ * Setting `VITE_SERVER_URL` to `/` (or `same-origin`) says the backend is
+ * reachable on the page's own origin - the case when the client host
+ * proxies `/api` and `/socket.io` through to it, which keeps the auth
+ * cookies first-party. See `docs/PWA.md`.
  */
 
 const SERVER_PORT = import.meta.env.VITE_SERVER_PORT || 5001;
 
+/** Values that mean "the backend is on this page's own origin". */
+const SAME_ORIGIN_VALUES = ['/', 'same-origin'];
+
+/**
+ * Resolves a configured server URL, expanding the same-origin sentinels
+ * to the page's actual origin.
+ *
+ * @param {string|undefined} value
+ * @returns {string|undefined}
+ */
+const resolveServerUrl = (value) => {
+    if (!value) return undefined;
+
+    if (SAME_ORIGIN_VALUES.includes(value) && typeof window !== 'undefined') {
+        return window.location.origin;
+    }
+
+    return value;
+};
+
 const runtimeServerUrl = typeof window !== 'undefined' ? window.SERVER_URL : undefined;
 
 /** Base URL of the backend server (protocol + host + port), no path suffix. */
-export const SERVER_URL = runtimeServerUrl || import.meta.env.VITE_SERVER_URL || 'http://localhost:' + SERVER_PORT;
+export const SERVER_URL = resolveServerUrl(runtimeServerUrl) ||
+    resolveServerUrl(import.meta.env.VITE_SERVER_URL) ||
+    'http://localhost:' + SERVER_PORT;
 
 /** Base URL for REST API requests, i.e. {@link SERVER_URL} plus the `/api` prefix. */
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `${SERVER_URL}/api`

@@ -9,6 +9,7 @@
 
 const cookie = require('cookie');
 const env = require('../config/env');
+const { toSeconds } = require('./duration');
 
 /** Whether cookies should be marked `secure`, based on `PUBLIC_URL`'s scheme. */
 const isSecureDeployment = () => typeof env.PUBLIC_URL === 'string' && env.PUBLIC_URL.startsWith('https://');
@@ -37,8 +38,10 @@ const baseOptions = () => {
 const parseCookies = (header) => cookie.parse(header || '');
 
 /**
- * Sets the access token cookie (1h expiry) and, if provided, the
- * refresh token cookie (7d expiry, scoped to `/api/auth/refresh`).
+ * Sets the access token cookie and, if provided, the refresh token
+ * cookie (scoped to `/api/auth/refresh`). Both expiries are derived from
+ * the configured token lifetimes so the cookie never outlives - or dies
+ * before - the token it carries.
  *
  * @param {import('express').Response} res
  * @param {{accessToken?: string, refreshToken?: string}} tokens
@@ -46,10 +49,17 @@ const parseCookies = (header) => cookie.parse(header || '');
 const setAuthCookies = (res, { accessToken, refreshToken }) => {
     const cookies = [];
     if (accessToken) {
-        cookies.push(cookie.serialize('token', accessToken, { ...baseOptions(), maxAge: 60 * 60 }));
+        cookies.push(cookie.serialize('token', accessToken, {
+            ...baseOptions(),
+            maxAge: toSeconds(env.ACCESS_TOKEN_TTL, 60 * 60)
+        }));
     }
     if (refreshToken) {
-        cookies.push(cookie.serialize('refreshToken', refreshToken, { ...baseOptions(), maxAge: 7 * 24 * 60 * 60, path: '/api/auth/refresh' }));
+        cookies.push(cookie.serialize('refreshToken', refreshToken, {
+            ...baseOptions(),
+            maxAge: toSeconds(env.REFRESH_TOKEN_TTL, 30 * 24 * 60 * 60),
+            path: '/api/auth/refresh'
+        }));
     }
     res.setHeader('Set-Cookie', cookies);
 };

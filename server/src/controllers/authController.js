@@ -8,6 +8,7 @@ const logger = require('../utils/logger');
 const { maskEmail, maskRoomId } = require('../utils/logSanitize');
 const responseHandler = require('../utils/responseHandler');
 const RevokedToken = require('../models/RevokedToken');
+const pushService = require('../services/pushService');
 const { getIO } = require('../socket');
 const { setAuthCookies, clearAuthCookies } = require('../utils/cookies');
 
@@ -54,6 +55,15 @@ exports.login = async (req, res) => {
         const result = await authService.login(email, password, deviceId, deviceName);
 
         logger.info(`User logged in: ${maskEmail(email)}`);
+
+        // Tell the account's other devices about the sign-in. Delivery
+        // is best-effort and never blocks the response.
+        pushService.sendToUser(String(result.user.id), {
+            category: 'security',
+            title: 'New sign-in',
+            body: `${deviceName || 'A new device'} just signed in to your account.`,
+            tag: 'sign-in'
+        }, { excludeDeviceId: deviceId });
 
         setAuthCookies(res, { accessToken: result.accessToken, refreshToken: result.refreshToken });
         const { token, ...body } = result;
@@ -163,6 +173,10 @@ exports.revokeDevice = async (req, res) => {
 
             user.authorizedDevices.splice(deviceIndex, 1);
 
+            // A revoked device must stop receiving the account's
+            // notifications, not just lose API access.
+            await pushService.removeDeviceSubscriptions(user._id.toString(), deviceId);
+
             const revokedIndex = user.revokedDevices.findIndex(d => d.deviceId === deviceId);
             const revokedEntry = { deviceId, deviceName: device.deviceName, revokedAt: new Date() };
             if (revokedIndex !== -1) {
@@ -196,6 +210,13 @@ exports.revokeDevice = async (req, res) => {
         if (!deviceFound) {
             return responseHandler.error(res, 'Device not found', null, 404);
         }
+
+        pushService.sendToUser(user._id.toString(), {
+            category: 'security',
+            title: 'Device removed',
+            body: 'A device was removed from your account and can no longer access it.',
+            tag: 'device-revoked'
+        }, { excludeDeviceId: deviceId });
 
         responseHandler.success(res, null, 'Device revoked successfully');
 

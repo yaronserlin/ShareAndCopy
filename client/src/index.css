@@ -56,3 +56,38 @@ body {
         padding-top: 30vh;
     }
 }
+/*
+ * Installed-app (standalone) adjustments. In a browser tab the chrome
+ * already keeps content clear of the notch and the home indicator; once
+ * installed, the page owns the full screen and has to do it itself.
+ */
+@media all and (display-mode: standalone) {
+    body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+        /* Rubber-band scrolling past the end of a standalone app looks
+           like the app has come unstuck from the screen. */
+        overscroll-behavior-y: none;
+    }
+}
+
+/* Banner shown while the app can't reach the server but the session is
+   still valid - the app keeps working, it just isn't in sync. */
+.connection-banner {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    top: calc(env(safe-area-inset-top) + 0.5rem);
+    z-index: 99998;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    background: rgba(220, 38, 38, 0.92);
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}

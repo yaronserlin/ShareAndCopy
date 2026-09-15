@@ -6,7 +6,8 @@
     "test": "jest",
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "seed": "node seeder.js"
+    "seed": "node seeder.js",
+    "generate-vapid": "node scripts/generate-vapid.js"
   },
   "keywords": [],
   "author": "",
@@ -31,6 +32,7 @@
     "prom-client": "^15.1.3",
     "socket.io": "^4.8.2",
     "validator": "^13.15.26",
+    "web-push": "^3.6.7",
     "winston": "^3.19.0"
   },
   "devDependencies": {

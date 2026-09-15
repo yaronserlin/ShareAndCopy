@@ -84,6 +84,7 @@ app.use(express.json());
 
 const routes = [
     { path: '/api/auth', route: './routes/auth' },
+    { path: '/api/push', route: './routes/push' },
     { path: '/api/admin', route: './routes/admin' },
     { path: '/api/system', route: './routes/system' },
     { path: '/metrics', route: './routes/metrics' }

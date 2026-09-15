@@ -3,12 +3,11 @@
  * JWT access/refresh token pairs issued for each.
  */
 
-const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const util = require('util');
 const User = require('../models/User');
-const env = require('../config/env');
+const tokenService = require('./tokenService');
 const logger = require('../utils/logger');
 
 const randomBytesAsync = util.promisify(crypto.randomBytes);
@@ -45,20 +44,12 @@ exports.register = async (userData) => {
 
     await user.save();
 
-    
-    const jti = crypto.randomUUID();
-    const accessToken = jwt.sign(
-        { id: user._id, isAdmin: user.isAdmin, jti },
-        env.JWT_SECRET,
-        { expiresIn: '1h' }
-    );
+    const { token: accessToken } = tokenService.signAccessToken({
+        userId: user._id,
+        isAdmin: user.isAdmin
+    });
 
-    
-    const refreshToken = jwt.sign(
-        { id: user._id, type: 'refresh' },
-        env.JWT_REFRESH_SECRET,
-        { expiresIn: '7d' }
-    );
+    const refreshToken = tokenService.signRefreshToken({ userId: user._id });
 
     return {
         token: accessToken, 
@@ -102,18 +93,12 @@ exports.login = async (email, password, deviceId, deviceName) => {
         throw new Error('Device revoked');
     }
 
-    const jti = crypto.randomUUID();
-    const accessToken = jwt.sign(
-        { id: user._id, isAdmin: user.isAdmin, jti },
-        env.JWT_SECRET,
-        { expiresIn: '1h' }
-    );
+    const { token: accessToken, jti } = tokenService.signAccessToken({
+        userId: user._id,
+        isAdmin: user.isAdmin
+    });
 
-    const refreshToken = jwt.sign(
-        { id: user._id, type: 'refresh', ...(deviceId && { deviceId }) },
-        env.JWT_REFRESH_SECRET,
-        { expiresIn: '7d' }
-    );
+    const refreshToken = tokenService.signRefreshToken({ userId: user._id, deviceId });
 
     if (deviceId) {
         const deviceIndex = user.authorizedDevices.findIndex(d => d.deviceId === deviceId);

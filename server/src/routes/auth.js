@@ -90,7 +90,7 @@ router.post(
  * session's auth cookie, completing the new device's login.
  */
 router.post('/adopt-token', (req, res) => {
-    const { token } = req.body;
+    const { token, refreshToken } = req.body;
 
     if (!token) {
         return responseHandler.error(res, 'Token is required', null, 400);
@@ -101,7 +101,11 @@ router.post('/adopt-token', (req, res) => {
         if (decoded.scope !== 'guest' && !decoded.isGuest) {
             return responseHandler.error(res, 'Token is not adoptable', null, 400);
         }
-        setAuthCookies(res, { accessToken: token });
+
+        // The guest's refresh token rides along so the paired session
+        // can be restored after a reload on deployments where the
+        // cookies are actually deliverable (same-origin setups).
+        setAuthCookies(res, { accessToken: token, refreshToken: refreshToken || undefined });
         responseHandler.success(res, null, 'Token adopted successfully');
     } catch (err) {
         logger.warn(`Adopt-token failed: ${err.message}`);

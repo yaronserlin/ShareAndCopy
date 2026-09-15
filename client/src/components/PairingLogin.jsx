@@ -107,10 +107,17 @@ const PairingLogin = ({ onCancel }) => {
                 setStatus('waiting');
             });
 
-            socket.on('pairing-success', async ({ token, user }) => {
+            socket.on('pairing-success', async ({ token, refreshToken, user }) => {
                 try {
-                    await axios.post(`${API_BASE_URL}/auth/adopt-token`, { token }, { withCredentials: true });
-                    login(user.roomId, user.isAdmin || false, token, undefined, user.isGuest || false);
+                    await axios.post(
+                        `${API_BASE_URL}/auth/adopt-token`,
+                        { token, refreshToken },
+                        { withCredentials: true }
+                    );
+                    // The refresh token is what lets a paired device stay
+                    // signed in across reloads - without it the session
+                    // lived only in this tab's memory.
+                    login(user.roomId, user.isAdmin || false, token, refreshToken, user.isGuest || false);
                     navigate('/dashboard');
                 } catch (err) {
                     console.error('Failed to adopt pairing session', err);

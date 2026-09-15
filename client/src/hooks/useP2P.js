@@ -734,6 +734,15 @@ export const useP2P = () => {
         const targetSocketId = targetDevice.socketId;
         debugLog(`Initiating File Transfer to ${targetDeviceId} (Socket: ${targetSocketId})`);
 
+        // Ask the server to notify the receiving device. The transfer
+        // itself never touches the server, so without this the other
+        // device only learns about the file if its app happens to be
+        // open and in front of someone.
+        socket.emit('notify-transfer', {
+            targetDeviceId,
+            fileName: file.name
+        });
+
         const peer = getOrCreatePeer(targetDeviceId, targetSocketId);
         const channel = peer.createDataChannel('file-transfer');
 

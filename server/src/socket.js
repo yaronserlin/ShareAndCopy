@@ -18,6 +18,8 @@ const logger = require('./utils/logger');
 const { maskRoomId, maskPairingCode } = require('./utils/logSanitize');
 const { connectedSockets, dataTransferred } = require('./utils/metrics');
 const pairingStore = require('./utils/pairingStore');
+const tokenService = require('./services/tokenService');
+const pushService = require('./services/pushService');
 const { parseCookies } = require('./utils/cookies');
 
 let io;
@@ -144,6 +146,15 @@ const initSocket = (server) => {
             socket.user = user;
             next();
         } catch (err) {
+            // An expired token is routine for a client waking up from
+            // the background; the client answers it by refreshing and
+            // reconnecting, so it must be distinguishable from a token
+            // that is actually invalid (which does end the session).
+            if (err instanceof jwt.TokenExpiredError) {
+                logger.child({ socketId: socket.id }).debug('Socket auth: token expired');
+                return next(new Error('Authentication error: Token expired'));
+            }
+
             logger.child({ socketId: socket.id }).error('Socket auth error', err);
             return next(new Error('Authentication error: Invalid token'));
         }
@@ -192,6 +203,16 @@ const initSocket = (server) => {
                 deviceId: sanitizedDeviceId,
                 deviceName: sanitizedDeviceName
             });
+
+            // Opt-in, and off by default: useful when you want to know a
+            // machine you're waiting on has come up, noisy otherwise.
+            pushService.sendToUser(userId, {
+                category: 'devices',
+                title: 'Device online',
+                body: `${sanitizedDeviceName} is now available for transfers.`,
+                tag: `device-online-${sanitizedDeviceId || socket.id}`,
+                data: { deviceId: sanitizedDeviceId }
+            }, { excludeDeviceId: sanitizedDeviceId });
 
             try {
                 const sockets = await io.in(userId).fetchSockets();
@@ -309,6 +330,17 @@ const initSocket = (server) => {
                     deviceInfo
                 });
 
+                // The approving device is often in someone's pocket:
+                // without a notification the pairing request sits
+                // unanswered until they happen to reopen the app.
+                pushService.sendToUser(userId, {
+                    category: 'pairing',
+                    title: 'Pairing request',
+                    body: `${validator.escape(deviceInfo?.deviceName || 'A device')} is asking to pair with your account.`,
+                    tag: `pairing-${socket.id}`,
+                    url: '/dashboard'
+                });
+
                 // Join the pairing room *after* the broadcast above (so
                 // this socket doesn't receive its own confirmation-request)
                 // so a later `approve-pairing` can verify its targetSocketId
@@ -366,22 +398,31 @@ const initSocket = (server) => {
 
                 const guestId = `guest_${crypto.randomUUID()}`;
 
-                const jti = crypto.randomUUID();
-                const newToken = jwt.sign(
-                    {
-                        id: guestId,
-                        roomId: userId,
-                        isGuest: true,
-                        scope: 'guest',
-                        name: 'Guest Device',
-                        jti
-                    },
-                    env.JWT_SECRET,
-                    { expiresIn: '24h' }
-                );
+                // Bind the guest's refresh token to the device that
+                // asked for it, so revoking that device also stops it
+                // from refreshing its way back in.
+                const targetSocket = io.sockets.sockets.get(targetSocketId);
+                const rawGuestDeviceId = targetSocket?.handshake?.query?.deviceId;
+                const guestDeviceId = rawGuestDeviceId ? validator.escape(rawGuestDeviceId) : undefined;
+
+                const { token: newToken } = tokenService.signGuestAccessToken({
+                    guestId,
+                    roomId: userId
+                });
+
+                // Paired devices get a refresh token too. Without one, a
+                // guest session lived only in the tab's memory and ended
+                // at the first reload - which on an installed PWA can be
+                // minutes after pairing.
+                const guestRefreshToken = tokenService.signGuestRefreshToken({
+                    guestId,
+                    roomId: userId,
+                    deviceId: guestDeviceId
+                });
 
                 io.to(targetSocketId).emit('pairing-success', {
                     token: newToken,
+                    refreshToken: guestRefreshToken,
                     user: { isGuest: true, roomId: userId }
                 });
 
@@ -395,6 +436,52 @@ const initSocket = (server) => {
                 log.info(`Pairing approved for target socket ${targetSocketId}`);
             } catch (err) {
                 log.error('Error approving pairing', err);
+            }
+        });
+
+        /**
+         * Notifies another of this user's devices that a file is on its
+         * way to it. The transfer itself is peer-to-peer and never
+         * touches the server, so without this the receiving device only
+         * finds out if its app happens to be open and in the foreground.
+         *
+         * The target is verified to be in the sender's own room, the
+         * same way `signal` verifies a relay target.
+         */
+        socket.on('notify-transfer', async (data) => {
+            try {
+                if (!checkSocketRateLimit(socket.id, 'notify-transfer', 30, 60000)) {
+                    log.warn(`Rate limit exceeded on 'notify-transfer' event`);
+                    return;
+                }
+
+                const targetDeviceId = validator.escape(String(data?.targetDeviceId || ''));
+                if (!targetDeviceId) return;
+
+                const roomSockets = await io.in(userId).fetchSockets();
+                const targetIsInRoom = roomSockets.some(s =>
+                    s.id !== socket.id && s.data.deviceInfo?.deviceId === targetDeviceId);
+
+                if (!targetIsInRoom) {
+                    log.warn('Denied notify-transfer: target device is not in this room');
+                    return;
+                }
+
+                const fileName = validator.escape(String(data?.fileName || '')).slice(0, 80);
+                const senderName = socket.data.deviceInfo?.deviceName || 'Another device';
+
+                await pushService.sendToDevice(userId, targetDeviceId, {
+                    category: 'transfers',
+                    title: 'Incoming file',
+                    body: fileName
+                        ? `${senderName} is sending you "${fileName}".`
+                        : `${senderName} is sending you a file.`,
+                    tag: `transfer-${socket.id}`,
+                    url: '/dashboard',
+                    data: { fromDeviceId: socket.data.deviceInfo?.deviceId || null }
+                });
+            } catch (err) {
+                log.error('Error sending transfer notification', err);
             }
         });
 

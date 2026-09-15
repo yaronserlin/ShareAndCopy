@@ -4,8 +4,23 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/logo_v2.svg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Share & Copy</title>
+
+  <!-- Installed-app metadata. `viewport-fit=cover` above, together with
+       the safe-area insets used in the stylesheet, keeps the layout
+       clear of the notch and home indicator in standalone mode. -->
+  <meta name="description" content="Send files and text straight between your own devices, peer to peer." />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#4F46E5" />
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <!-- iOS installs the app from these rather than the manifest. -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Share&Copy" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+
   <script src="/env-config.js"></script>
 </head>
 

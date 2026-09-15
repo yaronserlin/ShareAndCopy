@@ -5,6 +5,10 @@
  * container, footer) and the client-side route table, and listens for the
  * global `rate-limit-exceeded` event dispatched by the API client so the
  * whole app can be swapped out for a rate-limit notice.
+ *
+ * It also surfaces the two states an installed app has to be honest
+ * about: a newer version waiting to take over, and a session that is
+ * still valid but temporarily out of touch with the server.
  */
 
 import Home from './components/Home';
@@ -23,7 +27,10 @@ import { Routes, Route } from 'react-router-dom';
 
 import RateLimitError from './components/RateLimitError';
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import BackgroundDecorations from './components/common/BackgroundDecorations';
+import { applyUpdate } from './utils/pwa';
+import { useAuth } from './context/AuthContext';
 
 /**
  * Renders the app shell and route outlet, or a full-screen rate-limit
@@ -33,11 +40,42 @@ import BackgroundDecorations from './components/common/BackgroundDecorations';
  */
 function App() {
   const [isRateLimited, setIsRateLimited] = useState(false);
+  const { isOffline, isAuthenticated } = useAuth();
 
   useEffect(() => {
     const handleRateLimit = () => setIsRateLimited(true);
     window.addEventListener('rate-limit-exceeded', handleRateLimit);
     return () => window.removeEventListener('rate-limit-exceeded', handleRateLimit);
+  }, []);
+
+  useEffect(() => {
+    /**
+     * A new build has been downloaded by the service worker. Offer the
+     * reload rather than forcing it: an unprompted refresh in the middle
+     * of a file transfer would cancel it.
+     */
+    const handleUpdateAvailable = (event) => {
+      const registration = event.detail?.registration;
+
+      toast((t) => (
+        <span className="d-flex align-items-center gap-2">
+          A new version is ready.
+          <button
+            type="button"
+            className="btn btn-sm btn-light"
+            onClick={() => {
+              toast.dismiss(t.id);
+              applyUpdate(registration);
+            }}
+          >
+            Reload
+          </button>
+        </span>
+      ), { duration: 15000, id: 'pwa-update' });
+    };
+
+    window.addEventListener('pwa:update-available', handleUpdateAvailable);
+    return () => window.removeEventListener('pwa:update-available', handleUpdateAvailable);
   }, []);
 
   if (isRateLimited) {
@@ -47,6 +85,12 @@ function App() {
   return (
     <div className="d-flex flex-column min-vh-100">
       <BackgroundDecorations />
+      {isAuthenticated && isOffline && (
+        <div className="connection-banner" role="status">
+          <i className="bi bi-wifi-off" aria-hidden="true"></i>
+          <span>Offline - reconnecting</span>
+        </div>
+      )}
       <Toaster position="top-center" toastOptions={{ style: { background: '#333', color: '#fff' } }} containerStyle={{ zIndex: 99999 }} />
       <Navbar />
       <div className="flex-grow-1 d-flex flex-column">

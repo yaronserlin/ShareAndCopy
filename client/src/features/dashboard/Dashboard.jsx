@@ -1,7 +1,8 @@
 /**
  * Authenticated user's device dashboard: lists their other online
- * devices, lets them pick and send a file to each, and shows incoming
- * transfer requests and device-revocation confirmations as modals.
+ * devices, lets them pick and send a file to each, shows incoming
+ * transfer requests and device-revocation confirmations as modals, and
+ * hosts this device's notification settings.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -11,6 +12,7 @@ import { useP2P } from '../../hooks/useP2P';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import DevicePairing from '../../components/DevicePairing';
+import NotificationSettings from '../../components/NotificationSettings';
 import DeviceCard from './DeviceCard';
 
 /**
@@ -176,6 +178,8 @@ const Dashboard = () => {
                     </div>
                 </div>
             )}
+
+            <NotificationSettings />
 
             {Object.entries(pendingTransfers).map(([deviceId, transfer]) => (
                 <Modal show onHide={() => rejectTransfer(deviceId)} centered key={deviceId} contentClassName="border-0 shadow-lg">
