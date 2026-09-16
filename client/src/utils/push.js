@@ -111,12 +111,35 @@ export const subscribeToPush = async ({ preferences, user } = {}) => {
             : 'Notification permission was not granted.');
     }
 
-    const { enabled, publicKey } = await fetchPushConfig();
+    // The shared API client has no request timeout by design (so a
+    // cold-starting backend doesn't cost the user their session), but
+    // that means this call has no built-in bound either - race it so a
+    // dead connection can't leave this whole flow, and the toggle
+    // waiting on it, hung forever with nothing to catch.
+    const pushConfig = await Promise.race([
+        fetchPushConfig(),
+        new Promise((resolve) => setTimeout(() => resolve(null), 15000))
+    ]);
+    if (!pushConfig) {
+        throw new Error('Could not reach the server. Check your connection and try again.');
+    }
+
+    const { enabled, publicKey } = pushConfig;
     if (!enabled || !publicKey) {
         throw new Error('Notifications are not configured on this server.');
     }
 
-    const registration = await getServiceWorkerRegistration();
+    // `navigator.serviceWorker.ready` (inside `getServiceWorkerRegistration`)
+    // has no built-in timeout: it only resolves once some service worker
+    // actually takes control of this page, and simply never settles if
+    // that doesn't happen. Racing it against a timeout means a stuck
+    // worker surfaces as the same recoverable error below, instead of
+    // leaving this call - and the toggle that's waiting on it - hung and
+    // disabled with no error and no way to retry.
+    const registration = await Promise.race([
+        getServiceWorkerRegistration(),
+        new Promise((resolve) => setTimeout(() => resolve(null), 10000))
+    ]);
     if (!registration) {
         throw new Error('The app is still starting up. Try again in a moment.');
     }
