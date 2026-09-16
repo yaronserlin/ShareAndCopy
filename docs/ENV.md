@@ -12,6 +12,7 @@
 | `PORT` | No | Port the server listens on | default `5000`; set to `5001` for local dev to match `startup.sh` and the client defaults |
 | `NODE_ENV` | No | Runtime environment | default `development` |
 | `PUBLIC_URL` | No | Public client origin, used for CORS and app links | e.g. `https://app.example.com` |
+| `LOG_LEVEL` | No | Logging verbosity: `error`, `warn`, `info`, `http`, or `debug` | default `debug` in development/test, `warn` otherwise |
 | `ACCESS_TOKEN_TTL` | No | Access token lifetime (`jsonwebtoken` duration format) | default `1h` |
 | `REFRESH_TOKEN_TTL` | No | Refresh token lifetime, i.e. how long a device stays signed in | default `30d` |
 | `GUEST_REFRESH_TOKEN_TTL` | No | Refresh token lifetime for paired guest devices | default `7d` |

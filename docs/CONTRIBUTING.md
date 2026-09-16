@@ -60,6 +60,7 @@ npm start   # bash ./startup.sh --localnet
 | `npm run dev` | Run the server with `nodemon` (auto-restart) |
 | `npm test` | Run the Jest suite |
 | `npm run seed` | Run `seeder.js` to seed the database (refuses to run when `NODE_ENV=production`) |
+| `npm run generate-vapid` | Print a fresh VAPID key pair for Web Push (see [ENV.md](./ENV.md)) |
 <!-- /AUTO-GENERATED -->
 
 ## Testing
