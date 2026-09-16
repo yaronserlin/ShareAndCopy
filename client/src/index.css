@@ -71,6 +71,13 @@ body {
            like the app has come unstuck from the screen. */
         overscroll-behavior-y: none;
     }
+
+    /* `fixed-top` positions against the viewport, not the body's padding
+       box, so the safe-area inset above doesn't reach it - it needs its
+       own, or it sits under the status bar/notch/camera. */
+    .navbar.fixed-top {
+        padding-top: env(safe-area-inset-top);
+    }
 }
 
 /* Banner shown while the app can't reach the server but the session is

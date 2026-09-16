@@ -77,6 +77,16 @@ Notifications use Web Push with VAPID, and are **per device**: enabling
 them on a phone says nothing about a laptop, because a push subscription
 belongs to one browser on one device.
 
+### Testing on a phone
+
+The ServiceWorker and Push APIs only exist in a secure context - `https://`
+or `localhost`. `npm run localnet` serves plain `http://<lan-ip>:5173`,
+which the browser does not consider secure, so it hides both APIs
+entirely and the settings panel reports "not supported" on every device,
+regardless of platform. Use `npm run net` (Cloudflare tunnel, real
+`https://` URL) to test notifications, install prompts, or anything else
+that depends on the service worker from a phone.
+
 ### Setup
 
 ```bash
