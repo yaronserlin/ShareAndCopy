@@ -108,6 +108,27 @@ export const useNotifications = (user) => {
         };
     }, []);
 
+    // `permission` is otherwise only refreshed right after this device's
+    // own enable()/disable() calls. A permission granted or revoked from
+    // the OS's own notification settings while the app was in the
+    // background would otherwise leave the switch showing a stale
+    // "blocked" state until the next full reload.
+    useEffect(() => {
+        const handleResume = () => {
+            if (document.visibilityState === 'visible') {
+                setPermission(getPermission());
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleResume);
+        window.addEventListener('focus', handleResume);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleResume);
+            window.removeEventListener('focus', handleResume);
+        };
+    }, []);
+
     /** Turns notifications on for this device. */
     const enable = useCallback(async () => {
         setIsBusy(true);
