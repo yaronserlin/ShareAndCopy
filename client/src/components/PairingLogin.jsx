@@ -27,6 +27,7 @@ const PairingLogin = ({ onCancel }) => {
     const [code, setCode] = useState('');
     const [status, setStatus] = useState('input');
     const [error, setError] = useState(null);
+    const [isSlow, setIsSlow] = useState(false);
     const location = useLocation();
 
     useEffect(() => {
@@ -43,6 +44,22 @@ const PairingLogin = ({ onCancel }) => {
             if (tempSocket) tempSocket.disconnect();
         };
     }, [tempSocket]);
+
+    /**
+     * Flags a slow-looking connection attempt so the wait screen can
+     * explain it, rather than leaving a bare spinner sitting there with
+     * no sense of whether it's still working (e.g. a cold-starting
+     * backend on a free hosting tier can take tens of seconds).
+     */
+    useEffect(() => {
+        if (status !== 'connecting' && status !== 'waiting') {
+            setIsSlow(false);
+            return;
+        }
+
+        const timer = setTimeout(() => setIsSlow(true), 6000);
+        return () => clearTimeout(timer);
+    }, [status]);
 
     useEffect(() => {
         if (code && code.length === 6 && status === 'input') {
@@ -193,7 +210,12 @@ const PairingLogin = ({ onCancel }) => {
                 <div className="text-center py-4">
                     <Spinner animation="border" variant="primary" className="mb-3" />
                     <h5>{status === 'connecting' ? 'Connecting...' : 'Waiting for approval...'}</h5>
-                    <p className="text-muted">Check your logged-in device to approve this connection.</p>
+                    <p className="text-muted mb-1">Check your logged-in device to approve this connection.</p>
+                    {isSlow && (
+                        <p className="text-muted small">
+                            Still working - this can take up to a minute if the server had to wake up.
+                        </p>
+                    )}
                     <Button variant="outline-secondary" onClick={handleCancelPairing}>
                         Cancel
                     </Button>

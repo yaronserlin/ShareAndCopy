@@ -57,12 +57,22 @@ const DevicePairing = ({ show, onHide }) => {
             setStep('error');
         };
 
+        // Socket.IO does not preserve room membership across a
+        // reconnect. This device's socket routinely reconnects while the
+        // QR code just sits on screen (backgrounding, a screen lock, a
+        // brief wifi drop), silently leaving `pairing-${code}` and never
+        // hearing about the other device's pairing request again -
+        // rejoin every time the connection comes back.
+        const rejoinPairingRoom = () => socket.emit('join-pairing', pairingCode);
+
         socket.on('confirmation-request', onConfirmationRequest);
         socket.on('pairing-error', onPairingError);
+        socket.on('connect', rejoinPairingRoom);
 
         return () => {
             socket.off('confirmation-request', onConfirmationRequest);
             socket.off('pairing-error', onPairingError);
+            socket.off('connect', rejoinPairingRoom);
         };
     }, [socket, pairingCode]);
 

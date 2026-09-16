@@ -98,16 +98,22 @@ export const subscribeToPush = async ({ preferences, user } = {}) => {
             : 'This browser does not support notifications.');
     }
 
-    const { enabled, publicKey } = await fetchPushConfig();
-    if (!enabled || !publicKey) {
-        throw new Error('Notifications are not configured on this server.');
-    }
-
+    // iOS Safari only honors `requestPermission()` when it's called
+    // synchronously within the user gesture that triggered this function
+    // (the tap on the toggle) - an `await` on anything else first, like
+    // the network round trip below, breaks that association and the
+    // prompt silently never appears. So this has to run before any other
+    // `await`, even though `fetchPushConfig` reads more naturally first.
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') {
         throw new Error(permission === 'denied'
             ? 'Notifications are blocked for this app in your browser settings.'
             : 'Notification permission was not granted.');
+    }
+
+    const { enabled, publicKey } = await fetchPushConfig();
+    if (!enabled || !publicKey) {
+        throw new Error('Notifications are not configured on this server.');
     }
 
     const registration = await getServiceWorkerRegistration();
