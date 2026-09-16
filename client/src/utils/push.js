@@ -104,7 +104,20 @@ export const subscribeToPush = async ({ preferences, user } = {}) => {
     // the network round trip below, breaks that association and the
     // prompt silently never appears. So this has to run before any other
     // `await`, even though `fetchPushConfig` reads more naturally first.
-    const permission = await Notification.requestPermission();
+    //
+    // On an installed iOS PWA this promise can also simply never settle
+    // (no dialog appears and neither the resolve nor the OS-level prompt
+    // ever fires) rather than resolving 'denied' - a WebKit quirk, not a
+    // slow tap. Race it like the calls below so that case surfaces as a
+    // recoverable error instead of leaving the toggle disabled forever
+    // with isBusy stuck true and no explanation.
+    const permission = await Promise.race([
+        Notification.requestPermission(),
+        new Promise((resolve) => setTimeout(() => resolve('unavailable'), 30000))
+    ]);
+    if (permission === 'unavailable') {
+        throw new Error('The permission prompt did not respond. Check Settings > Notifications > Share & Copy on this device, then try again.');
+    }
     if (permission !== 'granted') {
         throw new Error(permission === 'denied'
             ? 'Notifications are blocked for this app in your browser settings.'
