@@ -20,8 +20,11 @@ const randomBytesAsync = util.promisify(crypto.randomBytes);
  * @returns {Promise<Object>} Tokens, room ID, and the public user profile.
  * @throws {Error} If the email is already registered.
  */
+/** Version of the legal documents recorded at registration. */
+const CURRENT_TERMS_VERSION = '1.0';
+
 exports.register = async (userData) => {
-    const { email, password, firstName, lastName } = userData;
+    const { email, password, firstName, lastName, termsAccepted } = userData;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -39,7 +42,8 @@ exports.register = async (userData) => {
         password: hashedPassword,
         firstName,
         lastName,
-        roomId
+        roomId,
+        ...(termsAccepted ? { termsVersion: CURRENT_TERMS_VERSION, termsAcceptedAt: new Date() } : {})
     });
 
     await user.save();
