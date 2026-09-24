@@ -23,6 +23,7 @@ import AdminDashboard from './features/Admin/AdminDashboard';
 import Dashboard from './features/dashboard/Dashboard';
 import LegalPage from './pages/Legal/LegalPage';
 import CookieNotice from './components/CookieNotice/CookieNotice';
+import AccessibilityMenu from './components/AccessibilityMenu/AccessibilityMenu';
 import { Toaster } from 'react-hot-toast';
 import { Routes, Route } from 'react-router-dom';
 
@@ -115,6 +116,7 @@ function App() {
       </div>
       <Footer />
       <CookieNotice />
+      <AccessibilityMenu />
     </div>
   );
 }
