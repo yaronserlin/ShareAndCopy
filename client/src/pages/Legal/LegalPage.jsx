@@ -59,13 +59,6 @@ const LegalPage = ({ docKey }) => {
                     </section>
                 ))}
 
-                <footer className="mt-4 pt-3 border-top border-secondary border-opacity-25">
-                    <p className="text-secondary small mb-0">
-                        {isRtl
-                            ? 'מסמך זה נערך כסיוע טכני-תיעודי ואינו מהווה ייעוץ משפטי; מומלץ להציגו לביקורת עורך דין.'
-                            : 'This document was prepared as a technical drafting aid and does not constitute legal advice; review by a qualified lawyer is recommended.'}
-                    </p>
-                </footer>
             </article>
         </div>
     );
