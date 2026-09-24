@@ -316,10 +316,7 @@ export const ACCESSIBILITY_STATEMENT_HE = {
     ]
 };
 
-export const COOKIE_NOTICE = {
-    en: 'Share & Copy uses only essential cookies to keep you signed in and operate the Service. No tracking or advertising cookies are used. See the Privacy Policy for details.',
-    he: 'Share & Copy משתמש בעוגיות חיוניות בלבד לצורך התחברות ותפעול תקין של השירות. לא נעשה שימוש בעוגיות מעקב או פרסום. פרטים מלאים במדיניות הפרטיות.'
-};
+export const COOKIE_NOTICE = 'Share & Copy uses only essential cookies to keep you signed in and operate the Service. No tracking or advertising cookies are used. See the Privacy Policy for details.';
 
 export const LEGAL_DOCS = {
     terms: { en: TERMS_OF_SERVICE_EN, he: TERMS_OF_SERVICE_HE },
