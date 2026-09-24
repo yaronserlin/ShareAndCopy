@@ -24,12 +24,31 @@ afterAll(async () => {
     await testDb.close();
 });
 
+describe('register validation schema', () => {
+    const { registerSchema } = require('../src/utils/validationSchemas');
+
+    it('should require terms acceptance', () => {
+        const valid = {
+            firstName: 'John',
+            lastName: 'Doe',
+            email: 'john@example.com',
+            password: 'Password1',
+            termsAccepted: true
+        };
+        expect(registerSchema.validate(valid).error).toBeUndefined();
+        const { termsAccepted, ...withoutConsent } = valid;
+        expect(registerSchema.validate(withoutConsent).error).toBeDefined();
+        expect(registerSchema.validate({ ...valid, termsAccepted: false }).error).toBeDefined();
+    });
+});
+
 describe('Auth Routes', () => {
     const generateUser = () => ({
         firstName: 'John',
         lastName: 'Doe',
         email: `john-${Date.now()}-${Math.random()}@example.com`,
-        password: 'Password1'
+        password: 'Password1',
+        termsAccepted: true
     });
 
     describe('POST /api/auth/register', () => {
@@ -48,6 +67,10 @@ describe('Auth Routes', () => {
             }
 
             expect(res.statusCode).toBe(201);
+
+            const savedUser = await User.findOne({ email: mockUser.email });
+            expect(savedUser.termsVersion).toBe('1.0');
+            expect(savedUser.termsAcceptedAt).toBeTruthy();
             expect(res.headers['set-cookie']).toBeDefined();
             expect(res.body.data).not.toHaveProperty('token');
             expect(res.body.data).toHaveProperty('roomId');
