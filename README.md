@@ -2,6 +2,8 @@
 
 Send files directly between your own devices — no uploads, no shareable links, no waiting around.
 
+**Live demo:** https://shareandcopy.onrender.com/ - first load may take ~30 seconds (free hosting).
+
 ![Share & Copy](media/demo.png)
 
 ## What it is
