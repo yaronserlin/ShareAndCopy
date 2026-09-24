@@ -21,6 +21,8 @@ const RegisterForm = () => {
         touched,
         isValid,
         isLoading,
+        termsAccepted,
+        setTermsAccepted,
         handleChange,
         handleBlur,
         handleSubmit
@@ -97,9 +99,26 @@ const RegisterForm = () => {
                 required
             />
 
+            <div className="form-check">
+                <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id="termsAccepted"
+                    checked={termsAccepted}
+                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                    required
+                />
+                <label className="form-check-label small" htmlFor="termsAccepted">
+                    I agree to the{' '}
+                    <a href="/terms" target="_blank" rel="noreferrer">Terms of Service</a>
+                    {' '}and{' '}
+                    <a href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>
+                </label>
+            </div>
+
             <button
                 type="submit"
-                disabled={isLoading || !isValid}
+                disabled={isLoading || !isValid || !termsAccepted}
                 className={`btn btn-primary w-100 fw-bold py-2 mt-2 ${styles.authBtnGradient}`}
             >
                 {isLoading ? 'Processing...' : 'Create Account'}
