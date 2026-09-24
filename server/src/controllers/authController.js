@@ -20,11 +20,11 @@ const REVOKED_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
  */
 exports.register = async (req, res) => {
     logger.debug('Register request received');
-    const { email, password, firstName, lastName } = req.body;
+    const { email, password, firstName, lastName, termsAccepted } = req.body;
 
     try {
 
-        const result = await authService.register({ email, password, firstName, lastName });
+        const result = await authService.register({ email, password, firstName, lastName, termsAccepted });
 
         logger.info(`New user registered: ${maskEmail(email)} (Room: ${maskRoomId(result.roomId)})`);
 
