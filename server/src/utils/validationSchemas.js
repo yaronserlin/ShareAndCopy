@@ -25,6 +25,10 @@ const registerSchema = Joi.object({
     }),
     lastName: Joi.string().pattern(APP_CONSTANTS.REGEX.NAME).required().messages({
         'string.pattern.base': 'Last name must contain only letters'
+    }),
+    termsAccepted: Joi.boolean().valid(true).required().messages({
+        'any.only': 'You must accept the Terms of Service and Privacy Policy',
+        'any.required': 'You must accept the Terms of Service and Privacy Policy'
     })
 });
 

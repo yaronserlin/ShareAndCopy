@@ -22,7 +22,10 @@ const Footer = () => {
                     <span className="text-secondary opacity-75 small">
                         © {new Date().getFullYear()} Share & Copy.
                     </span>
-                    <Link to="/about" className="text-secondary opacity-75 small text-decoration-none hover-opacity">About</Link>
+                    <Link to="/about" className="text-secondary small text-decoration-none hover-opacity">About</Link>
+                    <Link to="/terms" className="text-secondary small text-decoration-none hover-opacity">Terms</Link>
+                    <Link to="/privacy" className="text-secondary small text-decoration-none hover-opacity">Privacy</Link>
+                    <Link to="/accessibility" className="text-secondary small text-decoration-none hover-opacity">Accessibility</Link>
                 </div>
 
                 <button

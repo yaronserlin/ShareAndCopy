@@ -56,7 +56,8 @@ describe('Admin Routes', () => {
             firstName: 'Reg',
             lastName: 'User',
             email: `reg-${Date.now()}@test.com`,
-            password: 'Password1'
+            password: 'Password1',
+            termsAccepted: true
         };
 
         userAgent = request.agent(app);
