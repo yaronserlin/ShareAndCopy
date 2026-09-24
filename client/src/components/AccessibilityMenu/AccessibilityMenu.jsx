@@ -12,6 +12,39 @@ const FONT_STEPS = [100, 110, 125, 150];
 
 const DEFAULTS = { fontStep: 0, highContrast: false, underlineLinks: false };
 
+/** Gap in px between the floating button and whatever it sits above. */
+const EDGE_GAP = 16;
+
+/**
+ * Elements pinned to the bottom of the screen that the floating button must
+ * never cover (the footer with the light/dark toggle, the cookie notice).
+ */
+const OBSTACLE_SELECTORS = ['footer', '[aria-label="Cookie notice"]'];
+
+/**
+ * How far from the bottom of the viewport the floating button should sit so
+ * it clears every visible bottom obstacle.
+ *
+ * @param {{top: number, bottom: number}[]} rects Obstacle bounding boxes.
+ * @param {number} viewportHeight window.innerHeight.
+ * @returns {number} Bottom offset in px.
+ */
+export const computeBottomOffset = (rects, viewportHeight) => {
+    const covered = rects.reduce((max, rect) => {
+        const visible = rect.bottom > 0 && rect.top < viewportHeight;
+        return visible ? Math.max(max, viewportHeight - rect.top) : max;
+    }, 0);
+    return Math.max(0, covered) + EDGE_GAP;
+};
+
+const measureBottomOffset = () => {
+    const rects = OBSTACLE_SELECTORS
+        .flatMap((sel) => Array.from(document.querySelectorAll(sel)))
+        .map((el) => el.getBoundingClientRect())
+        .filter((rect) => rect.height > 0);
+    return computeBottomOffset(rects, window.innerHeight);
+};
+
 const loadPrefs = () => {
     try {
         return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') };
@@ -33,6 +66,30 @@ const applyPrefs = (prefs) => {
 const AccessibilityMenu = () => {
     const [open, setOpen] = useState(false);
     const [prefs, setPrefs] = useState(loadPrefs);
+    const [bottomOffset, setBottomOffset] = useState(EDGE_GAP);
+
+    // Keep the button above the footer and cookie notice as they scroll into
+    // view, resize, or appear/disappear, so it never hides the theme toggle.
+    useEffect(() => {
+        let frame = 0;
+        const schedule = () => {
+            cancelAnimationFrame(frame);
+            frame = requestAnimationFrame(() => setBottomOffset(measureBottomOffset()));
+        };
+        schedule();
+        window.addEventListener('scroll', schedule, { passive: true });
+        window.addEventListener('resize', schedule);
+        const observer = typeof MutationObserver !== 'undefined'
+            ? new MutationObserver(schedule)
+            : null;
+        observer?.observe(document.body, { childList: true, subtree: true });
+        return () => {
+            cancelAnimationFrame(frame);
+            window.removeEventListener('scroll', schedule);
+            window.removeEventListener('resize', schedule);
+            observer?.disconnect();
+        };
+    }, []);
 
     useEffect(() => {
         applyPrefs(prefs);
@@ -47,13 +104,16 @@ const AccessibilityMenu = () => {
     const reset = () => setPrefs({ ...DEFAULTS });
 
     return (
-        <div className="position-fixed bottom-0 end-0 m-3" style={{ zIndex: 1060 }}>
+        <div
+            className="position-fixed end-0 me-3 d-flex flex-column align-items-end"
+            style={{ zIndex: 1060, bottom: `${bottomOffset}px`, transition: 'bottom 0.15s ease-out' }}
+        >
             {open && (
                 <div
                     role="dialog"
                     aria-label="Accessibility options"
                     className="glass-panel border border-secondary border-opacity-25 rounded p-3 mb-2"
-                    style={{ minWidth: '240px' }}
+                    style={{ minWidth: '240px', maxHeight: `calc(100vh - ${bottomOffset + 72}px)`, overflowY: 'auto' }}
                 >
                     <h2 className="h6 fw-bold mb-3">Accessibility</h2>
 
