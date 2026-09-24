@@ -22,6 +22,7 @@ export const useRegisterForm = () => {
     const { login } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [termsAccepted, setTermsAccepted] = useState(false);
 
     const {
         formData,
@@ -46,7 +47,7 @@ export const useRegisterForm = () => {
 
         setIsLoading(true);
         try {
-            const payload = { ...formData };
+            const payload = { ...formData, termsAccepted: true };
             delete payload.confirmPassword;
 
             const res = await api.post('/auth/register', payload);
@@ -69,6 +70,8 @@ export const useRegisterForm = () => {
         isLoading,
         showPassword,
         setShowPassword,
+        termsAccepted,
+        setTermsAccepted,
         handleChange,
         handleBlur,
         handleSubmit
