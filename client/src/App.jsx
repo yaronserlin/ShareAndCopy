@@ -21,6 +21,8 @@ import AdminRoute from './components/AdminRoute';
 import RequireAuth from './components/RequireAuth';
 import AdminDashboard from './features/Admin/AdminDashboard';
 import Dashboard from './features/dashboard/Dashboard';
+import LegalPage from './pages/Legal/LegalPage';
+import CookieNotice from './components/CookieNotice/CookieNotice';
 import { Toaster } from 'react-hot-toast';
 import { Routes, Route } from 'react-router-dom';
 
@@ -99,6 +101,9 @@ function App() {
           <Route path="/login" element={<Auth />} />
           <Route path="/register" element={<Auth />} />
           <Route path="/about" element={<About />} />
+          <Route path="/terms" element={<LegalPage docKey="terms" />} />
+          <Route path="/privacy" element={<LegalPage docKey="privacy" />} />
+          <Route path="/accessibility" element={<LegalPage docKey="accessibility" />} />
           <Route element={<RequireAuth />}>
             <Route path="/dashboard" element={<Dashboard />} />
           </Route>
@@ -109,6 +114,7 @@ function App() {
         </Routes>
       </div>
       <Footer />
+      <CookieNotice />
     </div>
   );
 }
