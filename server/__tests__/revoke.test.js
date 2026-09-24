@@ -42,7 +42,8 @@ describe('POST /api/auth/revoke', () => {
         firstName: 'John',
         lastName: 'Doe',
         email: `revoke-${Date.now()}-${Math.random()}@example.com`,
-        password: 'Password1'
+        password: 'Password1',
+        termsAccepted: true
     });
 
     it('blocks the revoked device from logging back in with the correct password', async () => {
@@ -122,7 +123,8 @@ describe('GET /api/auth/revoked-devices and POST /api/auth/reactivate-device', (
         firstName: 'John',
         lastName: 'Doe',
         email: `reactivate-${Date.now()}-${Math.random()}@example.com`,
-        password: 'Password1'
+        password: 'Password1',
+        termsAccepted: true
     });
 
     it('lists a revoked device and lets it log back in once reactivated', async () => {
