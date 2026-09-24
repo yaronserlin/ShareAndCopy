@@ -31,7 +31,7 @@ const Home = () => {
                                         Welcome Back!
                                     </h1>
                                     <p className={`lead text-secondary mb-5 mx-auto ${styles.homeLeadText}`}>
-                                        Your private room is ready and waiting.
+                                        Your devices are ready and waiting.
                                     </p>
                                     <div className="d-flex justify-content-center gap-3">
                                         <GradientButton to="/dashboard">
@@ -49,11 +49,11 @@ const Home = () => {
                                         Share Files <span className={styles.homeTitleGradient}>Instantly & Securely</span>
                                     </h1>
                                     <p className={`lead text-secondary mb-5 mx-auto ${styles.homeLeadText}`}>
-                                        Create your private room, upload files, and share them with a simple link. Secure, fast, and hassle-free file sharing for everyone.
+                                        Send files straight between your own devices. Pair a device with a QR code, pick it on your dashboard and send - files go device to device and are never stored on a server.
                                     </p>
                                     <div className="d-flex flex-column flex-sm-row justify-content-center gap-3">
                                         <GradientButton to="/register">
-                                            Create Your Room
+                                            Get Started
                                         </GradientButton>
                                         <Link to="/about" className={`btn btn-lg btn-light border rounded-pill px-5 py-3 text-dark shadow-sm ${styles.btnHoverEffect}`}>
                                             About
