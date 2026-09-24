@@ -98,6 +98,16 @@ const UserSchema = new mongoose.Schema({
     isAdmin: {
         type: Boolean,
         default: false
+    },
+    /** Version of the Terms of Service accepted at registration. */
+    termsVersion: {
+        type: String,
+        default: null
+    },
+    /** When the user accepted the Terms of Service and Privacy Policy. */
+    termsAcceptedAt: {
+        type: Date,
+        default: null
     }
 }, {
     timestamps: true
