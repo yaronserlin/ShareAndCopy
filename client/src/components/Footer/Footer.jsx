@@ -17,9 +17,9 @@ const Footer = () => {
 
     return (
         <footer className={`py-2 mt-auto border-top border-secondary border-opacity-10 glass-panel ${styles.footerContainer}`}>
-            <div className="container-fluid container-lg d-flex justify-content-between align-items-center">
-                <div className="d-flex align-items-center gap-3 mx-auto">
-                    <span className="text-secondary opacity-75 small">
+            <div className="container-fluid container-lg d-flex justify-content-between align-items-center gap-2">
+                <div className="d-flex flex-wrap align-items-center justify-content-center column-gap-3 row-gap-1 mx-auto">
+                    <span className="text-secondary opacity-75 small text-nowrap">
                         © {new Date().getFullYear()} Share & Copy.
                     </span>
                     <Link to="/about" className="text-secondary small text-decoration-none hover-opacity">About</Link>
@@ -30,7 +30,7 @@ const Footer = () => {
 
                 <button
                     onClick={toggleTheme}
-                    className="btn btn-outline-secondary rounded-pill btn-sm d-flex align-items-center gap-2"
+                    className="btn btn-outline-secondary rounded-pill btn-sm d-flex align-items-center gap-2 flex-shrink-0"
                     title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
                 >
                     {theme === 'dark' ? (
