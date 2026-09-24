@@ -40,3 +40,17 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Accessibility menu adjustments */
+.a11y-high-contrast {
+    filter: contrast(1.25);
+}
+
+.a11y-high-contrast img,
+.a11y-high-contrast video {
+    filter: contrast(0.9);
+}
+
+.a11y-underline-links a {
+    text-decoration: underline !important;
+}
