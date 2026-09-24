@@ -42,22 +42,16 @@ const CookieNotice = () => {
             style={{ zIndex: 1050 }}
         >
             <div className="container d-flex flex-column flex-md-row align-items-md-center gap-2">
-                <div className="flex-grow-1 small text-secondary">
-                    <p className="mb-1">
-                        {COOKIE_NOTICE.en}{' '}
-                        <Link to="/privacy" className="fw-semibold text-decoration-underline" style={{ color: 'inherit' }}>Privacy Policy</Link>
-                    </p>
-                    <p className="mb-0" dir="rtl" lang="he">
-                        {COOKIE_NOTICE.he}{' '}
-                        <Link to="/privacy" className="fw-semibold text-decoration-underline" style={{ color: 'inherit' }}>מדיניות הפרטיות</Link>
-                    </p>
-                </div>
+                <p className="flex-grow-1 small text-secondary mb-0">
+                    {COOKIE_NOTICE}{' '}
+                    <Link to="/privacy" className="fw-semibold text-decoration-underline" style={{ color: 'inherit' }}>Privacy Policy</Link>
+                </p>
                 <button
                     type="button"
                     className="btn btn-primary btn-sm px-3 flex-shrink-0"
                     onClick={dismiss}
                 >
-                    Got it · הבנתי
+                    Got it
                 </button>
             </div>
         </div>
